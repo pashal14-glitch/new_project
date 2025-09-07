@@ -854,23 +854,30 @@ const cacheSystem = new MiluimCalculatorCache();
             return ApplyBrutoMinimumFromCSV(bestBruto, monthDate);
         }
 
-        function GetWorkDaysForMonth(employeeId, monthDate) {
-            const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-            const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-            
-            let totalDays = 0;
-            
-            for (let attendance of attendanceData) {
-                if (attendance.employeeId === employeeId) {
-                    const attendanceDate = parseExcelDate(attendance.monthYear);
-                    if (attendanceDate >= monthStart && attendanceDate <= monthEnd) {
-                        totalDays += attendance.workDays || 0;
-                    }
-                }
+        function GetWorkDaysForMonth(employeeId, monthDate, serviceStartDate) {
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    
+    let totalDays = 0;
+    
+    // קביעה איזה עמודה להשתמש בה לפי תאריך השירות
+    const isNewMiluim = serviceStartDate >= new Date(2025, 4, 1); // 1 במאי 2025
+    
+    for (let attendance of attendanceData) {
+        if (attendance.employeeId === employeeId) {
+            const attendanceDate = parseExcelDate(attendance.monthYear);
+            if (attendanceDate >= monthStart && attendanceDate <= monthEnd) {
+                // בחר את העמודה הנכונה לפי סוג המילואים
+                const workDays = isNewMiluim ? 
+                    (attendance.workDaysNew || 0) :  // עמודה D למילואים חדשים
+                    (attendance.workDays || 0);      // עמודה C למילואים רגילים
+                totalDays += workDays;
             }
-            
-            return totalDays;
         }
+    }
+    
+    return totalDays;
+}
 
         // Core calculation functions - מתוקן לפי המפרט
         function calculateBasicDailyValue(employeeId, serviceStartDate) {
@@ -882,9 +889,9 @@ const cacheSystem = new MiluimCalculatorCache();
             const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
             
             // בדיקת ימי עבודה ב-3 חודשים
-            const workDays1 = GetWorkDaysForMonth(employeeId, month1);
-            const workDays2 = GetWorkDaysForMonth(employeeId, month2);
-            const workDays3 = GetWorkDaysForMonth(employeeId, month3);
+            const workDays1 = GetWorkDaysForMonth(employeeId, month1, serviceStartDate);
+            const workDays2 = GetWorkDaysForMonth(employeeId, month2, serviceStartDate);
+            const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
             const totalWorkDays = workDays1 + workDays2 + workDays3;
             
             let totalBruto = 0;
@@ -1556,13 +1563,14 @@ if (calculationResults.length > 500) {
                     })).filter(item => item.employeeId);
                     break;
                     
-                case 'attendance':
+               case 'attendance':
                     attendanceData = dataRows.map(row => ({
-                        employeeId: row[0],
-                        monthYear: row[1],
-                        workDays: row[2]
-                    })).filter(item => item.employeeId);
-                    break;
+                    employeeId: row[0],
+                    monthYear: row[1],
+                    workDays: row[2],      // עמודה C - מילואים רגילים  
+                    workDaysNew: row[3]    // עמודה D - מילואים חדשים
+                 })).filter(item => item.employeeId);
+                break;
             }
         }
 
