@@ -2023,7 +2023,7 @@ if (uniqueEmployees.length > 100) {
     const workDaysDetails = [];
     
     [month3, month2, month1].forEach(month => {
-        const workDays = GetWorkDaysForMonth(employeeId, month);
+        const workDays = GetWorkDaysForMonth(employeeId, month, serviceStartDate);
         totalWorkDays += workDays;
         
         workDaysDetails.push({
