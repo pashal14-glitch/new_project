@@ -1980,21 +1980,55 @@ if (uniqueEmployees.length > 100) {
             document.getElementById('summaryStats').style.display = 'grid';
         }
         function getExtendedCalculationDetails(employeeId, serviceStartDate) {
-    // חישוב 3 חודשים לפני תחילת השירות (כמו בקוד המקורי)
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+    
+    // בדיקה אם זה חישוב חלופי
     const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
-    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);  
     const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
     
-    // איסוף נתוני ברוטו באמצעות הפונקציות הקיימות שלך
-    const brutoBTLDetails = [];
-    let totalBrutoBTL = 0;
+    const workDays1 = GetWorkDaysForMonth(employeeId, month1, serviceStartDate);
+    const workDays2 = GetWorkDaysForMonth(employeeId, month2, serviceStartDate);
+    const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
+    const totalWorkDays = workDays1 + workDays2 + workDays3;
     
-    [month3, month2, month1].forEach(month => {
-        // השתמש בפונקציה הקיימת שלך
-        const adjustedBruto = GetBrutoForMonth(employeeId, month);
+    let monthsToShow = [month3, month2, month1];
+    let calculationType = 'רגיל';
+    
+    // אם חישוב חלופי - מצא את 3 החודשים הטובים
+    if (totalWorkDays < 60) {
+        calculationType = 'חלופי';
+        const allMonths = [];
         
-        // מצא את הברוטו המקורי לפני ההתאמה
+        // בדוק 6 חודשים
+        for (let i = 1; i <= 6; i++) {
+            const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
+            const bruto = GetBrutoForMonth(employeeId, month);
+            allMonths.push({
+                date: month,
+                bruto: bruto
+            });
+        }
+        
+        // בחר את 3 הטובים
+        monthsToShow = allMonths
+            .sort((a, b) => b.bruto - a.bruto)
+            .slice(0, 3)
+            .map(m => m.date)
+            .sort((a, b) => a - b); // מיון לפי תאריך
+    }
+    
+    // בנה פירוט לפי החודשים הנכונים
+    const brutoBTLDetails = [];
+    const workDaysDetails = [];
+    let totalBrutoBTL = 0;
+    let totalWorkDaysCalculated = 0;
+    
+    monthsToShow.forEach(month => {
+        const adjustedBruto = GetBrutoForMonth(employeeId, month);
+        const workDays = GetWorkDaysForMonth(employeeId, month, serviceStartDate);
+        
+        // מצא ברוטו מקורי
         const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
         const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
         
@@ -2015,29 +2049,21 @@ if (uniqueEmployees.length > 100) {
             wasAdjusted: adjustedBruto > originalBruto
         });
         
-        totalBrutoBTL += adjustedBruto;
-    });
-    
-    // איסוף נתוני ימי עבודה באמצעות הפונקציות הקיימות שלך
-    let totalWorkDays = 0;
-    const workDaysDetails = [];
-    
-    [month3, month2, month1].forEach(month => {
-        const workDays = GetWorkDaysForMonth(employeeId, month, serviceStartDate);
-        totalWorkDays += workDays;
-        
         workDaysDetails.push({
             month: (month.getMonth() + 1) + '/' + month.getFullYear(),
             workDays: workDays
         });
+        
+        totalBrutoBTL += adjustedBruto;
+        totalWorkDaysCalculated += workDays;
     });
     
     return {
         brutoBTLDetails: brutoBTLDetails,
         totalBrutoBTL: totalBrutoBTL,
         workDaysDetails: workDaysDetails,
-        totalWorkDays: totalWorkDays,
-        calculationType: totalWorkDays >= 60 ? 'רגיל' : 'חלופי'
+        totalWorkDays: totalWorkDaysCalculated,
+        calculationType: calculationType
     };
 }
         function showDetails(index) {
