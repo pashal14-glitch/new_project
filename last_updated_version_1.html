@@ -1828,6 +1828,7 @@ function displaySingleEmployeeResults(employeeId, results) {
     
     results.forEach((result, index) => {
         const rowClass = getRowClass(result);
+        const originalIndex = calculationResults.indexOf(result);
         html += `
             <tr class="${rowClass}">
                 <td>${formatDate(result.serviceStartDate)}</td>
@@ -1836,7 +1837,7 @@ function displaySingleEmployeeResults(employeeId, results) {
                 <td>₪${formatCurrency(result.basicDailyValue)}</td>
                 <td>₪${formatCurrency(result.recommendedValue)}</td>
                 <td>${result.finalStatus || 'מחושב'}</td>
-                <td><button class="details-btn" onclick="showDetails(${index})">🔍</button></td>
+                <td><button class="details-btn" onclick="showDetails(${originalIndex})">🔍</button></td>
             </tr>
         `;
     });
