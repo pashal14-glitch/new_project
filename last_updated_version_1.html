@@ -2072,18 +2072,18 @@ if (uniqueEmployees.length > 100) {
         monthsUsed: monthsToShow.length // למעקב
     };
 }
-        function showDetails(index) {
+       function showDetails(index) {
     const result = calculationResults[index];
     
-    // הוספה שלי - קריאה לפונקציה החדשה
-   const extendedDetails = getExtendedCalculationDetails(result.employeeId, result.startDate);
+    // הפונקציה getExtendedCalculationDetails שלך (מתוקנת)
+    const extendedDetails = getExtendedCalculationDetails(result.employeeId, result.startDate);
     
-    // הוספה שלי - בניית הפירוט הנוסף
+    // בניית הפירוט המורחב שלך (מתוקן)
     let extendedDetailsHtml = '';
     if (extendedDetails) {
         extendedDetailsHtml = `
             <div class="calculation-step">
-                <div class="step-title">פירוט מורחב - ברוטו ביטוח לאומי וימי עבודה</div>
+                <div class="step-title">פירוט מורחב - ברוטו ביטוח לאומי וימי עבודה ✅</div>
                 <div class="step-detail">
                     <h4>ברוטו בפועל ששימש לחישוב:</h4>
                     <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px;">
@@ -2108,11 +2108,11 @@ if (uniqueEmployees.length > 100) {
                     </table>
                     <p><strong>סה"כ ברוטו לביטוח לאומי: ${extendedDetails.totalBrutoBTL.toFixed(2)} ₪</strong></p>
                     
-                    <h4>ימי עבודה ב-90 ימים שקדמו לשירות:</h4>
+                    <h4>ימי עבודה ב-90 ימים שקדמו לשירות (לפי גיליון 1857):</h4>
                     <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px;">
                         <tr style="background: #f0f0f0; font-weight: bold;">
                             <th style="border: 1px solid #ddd; padding: 8px;">חודש</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">ימי עבודה</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">ימי עבודה בפועל</th>
                         </tr>`;
         
         extendedDetails.workDaysDetails.forEach(month => {
@@ -2131,8 +2131,9 @@ if (uniqueEmployees.length > 100) {
             </div>`;
     }
     
+    // **החלק המתוקן - החישוב המלא עם כל הפרטים**
     let html = `
-        <h2>פירוט חישוב מפורט</h2>
+        <h2>פירוט חישוב מפורט ✅</h2>
         <h3>עובד ${result.employeeId} | ${formatDate(result.startDate)} - ${formatDate(result.endDate)}</h3>
         
         ${extendedDetailsHtml}
@@ -2140,47 +2141,47 @@ if (uniqueEmployees.length > 100) {
         <div class="calculation-step">
             <div class="step-title">שלב 1: איסוף נתוני שכר ונוכחות</div>
             <div class="step-detail">
-                <strong>סוג חישוב:</strong> ${result.calculationType}<br>
-                <strong>ימי עבודה ב-3 חודשים:</strong> ${result.workDays}<br>
-                <strong>סה"כ ברוטו (3 חודשים):</strong> ${formatCurrency(result.totalBruto)}
-                ${result.calculationType === 'חלופי' ? '<br><span style="color: #e74c3c; font-weight: bold;">אזהרה: פחות מ-60 ימי עבודה - מעבר לחישוב חלופי</span>' : ''}
+                <strong>סוג חישוב:</strong> ${result.calculationType || 'לא זמין'}<br>
+                <strong>ימי עבודה ב-3 חודשים:</strong> ${result.workDays || 'לא זמין'}<br>
+                <strong>סה"כ ברוטו (3 חודשים):</strong> ${result.totalBruto ? formatCurrency(result.totalBruto) : 'לא זמין'}
+                ${(result.calculationType === 'חלופי' || extendedDetails?.calculationType === 'חלופי') ? '<br><span style="color: #e74c3c; font-weight: bold;">אזהרה: פחות מ-60 ימי עבודה - מעבר לחישוב חלופי</span>' : ''}
             </div>
         </div>
         
         <div class="calculation-step">
             <div class="step-title">שלב 2: חישוב ערך יומי בסיסי (Column E)</div>
             <div class="step-detail">
-                ערך גולמי: ${(result.totalBruto / 90).toFixed(2)} ₪<br>
-                <strong>ערך לאחר הגבלות:</strong> ${result.basicValue.toFixed(2)} ₪
+                ערך גולמי: ${result.totalBruto ? (result.totalBruto / 90).toFixed(2) : 'לא זמין'} ₪<br>
+                <strong>ערך לאחר הגבלות:</strong> ${result.basicValue ? result.basicValue.toFixed(2) : (result.basicDaily ? result.basicDaily.toFixed(2) : 'לא זמין')} ₪
             </div>
         </div>
         
         <div class="calculation-step">
             <div class="step-title">שלב 3: ערך מומלץ 60 ימים (Column F)</div>
             <div class="step-detail">
-                ${result.startDate >= NEW_MILUIM_START ? 'מילואים חדשים - לא בודק שירות קודם' : 'בדיקת שירות קודם ב-60 ימים אחרונים'}<br>
-                <strong>ערך מומלץ:</strong> ${result.recommendedValue.toFixed(2)} ₪
+                ${result.startDate >= new Date('2025-05-01') ? 'מילואים חדשים - לא בודק שירות קודם' : 'בדיקת שירות קודם ב-60 ימים אחרונים'}<br>
+                <strong>ערך מומלץ:</strong> ${result.recommendedValue ? result.recommendedValue.toFixed(2) : (result.bestDaily ? result.bestDaily.toFixed(2) : 'לא זמין')} ₪
             </div>
         </div>
         
         <div class="calculation-step">
-            <div class="step-title">שלב 4: ערך רציף (Column G)</div>
+            <div class="step-title">שלב 4: ערך רציף (Column G) ${result.limitedByNewMiluim ? '🔒 נעול' : ''}</div>
             <div class="step-detail ${result.limitedByNewMiluim ? 'locked-value' : ''}">
                 ${result.limitedByNewMiluim ? 'נעילת ערך למילואים חדשים<br>' : ''}
-                <strong>ערך רציף סופי:</strong> ${result.continuousValue.toFixed(2)} ₪<br>
-                ${result.startDate >= EMERGENCY_START ? 'חל לוגיקת מילואי חירום' : 'מילואים רגילים'}
+                <strong>ערך רציף סופי:</strong> ${result.continuousValue ? result.continuousValue.toFixed(2) : 'לא זמין'} ₪<br>
+                ${result.startDate >= new Date('2023-10-07') ? 'חל לוגיקת מילואי חירום' : 'מילואים רגילים'}
                 ${result.limitedByNewMiluim ? '<br><span style="color: #ff9800; font-weight: bold;">ערך הוגבל עבור מילואים חדשים למקסימום 120% של תחילת האשכול</span>' : ''}
                 ${result.emergencyClusterStart ? '<br><strong>תחילת אשכול חירום:</strong> ' + formatDate(result.emergencyClusterStart) : ''}
                 ${result.emergencyValue > 0 ? '<br><strong>ערך חירום 90:</strong> ' + result.emergencyValue.toFixed(2) + ' ₪' : ''}
-                
             </div>
-        </div>       
+        </div>
+        
         <div class="calculation-step" style="background: #e8f5e8; border-right-color: #4caf50;">
-            <div class="step-title">תוצאה סופית</div>
+            <div class="step-title">תוצאה סופית ✅</div>
             <div class="step-detail">
-                <strong>ימי מילואים:</strong> ${result.miluimDays}<br>
-                <strong>ערך יומי סופי:</strong> ${result.continuousValue.toFixed(2)} ₪<br>
-                <strong>סה"כ תשלום:</strong> ${formatCurrency(result.continuousValue * result.miluimDays)}
+                <strong>ימי מילואים:</strong> ${result.miluimDays || result.serviceDays || 'לא זמין'}<br>
+                <strong>ערך יומי סופי:</strong> ${result.continuousValue ? result.continuousValue.toFixed(2) : 'לא זמין'} ₪<br>
+                <strong>סה"כ תשלום:</strong> ${result.continuousValue && result.miluimDays ? formatCurrency(result.continuousValue * result.miluimDays) : 'לא זמין'}
                 ${result.maxEmergencyValue > 0 ? 
                     '<br><strong>תשלום חירום מקסימלי:</strong> ' + formatCurrency(result.maxEmergencyValue * result.miluimDays) : ''}
             </div>
