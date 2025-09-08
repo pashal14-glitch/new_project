@@ -1154,21 +1154,8 @@ if (!isNewCluster) {
     emergencyClusterStart: clusterStartDate,  // ⚠️ תמיד להחזיר את תחילת האשכול
     isNewCluster
 };
-        }
-function isCrossMonthService(result) {
-    const startDate = new Date(result.startDate);
-    const endDate = new Date(result.endDate);
-    
-   // פונקציה לבדיקה אם שירות גולש בין חודשים
-    const isCrossMonth = (startDate.getMonth() !== endDate.getMonth() || 
-                         startDate.getFullYear() !== endDate.getFullYear());
-    
-    // äåñó debug (éäéä àçøé äçéùåá)
-    console.log(`òåáã ${result.employeeId}: ${startDate.toDateString()} ? ${endDate.toDateString()} = âåìù: ${isCrossMonth}`);
-    
-    return isCrossMonth;
 }
-         // ??????? ???? ?? CACHE
+   
 function calculateMiluimForEmployeeWithCache(employeeId) {
     const employeeMiluim = miluimData.filter(m => m.employeeId === employeeId);
     const results = [];
@@ -1372,14 +1359,9 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
                 header.innerHTML = `<h2 style="margin: 0; font-size: 1.5em;">?? úåöàåú òåáã ${employeeIds[0]}</h2>`;
                 document.getElementById('resultsContainer').insertBefore(header, document.getElementById('resultsContainer').firstChild);
             }
-
-            // äöâú úåöàåú òí/áìé pagination
-          // äöâú úåöàåú òí/áìé pagination
-if (calculationResults.length > 500) {
-    displayResultsPaginated(1, 50);  // ? ú÷ï: äåñó ôøîèøéí
-} else {
-    displayResults();
-}
+displayResults(calculationResults, { 
+    itemsPerPage: calculationResults.length > 500 ? 100 : null 
+});
             
             // òãëåï ñèèéñèé÷åú
             updateSummaryStats();
@@ -1651,207 +1633,6 @@ function validateEmployee() {
 }
 
 
-    function displayResultsPaginated(page = 1, itemsPerPage = 100) {
-    const container = document.getElementById('resultsContainer');
-    
-    if (calculationResults.length === 0) {
-        container.innerHTML = '<div class="error">לא נמצאו תוצאות לחישוב</div>';
-        return;
-    }
-    
-    const totalPages = Math.ceil(calculationResults.length / itemsPerPage);
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    
-    // צור עותק של התוצאות לעמוד הנוכחי
-    const pageResults = calculationResults.slice(start, end);
-    
-    // הצג סטטיסטיקות CACHE
-    const cacheStats = cacheSystem.getStats();
-    console.log(`📊 CACHE Stats: ${cacheStats.cacheSize} unique calculations, ${cacheStats.hitRate} hit rate`);
-
-    // בנה את התוצאות ישירות (ללא שימוש ב-displayResults)
-    let html = '';
-    
-    // הוסף מידע CACHE אם יש
-    if (cacheStats.cacheSize > 0) {
-        html += `
-            <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-                🔄 <strong>CACHE:</strong> ${cacheStats.cacheSize} חישובים ייחודיים, 
-                ${cacheStats.hitRate} שיעור פגיעות
-            </div>
-        `;
-    }
-    
-    // בנה את הטבלה
-    html += `
-        <div class="results-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>עובד</th>
-                        <th>תחילה</th>
-                        <th>סיום</th>
-                        <th>ימים</th>
-                        <th>E - ערך בסיסי</th>
-                        <th>F - ערך מומלץ</th>
-                        <th>G - ערך רציף</th>
-                        <th>I - חירום 90</th>
-                        <th>J - מקס 120%</th>
-                        <th>K - תחילת אשכול</th>
-                        <th>סה"כ תשלום</th>
-                        <th>פירוט</th>
-                        <th>L-ערך בשכר</th>
-                        <th>M-פער</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    // הוסף שורות לכל תוצאה
-    pageResults.forEach((result, index) => {
-        const globalIndex = start + index; // האינדקס הגלובלי
-        const rowClass = getRowClass(result);
-        
-        html += `
-            <tr class="${rowClass}">
-                <td><strong>${result.employeeId}</strong></td>
-                <td>${formatDate(result.startDate)}</td>
-                <td>${formatDate(result.endDate)}</td>
-                <td>${result.miluimDays}</td>
-                <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue.toFixed(2)}</td>
-                <td>${result.recommendedValue.toFixed(2)}</td>
-                <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue.toFixed(2)} ${result.isValueLocked ? '🔒' : ''}</td>
-                <td>${result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '-'}</td>
-                <td>${result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '-'}</td>
-                <td>${result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '-'}</td>
-                <td><strong>${formatCurrency(result.continuousValue * result.miluimDays)}</strong></td>
-                <td><button class="details-btn" onclick="showDetails(${globalIndex})">פירוט</button></td>
-                <td>${result.paidAmount || 0}</td>
-                <td class="amount-difference ${(result.paidAmount - result.continuousValue) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - result.continuousValue).toFixed(0)}</td>
-            </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    // הצב את התוצאות
-    container.innerHTML = html;
-    
-    // הוסף ניווט עמודים
-    const paginationDiv = document.createElement('div');
-    paginationDiv.style.cssText = 'text-align: center; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;';
-    paginationDiv.innerHTML = `
-        <div style="margin-bottom: 15px; font-size: 1.1em; font-weight: bold;">
-            מציג ${start + 1}-${Math.min(end, calculationResults.length)} מתוך ${calculationResults.length} תוצאות
-        </div>
-        <div style="margin-bottom: 15px;">
-            ${page > 1 ? `<button class="btn" onclick="displayResultsPaginated(${page-1}, ${itemsPerPage})" style="margin: 0 5px;">⬅️ עמוד קודם</button>` : ''}
-            <span style="margin: 0 15px; font-size: 1.1em; font-weight: bold;">עמוד ${page} מתוך ${totalPages}</span>
-            ${page < totalPages ? `<button class="btn" onclick="displayResultsPaginated(${page+1}, ${itemsPerPage})" style="margin: 0 5px;">עמוד הבא ➡️</button>` : ''}
-        </div>
-        <div>
-            <button class="btn" style="background: #27ae60; margin: 0 5px;" onclick="exportToExcel()">
-                📥 ייצא הכל לאקסל (כל ${calculationResults.length} התוצאות)
-            </button>
-            <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResultsPaginated(1, 50)">
-                50 בעמוד
-            </button>
-            <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResultsPaginated(1, 100)">
-                100 בעמוד
-            </button>
-            <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResultsPaginated(1, 200)">
-                200 בעמוד
-            </button>
-        </div>
-    `;
-    container.appendChild(paginationDiv);
-    
-    // עדכן סטטיסטיקות
-    updateSummaryStats();
-    
-    // הצג סעיף הייצוא
-    document.getElementById('exportSection').style.display = 'block';
-}          
-function displaySingleEmployeeResults(employeeId, results) {
-    // חישוב סיכומים
-    const totalBruto = results.reduce((sum, r) => sum + (r.recommendedValue || 0), 0);
-    const totalDays = results.reduce((sum, r) => sum + r.serviceDays, 0);
-    const totalPeriods = results.length;
-    
-    let html = `
-        <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-            <h2>📊 תוצאות חישוב לעובד: ${employeeId}</h2>
-        </div>
-        
-        <div class="summary">
-            <div class="summary-card">
-                <div class="summary-label">סה"כ תקופות</div>
-                <div class="summary-value">${totalPeriods}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">סה"כ ימים</div>
-                <div class="summary-value">${totalDays}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">סה"כ לתשלום</div>
-                <div class="summary-value">₪${formatCurrency(totalBruto)}</div>
-            </div>
-        </div>
-        
-        <button class="btn" onclick="exportSingleEmployee('${employeeId}')" style="margin-bottom: 20px;">
-            📥 ייצא לאקסל
-        </button>
-        
-        <button class="btn" onclick="backToAllEmployees()" style="margin-bottom: 20px; background: #95a5a6;">
-            🔙 חזרה לכל העובדים
-        </button>
-        
-        <table class="results-table">
-            <thead>
-                <tr>
-                    <th>תחילת שירות</th>
-                    <th>סיום שירות</th>
-                    <th>ימי שירות</th>
-                    <th>ערך יומי בסיסי</th>
-                    <th>ערך מומלץ</th>
-                    <th>סטטוס</th>
-                    <th>פרטים</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    results.forEach((result, index) => {
-        const rowClass = getRowClass(result);
-        const originalIndex = calculationResults.indexOf(result);
-        html += `
-            <tr class="${rowClass}">
-                <td>${formatDate(result.serviceStartDate)}</td>
-                <td>${formatDate(result.serviceEndDate)}</td>
-                <td>${result.serviceDays}</td>
-                <td>₪${formatCurrency(result.basicDailyValue)}</td>
-                <td>₪${formatCurrency(result.recommendedValue)}</td>
-                <td>${result.finalStatus || 'מחושב'}</td>
-                <td><button class="details-btn" onclick="showDetails(${originalIndex})">🔍</button></td>
-            </tr>
-        `;
-    });
-    
-    html += `
-            </tbody>
-        </table>
-    `;
-    
-    document.getElementById('resultsContainer').innerHTML = html;
-    
-    // שמור תוצאות לייצוא
-    window.singleEmployeeResults = results;
-}
 
 // פונקציה לייצוא עובד בודד
 function exportSingleEmployee(employeeId) {
@@ -1889,69 +1670,6 @@ if (uniqueEmployees.length > 100) {
 }
 }
 
-        function displayResults() {
-            const container = document.getElementById('resultsContainer');
-            
-            if (calculationResults.length === 0) {
-                container.innerHTML = '<div class="error">לא נמצאו תוצאות לחישוב</div>';
-                return;
-            }
-            
-            let html = `
-                <div class="results-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>עובד</th>
-                                <th>תחילה</th>
-                                <th>סיום</th>
-                                <th>ימים</th>
-                                <th>E - ערך בסיסי</th>
-                                <th>F - ערך מומלץ</th>
-                                <th>G - ערך רציף</th>
-                                <th>I - חירום 90</th>
-                                <th>J - מקס 120%</th>
-                                <th>K - תחילת אשכול</th>
-                                <th>סה"כ תשלום</th>
-                                <th>פירוט</th>
-                                <th>L-ערך בשכר</th>
-                                <th>M-פער/th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            for (let result of calculationResults) {
-                const rowClass = getRowClass(result);
-                
-                html += `
-                    <tr class="${rowClass}">
-                        <td>${result.employeeId}</td>
-                        <td>${formatDate(result.startDate)}</td>
-                        <td>${formatDate(result.endDate)}</td>
-                        <td>${result.miluimDays}</td>
-                        <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue.toFixed(2)}</td>
-                        <td>${result.recommendedValue.toFixed(2)}</td>
-                       <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue.toFixed(2)} ${result.isValueLocked ? '🔒' : ''}</td>
-                        <td>${result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '-'}</td>
-                        <td>${result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '-'}</td>
-                        <td>${result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '-'}</td>
-                        <td><strong>${formatCurrency(result.continuousValue * result.miluimDays)}</strong></td>
-                        <td><button class="details-btn" onclick="showDetails(${calculationResults.indexOf(result)})">פירוט</button></td>
-                        <td>${result.paidAmount}</td>
-                        <td class="amount-difference ${(result.paidAmount - result.continuousValue) > 0 ? 'positive-diff' : 'negative-diff'}">${(result.paidAmount - result.continuousValue).toFixed(2)}</td>
-                    </tr>
-                `;
-            }
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
 
         function getRowClass(result) {
             let classes = [];
@@ -2084,12 +1802,251 @@ if (uniqueEmployees.length > 100) {
         monthsUsedForWorkDays: monthsForWorkDays.length  // למעקב
     };
 }
-        function showDetails(index) {
+function displayResults(data = calculationResults, options = {}) {
+    const {
+        page = 1,
+        itemsPerPage = null, // null = no pagination
+        showPagination = true,
+        title = null,
+        subtitle = null,
+        showStats = true,
+        showExport = true,
+        isFiltered = false,
+        isSingleEmployee = false,
+        employeeId = null,
+        sourceData = calculationResults // המערך המקורי לחישוב originalIndex
+    } = options;
+    
+    const container = document.getElementById('resultsContainer');
+    
+    // בדיקה שיש נתונים
+    if (!data || data.length === 0) {
+        let emptyMessage = 'לא נמצאו תוצאות';
+        if (isFiltered) {
+            emptyMessage = 'לא נמצאו תוצאות לפי הסינון שנבחר';
+        }
+        container.innerHTML = `<div class="error">${emptyMessage}</div>`;
+        return;
+    }
+    
+    // חישוב pagination אם נדרש
+    let pageData = data;
+    let totalPages = 1;
+    let start = 0;
+    let end = data.length;
+    
+    if (itemsPerPage && data.length > itemsPerPage) {
+        totalPages = Math.ceil(data.length / itemsPerPage);
+        start = (page - 1) * itemsPerPage;
+        end = start + itemsPerPage;
+        pageData = data.slice(start, end);
+    }
+    
+    // בניית HTML
+    let html = '';
+    
+    // כותרת אם נדרשת
+    if (title) {
+        html += `
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; text-align: center;">
+                <h2 style="margin: 0; font-size: 1.5em;">${title}</h2>
+                ${subtitle ? `<p style="margin: 5px 0 0 0; opacity: 0.9;">${subtitle}</p>` : ''}
+            </div>
+        `;
+    }
+    
+    // סיכום לעובד יחיד
+    if (isSingleEmployee && employeeId) {
+        const totalPeriods = data.length;
+        const totalDays = data.reduce((sum, r) => sum + (r.serviceDays || r.miluimDays || 0), 0);
+        const totalBruto = data.reduce((sum, r) => sum + (r.recommendedValue || 0), 0);
+        const totalPayment = data.reduce((sum, r) => sum + ((r.continuousValue || 0) * (r.miluimDays || 0)), 0);
+        
+        html += `
+            <div class="summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div class="summary-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div class="summary-label" style="color: #666; font-size: 0.9em;">סך תקופות</div>
+                    <div class="summary-value" style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${totalPeriods}</div>
+                </div>
+                <div class="summary-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div class="summary-label" style="color: #666; font-size: 0.9em;">סך ימי שירות</div>
+                    <div class="summary-value" style="font-size: 1.5em; font-weight: bold; color: #2c3e50;">${totalDays}</div>
+                </div>
+                <div class="summary-card" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div class="summary-label" style="color: #666; font-size: 0.9em;">סך תשלום</div>
+                    <div class="summary-value" style="font-size: 1.5em; font-weight: bold; color: #27ae60;">${formatCurrency(totalPayment)}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // טבלת תוצאות
+    html += `
+        <div class="results-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>עובד</th>
+                        <th>תחילה</th>
+                        <th>סיום</th>
+                        <th>ימים</th>
+                        <th>E - ערך בסיסי</th>
+                        <th>F - ערך מומלץ</th>
+                        <th>G - ערך רציף</th>
+                        <th>I - חירום 90</th>
+                        <th>J - מקס 120%</th>
+                        <th>K - תחילת אשכול</th>
+                        <th>סך תשלום</th>
+                        <th>פירוט</th>
+                        <th>L-ערך בשכר</th>
+                        <th>M-פער</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // שורות הטבלה
+    pageData.forEach((result, index) => {
+        // חישוב האינדקס הנכון
+        let correctIndex;
+        if (itemsPerPage) {
+            // במקרה של pagination - globalIndex
+            correctIndex = start + index;
+        } else if (isFiltered) {
+            // במקרה של סינון - originalIndex במערך המקורי
+            correctIndex = sourceData.findIndex(r => 
+                r.employeeId === result.employeeId && 
+                r.startDate.getTime() === result.startDate.getTime()
+            );
+        } else {
+            // תצוגה רגילה
+            correctIndex = index;
+        }
+        
+        const rowClass = getRowClass(result);
+        
+        html += `
+            <tr class="${rowClass}">
+                <td><strong>${result.employeeId}</strong></td>
+                <td>${formatDate(result.startDate)}</td>
+                <td>${formatDate(result.endDate)}</td>
+                <td>${result.miluimDays || result.serviceDays || 0}</td>
+                <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue.toFixed(2)}</td>
+                <td>${result.recommendedValue.toFixed(2)}</td>
+                <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue.toFixed(2)} ${result.isValueLocked ? '🔒' : ''}</td>
+                <td>${result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '-'}</td>
+                <td>${result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '-'}</td>
+                <td>${result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '-'}</td>
+                <td><strong>${formatCurrency((result.continuousValue || 0) * (result.miluimDays || 0))}</strong></td>
+                <td><button class="details-btn" onclick="showDetails(${correctIndex})">פירוט</button></td>
+                <td>${result.paidAmount || 0}</td>
+                <td class="amount-difference ${(result.paidAmount - result.continuousValue) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - result.continuousValue).toFixed(0)}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // מידע סיכום
+    if (isFiltered || isSingleEmployee || itemsPerPage) {
+        html += `
+            <div style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; text-align: center;">
+                <strong>מציג ${pageData.length} מתוך ${data.length} תוצאות</strong>
+                ${isFiltered && data.length < sourceData.length ? 
+                    '<button class="btn" onclick="clearFilters()" style="margin-right: 10px; padding: 5px 15px; font-size: 0.9em;">נקה סינון</button>' : 
+                    ''
+                }
+                ${isSingleEmployee ? 
+                    `<button class="btn" onclick="backToAllEmployees()" style="margin-right: 10px; padding: 5px 15px; font-size: 0.9em;">חזור לכל העובדים</button>
+                     <button class="btn" onclick="exportSingleEmployee('${employeeId}')" style="background: #27ae60; margin-right: 10px; padding: 5px 15px; font-size: 0.9em;">📄 יצא לאקסל</button>` : 
+                    ''
+                }
+            </div>
+        `;
+    }
+    
+    // הצגת התוצאות
+    container.innerHTML = html;
+    
+    // הוספת pagination אם נדרש
+    if (itemsPerPage && showPagination && totalPages > 1) {
+        const paginationDiv = document.createElement('div');
+        paginationDiv.style.cssText = 'text-align: center; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;';
+        paginationDiv.innerHTML = `
+            <div style="margin-bottom: 15px; font-size: 1.1em; font-weight: bold;">
+                מציג ${start + 1}-${Math.min(end, data.length)} מתוך ${data.length} תוצאות
+            </div>
+            <div style="margin-bottom: 15px;">
+                ${page > 1 ? `<button class="btn" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, page: ${page-1}})" style="margin: 0 5px;">⬅️ עמוד קודם</button>` : ''}
+                <span style="margin: 0 15px; font-size: 1.1em; font-weight: bold;">עמוד ${page} מתוך ${totalPages}</span>
+                ${page < totalPages ? `<button class="btn" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, page: ${page+1}})" style="margin: 0 5px;">עמוד הבא ➡️</button>` : ''}
+            </div>
+            <div>
+                <button class="btn" style="background: #27ae60; margin: 0 5px;" onclick="exportToExcel()">
+                    📥 יצא הכל לאקסל (כל ${sourceData.length} התוצאות)
+                </button>
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 50, page: 1})">
+                    50 בעמוד
+                </button>
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 100, page: 1})">
+                    100 בעמוד
+                </button>
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 200, page: 1})">
+                    200 בעמוד
+                </button>
+            </div>
+        `;
+        container.appendChild(paginationDiv);
+    }
+    
+    // עדכון סטטיסטיקות אם נדרש
+    if (showStats) {
+        updateSummaryStats(data);
+    }
+    
+    // הצגת קטע יצוא אם נדרש
+    if (showExport) {
+        document.getElementById('exportSection').style.display = 'block';
+    }
+    
+    // שמירת תוצאות עובד יחיד
+    if (isSingleEmployee) {
+        window.singleEmployeeResults = data;
+    }
+}
+
+// פונקציות עזר
+function updateSummaryStats(data = calculationResults) {
+    const uniqueEmployees = new Set(data.map(r => r.employeeId)).size;
+    const totalPeriods = data.length;
+    const totalDays = data.reduce((sum, r) => sum + (r.miluimDays || 0), 0);
+    const totalPayment = data.reduce((sum, r) => sum + ((r.continuousValue || 0) * (r.miluimDays || 0)), 0);
+    
+    const statsElements = {
+        totalEmployees: document.getElementById('totalEmployees'),
+        totalPeriods: document.getElementById('totalPeriods'),
+        totalDays: document.getElementById('totalDays'),
+        totalPayment: document.getElementById('totalPayment')
+    };
+    
+    if (statsElements.totalEmployees) statsElements.totalEmployees.textContent = uniqueEmployees;
+    if (statsElements.totalPeriods) statsElements.totalPeriods.textContent = totalPeriods;
+    if (statsElements.totalDays) statsElements.totalDays.textContent = totalDays;
+    if (statsElements.totalPayment) statsElements.totalPayment.textContent = formatCurrency(totalPayment);
+    
+    const summaryStats = document.getElementById('summaryStats');
+    if (summaryStats) summaryStats.style.display = 'grid';
+}
+function showDetails(index) {
     const result = calculationResults[index];
     
     // הפונקציה getExtendedCalculationDetails שלך (תביא את הנתונים החסרים)
     const extendedDetails = getExtendedCalculationDetails(result.employeeId, result.startDate);
-    
+  
     // בניית הפירוט המורחב שלך (מתוקן)
     let extendedDetailsHtml = '';
     if (extendedDetails) {
@@ -2395,18 +2352,43 @@ let filterWorker = null;
 
 // יצירת Inline Worker
 function createInlineWorker() {
-    const workerCode = `
+     const workerCode = `
+        // 🔥 פונקציה פשוטה לחישוב תאריך מ-Excel
+        function simpleExcelToDate(serialNumber) {
+            if (typeof serialNumber !== 'number') return null;
+            
+            const resultDate = new Date(1900, 0, 1);
+            resultDate.setDate(resultDate.getDate() + serialNumber - 2);
+            return new Date(resultDate.getFullYear(), resultDate.getMonth(), resultDate.getDate());
+        }
+
         self.onmessage = function(e) {
-            const { results, filters } = e.data;
+            const { results, filters, miluimData } = e.data;
+            self.miluimData = miluimData;
             
-            // פונקציה לבדיקת מילואים גולשים
+            // 🔥 פונקציה מתוקנת עם החישוב הפשוט
             function isCrossMonthService(result) {
-                const startDate = new Date(result.startDate);
-                const endDate = new Date(result.endDate);
-                return (startDate.getMonth() !== endDate.getMonth() || 
-                        startDate.getFullYear() !== endDate.getFullYear());
-            }
-            
+                if (!self.miluimData) return false;
+                
+                const employeeOriginalPeriods = self.miluimData.filter(m => 
+                    m.employeeId === result.employeeId
+                );
+                
+                for (let period of employeeOriginalPeriods) {
+                    // 🔥 השתמש בחישוב הפשוט
+                    const startDate = simpleExcelToDate(period.startDate);
+                    const endDate = simpleExcelToDate(period.endDate);
+                    
+                    if (startDate && endDate) {
+                        if (startDate.getMonth() !== endDate.getMonth() || 
+                            startDate.getFullYear() !== endDate.getFullYear()) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }    
             // הסינון
             let filteredResults = results.filter(result => {
                 // סינון עובד
@@ -2472,7 +2454,6 @@ function initFilterWorker() {
     return true;
 }
 
-// פונקציית הסינון הראשית
 function applyFilters() {
     if (calculationResults.length === 0) return;
     
@@ -2498,9 +2479,10 @@ function applyFilters() {
     `;  
       
     // שלח לWorker
-    filterWorker.postMessage({
+      filterWorker.postMessage({
         results: calculationResults,
-        filters: filters
+        filters: filters,
+        miluimData: miluimData  // 🔥 הוסף את הנתונים המקוריים
     });
     
     // קבל תוצאות
@@ -2508,16 +2490,36 @@ function applyFilters() {
         const filteredResults = e.data;
         console.log(`סינון הסתיים: ${filteredResults.length} מתוך ${calculationResults.length}`);
         
+        // ✅ תיקון: השתמש בפונקציה החדשה במקום הקוד המסוכן הישן
         if (filteredResults.length > 200) {
-            const originalResults = calculationResults;
-            calculationResults = filteredResults;
-            displayResultsPaginated(1, 50);
-            calculationResults = originalResults;
+            // ❌ קוד ישן מסוכן:
+            // const originalResults = calculationResults;
+            // calculationResults = filteredResults;
+            // displayResultsPaginated(1, 50);
+            // calculationResults = originalResults;
+            
+            // ✅ קוד חדש בטוח:
+            displayResults(filteredResults, { 
+                isFiltered: true, 
+                sourceData: calculationResults,
+                itemsPerPage: 50,
+                page: 1,
+                title: '🔍 תוצאות מסוננות (עם עמודים)'
+            });
         } else {
-            displayFilteredResults(filteredResults);
+            // ❌ קוד ישן:
+            // displayFilteredResults(filteredResults);
+            
+            // ✅ קוד חדש:
+            displayResults(filteredResults, { 
+                isFiltered: true, 
+                sourceData: calculationResults,
+                title: '🔍 תוצאות מסוננות'
+            });
         }
         
-        updateFilteredStats(filteredResults);
+        // ❌ זה לא נדרש יותר - הפונקציה החדשה עושה זאת אוטומטית:
+        // updateFilteredStats(filteredResults);
     };
     
     filterWorker.onerror = function(error) {
@@ -2526,79 +2528,70 @@ function applyFilters() {
     };
 }
 
-         
-          function displayFilteredResults(filteredResults) {
-            const container = document.getElementById('resultsContainer');
-            
-            if (filteredResults.length === 0) {
-                container.innerHTML = '<div class="error">לא נמצאו תוצאות לפי הסינון שנבחר</div>';
-                return;
+// ✅ גם תקני את applyFiltersRegular (אם יש לך):
+function applyFiltersRegular() {
+    if (calculationResults.length === 0) return;
+    
+    // הכן פילטרים
+    const filters = {
+        employee: document.getElementById('employeeFilter').value.trim(),
+        year: document.getElementById('yearFilter').value,
+        miluimType: document.getElementById('miluimTypeFilter').value
+    };
+    
+    // סנן את הנתונים
+    let filteredResults = [...calculationResults];
+    
+    // סינון לפי מספר עובד
+    if (filters.employee) {
+        filteredResults = filteredResults.filter(result => 
+            result.employeeId.toString().includes(filters.employee)
+        );
+    }
+    
+    // סינון לפי שנה
+    if (filters.year) {
+        filteredResults = filteredResults.filter(result => 
+            result.startDate.getFullYear().toString() === filters.year
+        );
+    }
+    
+    // סינון לפי סוג מילואים
+    if (filters.miluimType) {
+        filteredResults = filteredResults.filter(result => {
+            switch (filters.miluimType) {
+                case 'regular':
+                    const EMERGENCY_START = new Date('2023-10-07');
+                    return result.startDate < EMERGENCY_START;
+                case 'emergency':
+                    const EMERGENCY_START2 = new Date('2023-10-07');
+                    const NEW_MILUIM_START = new Date('2025-05-01');
+                    return result.startDate >= EMERGENCY_START2 && result.startDate < NEW_MILUIM_START;
+                case 'new':
+                    return result.isNewMiluim;
+                case 'locked':
+                    return result.limitedByNewMiluim || result.isValueLocked;
+                case 'gap':
+                    return Math.abs((result.paidAmount || 0) - result.continuousValue) > 0.01;
+                case 'crossMonth':
+                    const startDate = new Date(result.startDate);
+                    const endDate = new Date(result.endDate);
+                    return (startDate.getMonth() !== endDate.getMonth() || 
+                            startDate.getFullYear() !== endDate.getFullYear());
+                default:
+                    return true;
             }
-            
-            let html = `
-                <div class="results-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>עובד</th>
-                                <th>תחילה</th>
-                                <th>סיום</th>
-                                <th>ימים</th>
-                                <th>E - ערך בסיסי</th>
-                                <th>F - ערך מומלץ</th>
-                                <th>G - ערך רציף</th>
-                                <th>I - חירום 90</th>
-                                <th>J - מקס 120%</th>
-                                <th>K - תחילת אשכול</th>
-                                <th>סה"כ תשלום</th>
-                                <th>פירוט</th>
-                                <th>L-ערך בשכר</th>
-                                <th>M-פער</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            for (let result of filteredResults) {
-                const rowClass = getRowClass(result);
-                const originalIndex = calculationResults.indexOf(result);
-                
-                html += `
-                    <tr class="${rowClass}">
-                        <td><strong>${result.employeeId}</strong></td>
-                        <td>${formatDate(result.startDate)}</td>
-                        <td>${formatDate(result.endDate)}</td>
-                        <td>${result.miluimDays}</td>
-                        <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue.toFixed(2)}</td>
-                        <td>${result.recommendedValue.toFixed(2)}</td>
-                      <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue.toFixed(2)} ${result.isValueLocked ? '🔒' : ''}</td>
-                        <td>${result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '-'}</td>
-                        <td>${result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '-'}</td>
-                        <td>${result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '-'}</td>
-                        <td><strong>${formatCurrency(result.continuousValue * result.miluimDays)}</strong></td>
-                        <td><button class="details-btn" onclick="showDetails(${originalIndex})">פירוט</button></td>
-                        <td>${result.paidAmount}</td>
-                        <td class="amount-difference ${(result.paidAmount - result.continuousValue) > 0 ? 'positive-diff' : 'negative-diff'}">${(result.paidAmount - result.continuousValue).toFixed(0)}</td>
-                    </tr>
-                `;
-            }
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; text-align: center;">
-                    <strong>מציג ${filteredResults.length} מתוך ${calculationResults.length} תוצאות</strong>
-                    ${filteredResults.length < calculationResults.length ? 
-                        '<button class="btn" onclick="clearFilters()" style="margin-right: 10px; padding: 5px 15px; font-size: 0.9em;">נקה סינון</button>' : 
-                        ''
-                    }
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
-
+        });
+    }
+    
+    // ✅ השתמש בפונקציה החדשה
+    displayResults(filteredResults, { 
+        isFiltered: true, 
+        sourceData: calculationResults,
+        title: filteredResults.length < calculationResults.length ? '🔍 תוצאות מסוננות' : null
+    });
+}
+      
         function updateFilteredStats(filteredResults) {
             const uniqueEmployees = new Set(filteredResults.map(r => r.employeeId)).size;
             const totalPeriods = filteredResults.length;
