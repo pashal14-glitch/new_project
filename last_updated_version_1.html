@@ -1979,10 +1979,10 @@ if (uniqueEmployees.length > 100) {
             
             document.getElementById('summaryStats').style.display = 'grid';
         }
-        function getExtendedCalculationDetails(employeeId, serviceStartDate) {
+   function getExtendedCalculationDetails(employeeId, serviceStartDate) {
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
     
-    // בדיקה ראשונית - 3 החודשים האחרונים
+    // בדיקה ראשונית - 3 החודשים האחרונים לימי עבודה
     const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
     const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
     const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
@@ -1993,14 +1993,20 @@ if (uniqueEmployees.length > 100) {
     const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
     const totalWorkDays = workDays1 + workDays2 + workDays3;
     
-    let monthsToShow = [month3, month2, month1]; // ברירת מחדל
+    // *** השינוי המרכזי: פיצול בין ברוטו וימי עבודה ***
+    
+    // ימי עבודה - תמיד 3 החודשים האחרונים
+    let monthsForWorkDays = [month3, month2, month1];
+    
+    // ברוטו - תלוי בסוג החישוב
+    let monthsForBruto = [month3, month2, month1]; // ברירת מחדל
     let calculationType = 'רגיל';
     
-    // אם זה חישוב חלופי - מצא את 3 החודשים הטובים מתוך 6
+    // אם זה חישוב חלופי - הברוטו יילקח מ-3 הטובים, אבל ימי עבודה נשארים 3 אחרונים
     if (totalWorkDays < 60) {
         calculationType = 'חלופי';
         
-        // בניית רשימת 6 חודשים עם הברוטו שלהם
+        // בניית רשימת 6 חודשים עם הברוטו שלהם - רק לברוטו
         const allMonths = [];
         for (let i = 1; i <= 6; i++) {
             const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
@@ -2011,26 +2017,21 @@ if (uniqueEmployees.length > 100) {
             });
         }
         
-        // בחירת 3 החודשים עם הברוטו הגבוה ביותר
-        monthsToShow = allMonths
+        // בחירת 3 החודשים עם הברוטו הגבוה ביותר - רק לברוטו
+        monthsForBruto = allMonths
             .sort((a, b) => b.bruto - a.bruto)  // מיון לפי ברוטו יורד
             .slice(0, 3)                        // 3 הראשונים
             .map(m => m.date)                   // רק התאריכים
             .sort((a, b) => a - b);             // מיון לפי תאריך עולה
     }
     
-    // בניית פירוט לפי החודשים הנכונים
+    // בניית פירוט ברוטו (לפי החודשים שנבחרו)
     const brutoBTLDetails = [];
-    const workDaysDetails = [];
     let totalBrutoBTL = 0;
-    let totalWorkDaysCalculated = 0;
     
-    monthsToShow.forEach(month => {
+    monthsForBruto.forEach(month => {
         // ברוטו מותאם (עם מינימום ביטוח לאומי)
         const adjustedBruto = GetBrutoForMonth(employeeId, month);
-        
-        // ימי עבודה (בעמודה הנכונה לפי סוג המילואים)
-        const workDays = GetWorkDaysForMonth(employeeId, month, serviceStartDate);
         
         // ברוטו מקורי (לפני התאמה)
         const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -2046,7 +2047,7 @@ if (uniqueEmployees.length > 100) {
             }
         }
         
-        // הוספה לפירוט
+        // הוספה לפירוט ברוטו
         brutoBTLDetails.push({
             month: (month.getMonth() + 1) + '/' + month.getFullYear(),
             original: originalBruto,
@@ -2054,12 +2055,21 @@ if (uniqueEmployees.length > 100) {
             wasAdjusted: adjustedBruto > originalBruto
         });
         
+        totalBrutoBTL += adjustedBruto;
+    });
+    
+    // בניית פירוט ימי עבודה (תמיד 3 חודשים אחרונים)
+    const workDaysDetails = [];
+    let totalWorkDaysCalculated = 0;
+    
+    monthsForWorkDays.forEach(month => {
+        const workDays = GetWorkDaysForMonth(employeeId, month, serviceStartDate);
+        
         workDaysDetails.push({
             month: (month.getMonth() + 1) + '/' + month.getFullYear(),
             workDays: workDays
         });
         
-        totalBrutoBTL += adjustedBruto;
         totalWorkDaysCalculated += workDays;
     });
     
@@ -2069,10 +2079,11 @@ if (uniqueEmployees.length > 100) {
         workDaysDetails: workDaysDetails,
         totalWorkDays: totalWorkDaysCalculated,
         calculationType: calculationType,
-        monthsUsed: monthsToShow.length // למעקב
+        monthsUsedForBruto: monthsForBruto.length,  // למעקב
+        monthsUsedForWorkDays: monthsForWorkDays.length  // למעקב
     };
 }
-       function showDetails(index) {
+        function showDetails(index) {
     const result = calculationResults[index];
     
     // הפונקציה getExtendedCalculationDetails שלך (תביא את הנתונים החסרים)
