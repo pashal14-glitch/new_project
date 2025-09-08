@@ -1155,10 +1155,37 @@ if (!isNewCluster) {
     isNewCluster
 };
 }
-   
+// 🔥 הוסף פונקציה לבדיקת תקופות גולשות מקוריות
+function hasOriginalCrossMonthPeriods(employeeId) {
+    const employeeOriginalPeriods = miluimData.filter(m => m.employeeId === employeeId);
+    
+    for (let period of employeeOriginalPeriods) {
+        if (typeof period.startDate === 'number' && typeof period.endDate === 'number') {
+            // השתמש בחישוב הפשוט שעבד
+            const resultDate1 = new Date(1900, 0, 1);
+            resultDate1.setDate(resultDate1.getDate() + period.startDate - 2);
+            const startDate = new Date(resultDate1.getFullYear(), resultDate1.getMonth(), resultDate1.getDate());
+            
+            const resultDate2 = new Date(1900, 0, 1);
+            resultDate2.setDate(resultDate2.getDate() + period.endDate - 2);
+            const endDate = new Date(resultDate2.getFullYear(), resultDate2.getMonth(), resultDate2.getDate());
+            
+            if (startDate.getMonth() !== endDate.getMonth() || 
+                startDate.getFullYear() !== endDate.getFullYear()) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// 🔥 עדכן את calculateMiluimForEmployeeWithCache
 function calculateMiluimForEmployeeWithCache(employeeId) {
     const employeeMiluim = miluimData.filter(m => m.employeeId === employeeId);
     const results = [];
+    
+    // 🔥 חשב פעם אחת לכל עובד
+    const hasCrossMonthPeriods = hasOriginalCrossMonthPeriods(employeeId);
     
     for (let miluim of employeeMiluim) {
         const startDate = parseExcelDate(miluim.startDate);
@@ -1166,22 +1193,20 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
         
         if (!startDate || !endDate) continue;
 
-        // ?? ????? ?-CACHE ????? ????? ????
         const cacheResult = cacheSystem.calculateWithCache(employeeId, startDate);
         
-        // ???? ?????? ??????
         const result = {
             ...cacheResult,
             endDate: endDate,
-            miluimDays: miluim.miluimDays || Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+            miluimDays: miluim.miluimDays || Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1,
+            hasOriginalCrossMonthPeriods: hasCrossMonthPeriods  // 🔥 הוסף את המאפיין!
         };
         
         results.push(result);
     }            
-            
-            return results;
-        }
-
+    
+    return results;
+}
         // File upload handlers
         function setupFileUpload() {
             document.getElementById('excelFile').addEventListener('change', function(e) {
