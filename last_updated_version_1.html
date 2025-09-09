@@ -1430,11 +1430,10 @@ displayResults(calculationResults, {
         }
 
         // הצגת תוצאות עם/בלי pagination
-        if (calculationResults.length > 500) {
-            displayResultsPaginated();
-        } else {
-            displayResults();
-        }
+        displayResults(calculationResults, { 
+    itemsPerPage: calculationResults.length > 500 ? 100 : null,
+    page: 1
+});
         
         // עדכון סטטיסטיקות
         updateSummaryStats();
