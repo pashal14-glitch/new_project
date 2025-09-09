@@ -2632,7 +2632,8 @@ function applyFiltersRegular() {
             document.getElementById('employeeFilter').value = '';
             document.getElementById('yearFilter').value = '';
             document.getElementById('miluimTypeFilter').value = '';
-            displayResults();
+            displayResults(calculationResults, { 
+            itemsPerPage: calculationResults.length > 500 ? 100 : null });
             updateSummaryStats();
         }
     </script>
