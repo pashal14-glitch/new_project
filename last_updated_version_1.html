@@ -2416,7 +2416,7 @@ function createInlineWorker() {
                             if (!(result.limitedByNewMiluim || result.isValueLocked)) return false;
                             break;
                         case 'gap':
-                            if (Math.abs(result.paidAmount - result.continuousValue) <= 0.01) return false;
+                            if (Math.abs(result.paidAmount - result.continuousValue) <= 1) return false;
                             break;
                         case 'crossMonth':
                             if (!isCrossMonthService(result)) return false;
