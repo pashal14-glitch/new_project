@@ -680,7 +680,8 @@ class MiluimCalculatorCache {
         emergencyClusterStart: emergencyValues.emergencyClusterStart,
         calculationType: basicResult.calculationType,
         paidAmount: originalMiluim ? originalMiluim.paidAmount : 0,
-        isNewMiluim: isNewMiluim
+        isNewMiluim: isNewMiluim,
+        compulsion: originalMiluim ? originalMiluim.compulsion || 0 : 0 
     };
 }
     getStats() {
@@ -1535,7 +1536,8 @@ async function calculateMiluim(config = {}) {
                         startDate: row[1],
                         endDate: row[2],
                         days: row[3],
-                        paidAmount: parseFloat(row[11])
+                        paidAmount: parseFloat(row[11]),
+                        compulsion: parseFloat(row[12])
                     })).filter(item => item.employeeId);
                     break;
                     
@@ -1935,6 +1937,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><button class="details-btn" onclick="showDetails(${correctIndex})">פירוט</button></td>
                 <td>${result.paidAmount || 0}</td>
                 <td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)}</td>
+                <td>${result.compulsion  || 0}</td>
             </tr>
         `;
     });
@@ -2216,7 +2219,7 @@ function showDetails(index) {
     
     // שאר הקוד הקיים שלך לייצוא אבל עם dataToExport במקום calculationResults
   const wsData = [
-    ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער']
+    ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפוי']
 ];    
     for (let result of dataToExport) { // שנה מ-calculationResults ל-dataToExport
         wsData.push([
@@ -2235,8 +2238,8 @@ function showDetails(index) {
             result.isNewMiluim ? 'כן' : 'לא',
             result.isNewCluster ? 'כן' : 'לא',
              result.paidAmount || 0,
-            ((result.paidAmount || 0) - result.continuousValue).toFixed(0)
-
+            ((result.paidAmount || 0) - result.continuousValue).toFixed(0),
+             result.compulsion || 0
         ]);
     }
     
