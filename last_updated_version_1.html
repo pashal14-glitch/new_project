@@ -938,7 +938,7 @@ const cacheSystem = new MiluimCalculatorCache();
         if (daysDiff <= 1) {
             
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
-            finalValue = Math.min(finalValue, prevBasicResult.dailyValue);
+            finalValue = Math.max(finalValue, prevBasicResult.dailyValue);
         }
     }
                           
@@ -1214,7 +1214,8 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
             });
         }
         
-   async function calculateMiluim(config = {}) {
+  // 🚀 פונקציה מתוקנת ומושלמת לחישוב מילואים
+async function calculateMiluim(config = {}) {
     const {
         employeeIds = null,        // מערך עובדים ספציפיים או null לכולם
         batchSize = 0,            // 0 = ללא batches, >0 = עם batches
@@ -1225,16 +1226,12 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
         returnResults = false     // החזרת תוצאות במקום הצגה
     } = config;
 
-    // === שלב 1: בדיקות ראשוניות ===
-    let workingData = {
-        miluim: miluimData,
-        salary: salaryData, 
-        attendance: attendanceData
-    };
-
-    // אם יש סינון לעובדים ספציפיים
+    // === 1. הכנה ובדיקות ===
+    calculationResults = [];
+    
+    // טיפול בעובדים ספציפיים
     if (employeeIds && employeeIds.length > 0) {
-        // שמירת נתונים מקוריים אם עדיין לא נשמרו
+        // שמירת נתונים מקוריים
         if (originalMiluimData.length === 0) {
             originalMiluimData = [...miluimData];
             originalSalaryData = [...salaryData];
@@ -1242,214 +1239,193 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
         }
 
         // סינון לעובדים הנבחרים
-        workingData = {
-            miluim: originalMiluimData.filter(m => employeeIds.includes(m.employeeId.toString())),
-            salary: originalSalaryData.filter(s => employeeIds.includes(s.employeeId.toString())),
-            attendance: originalAttendanceData.filter(a => employeeIds.includes(a.employeeId.toString()))
-        };
+        miluimData = originalMiluimData.filter(m => employeeIds.includes(m.employeeId.toString()));
+        salaryData = originalSalaryData.filter(s => employeeIds.includes(s.employeeId.toString()));
+        attendanceData = originalAttendanceData.filter(a => employeeIds.includes(a.employeeId.toString()));
 
         // בדיקה שיש נתונים
-        if (workingData.miluim.length === 0) {
-            const employeeId = employeeIds[0];
+        if (miluimData.length === 0) {
             document.getElementById('resultsContainer').innerHTML = 
-                `<div class="error-message">לא נמצאו נתוני מילואים לעובד ${employeeId}</div>`;
-            
-            // שחזור נתונים מקוריים
-            miluimData = originalMiluimData;
-            salaryData = originalSalaryData;
-            attendanceData = originalAttendanceData;
+                `<div class="error">לא נמצאו נתוני מילואים לעובד ${employeeIds[0]}</div>`;
             return;
         }
-
-        // עדכון זמני של המשתנים הגלובליים
-        miluimData = workingData.miluim;
-        salaryData = workingData.salary;
-        attendanceData = workingData.attendance;
     }
 
-    // === שלב 2: הכנת המחשב ===
-    calculationResults = [];
-    const uniqueEmployees = [...new Set(workingData.miluim.map(m => m.employeeId))];
+    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
     const totalEmployees = uniqueEmployees.length;
+    console.log(`🔄 מתחיל חישוב עבור ${totalEmployees} עובדים`);
 
-    console.log(`מספר עובדים לחישוב: ${totalEmployees}`);
-
-    // === שלב 3: הצגת Loading וProgress ===
-    if (showProgress && batchSize > 0) {
-        // Progress Bar מלא עם אפשרות ביטול
+    // === 2. הצגת Loading ===
+    const shouldUseBatches = batchSize > 0 && totalEmployees > batchSize;
+    
+    if (shouldUseBatches && showProgress) {
+        // Progress Bar מתקדם
         document.getElementById('resultsContainer').innerHTML = `
             <div class="loading" style="padding: 40px;">
-                <div style="font-size: 1.8em; margin-bottom: 20px;">🔄 מעבד נתונים...</div>
-                <div id="progressBar" style="width: 400px; height: 35px; background: #ecf0f1; border-radius: 20px; margin: 20px auto; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);">
-                    <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3498db, #2ecc71); border-radius: 20px; transition: width 0.5s ease;"></div>
+                <div style="font-size: 1.8em; margin-bottom: 20px;">🔄 מעבד ${totalEmployees} עובדים...</div>
+                <div id="progressBar" style="width: 400px; height: 35px; background: #ecf0f1; border-radius: 20px; margin: 20px auto; overflow: hidden;">
+                    <div id="progressFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3498db, #2ecc71); border-radius: 20px; transition: width 0.3s ease;"></div>
                 </div>
                 <div id="progressText" style="font-size: 1.3em; margin: 15px 0; color: #2c3e50;">
                     <span id="currentCount">0</span> / <span id="totalCount">${totalEmployees}</span> עובדים
                 </div>
-                <div id="timeEstimate" style="font-size: 1em; color: #7f8c8d; margin: 10px 0;">
-                    זמן משוער: מחשב...
-                </div>
-                ${enableCancel ? `<button class="btn" style="background: #e74c3c; margin-top: 20px; padding: 10px 30px;" 
-                        onclick="window.cancelBatchCalculation = true">
-                    ⛔ בטל חישוב
-                </button>` : ''}
-            </div>
-        `;
+                <div id="timeEstimate" style="font-size: 1em; color: #7f8c8d;">זמן משוער: מחשב...</div>
+                ${enableCancel ? `<button class="btn" style="background: #e74c3c; margin-top: 20px;" onclick="window.cancelBatchCalculation = true">⛔ בטל</button>` : ''}
+            </div>`;
         
-        if (enableCancel) {
-            window.cancelBatchCalculation = false;
-        }
+        if (enableCancel) window.cancelBatchCalculation = false;
     } else {
         // Loading פשוט
-        document.getElementById('loadingMessage').style.display = 'block';
-        document.getElementById('resultsContainer').innerHTML = '<div class="loading" id="loadingMessage">🔄 מעבד נתונים...</div>';
+        document.getElementById('resultsContainer').innerHTML = '<div class="loading">🔄 מעבד נתונים...</div>';
     }
 
-    // === שלב 4: הכנת CACHE ===
-    const startTime = performance.now();
+    // === 3. הכנת CACHE ===
     cacheSystem.prepareData();
 
-    // === שלב 5: חישוב עם/בלי Batches ===
-    if (batchSize > 0 && totalEmployees > batchSize) {
-        // **חישוב עם Batches**
-        const batchStartTime = Date.now();
-        
-        for (let i = 0; i < uniqueEmployees.length; i += batchSize) {
-            // בדיקת ביטול
-            if (enableCancel && window.cancelBatchCalculation) {
-                console.log('חישוב בוטל על ידי המשתמש');
-                return;
-            }
-
-            const batch = uniqueEmployees.slice(i, i + batchSize);
-            
-            // עיבוד העובדים בקבוצה
-            for (let employeeId of batch) {
-                const employeeResults = calculateMiluimForEmployeeWithCache(employeeId);
-                calculationResults.push(...employeeResults);
-            }
-            
-            const processedCount = Math.min(i + batchSize, totalEmployees);
-            
-            // עדכון Progress
-             if (showProgress) {
-    const progressPercent = (processedCount / totalEmployees) * 100;
-    const progressFill = document.getElementById('progressFill');
-    const currentCount = document.getElementById('currentCount');
-    const timeEstimate = document.getElementById('timeEstimate');
-    
-    if (progressFill) progressFill.style.width = progressPercent + '%';
-    if (currentCount) currentCount.textContent = processedCount;
-                               
-                // חישוב זמן משוער
-                const elapsedTime = Date.now() - batchStartTime;
-                const avgTimePerEmployee = elapsedTime / processedCount;
-                const remainingEmployees = totalEmployees - processedCount;
-                const estimatedTimeRemaining = (avgTimePerEmployee * remainingEmployees) / 1000;
-        
-                if (timeEstimate) {
-    if (estimatedTimeRemaining > 60) {
-        const minutes = Math.floor(estimatedTimeRemaining / 60);
-        const seconds = Math.floor(estimatedTimeRemaining % 60);
-        timeEstimate.textContent = `זמן משוער: ${minutes} דקות-${seconds} שניות`;
-    } else {
-        timeEstimate.textContent = `זמן משוער: ${Math.floor(estimatedTimeRemaining)} שניות`;
-    }
-}
-            }
-
-            // מנוחה לדפדפן
-            await new Promise(resolve => setTimeout(resolve, 50));
-            
-            // ניקוי זיכרון כל 100 עובדים
-            if (processedCount % 100 === 0) {
-                console.log(`עובדו ${processedCount} עובדים, ניקוי זיכרון...`);
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-        }
-    } else {
-        // **חישוב רגיל ללא Batches**
-         setTimeout(async () => {
-        for (let employeeId of uniqueEmployees) {
-            const employeeResults = calculateMiluimForEmployeeWithCache(employeeId);
-            calculationResults.push(...employeeResults);
-        }
-        
-        // ?? äöâú úåöàåú àçøé äçéùåá
+    // === 4. פונקציה מרכזית לעיבוד תוצאות ===
+    const processResults = () => {
         if (autoDisplayResults) {
-            // äåñôú Header ìòåáã áåãã
+            // Header לעובד בודד
             if (addEmployeeHeader && employeeIds && employeeIds.length === 1) {
                 const header = document.createElement('div');
                 header.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; text-align: center;';
-                header.innerHTML = `<h2 style="margin: 0; font-size: 1.5em;">?? úåöàåú òåáã ${employeeIds[0]}</h2>`;
-                document.getElementById('resultsContainer').insertBefore(header, document.getElementById('resultsContainer').firstChild);
+                header.innerHTML = `<h2 style="margin: 0; font-size: 1.5em;">📊 תוצאות עובד ${employeeIds[0]}</h2>`;
+                
+                setTimeout(() => {
+                    const container = document.getElementById('resultsContainer');
+                    container.innerHTML = '';
+                    container.appendChild(header);
+                    displayResults(calculationResults, { 
+                        itemsPerPage: calculationResults.length > 200 ? 100 : null 
+                    });
+                }, 50);
+            } else {
+                // הצגה רגילה
+                displayResults(calculationResults, { 
+                    itemsPerPage: calculationResults.length > 200 ? 100 : null 
+                });
             }
-displayResults(calculationResults, { 
-    itemsPerPage: calculationResults.length > 500 ? 100 : null 
-});
             
-            // òãëåï ñèèéñèé÷åú
+            // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
             document.getElementById('exportSection').style.display = 'block';
         }
 
-        // ùçæåø ðúåðéí î÷åøééí
+        // שחזור נתונים מקוריים
         if (employeeIds && employeeIds.length > 0) {
             miluimData = originalMiluimData;
             salaryData = originalSalaryData;
             attendanceData = originalAttendanceData;
         }
-    }, 100);
-}
 
-
-    // === שלב 6: סיום וסטטיסטיקות ===
-    const endTime = performance.now();
-    const cacheStats = cacheSystem.getStats();
-
-    console.log(`✅ הסתיים! זמן: ${(endTime - startTime).toFixed(2)}ms`);
-    console.log(`📊 CACHE Stats: ${cacheStats.cacheSize} unique calculations, ${cacheStats.hitRate} hit rate`);
-
-    // === שלב 7: טיפול בתוצאות ===
-    if (returnResults) {
-        return calculationResults;
-    }
-
-    if (autoDisplayResults) {
-        // הוספת Header לעובד בודד
-        if (addEmployeeHeader && employeeIds && employeeIds.length === 1) {
-            setTimeout(() => {
-                const resultsDiv = document.getElementById('resultsContainer');
-                if (resultsDiv.innerHTML !== '' && !resultsDiv.innerHTML.includes('loading')) {
-                    const header = document.createElement('div');
-                    header.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; text-align: center;';
-                    header.innerHTML = `<h2 style="margin: 0; font-size: 1.5em;">📊 תוצאות עובד ${employeeIds[0]}</h2>`;
-                    resultsDiv.insertBefore(header, resultsDiv.firstChild);
-                }
-            }, 200);
-        }
-
-        // הצגת תוצאות עם/בלי pagination
-        displayResults(calculationResults, { 
-    itemsPerPage: calculationResults.length > 500 ? 100 : null,
-    page: 1
-});
+        console.log(`✅ הושלם! ${calculationResults.length} תוצאות`);
         
-        // עדכון סטטיסטיקות
-        updateSummaryStats();
-        document.getElementById('exportSection').style.display = 'block';
-    }
+        if (returnResults) return calculationResults;
+    };
 
-    // === שלב 8: שחזור נתונים מקוריים ===
-    if (employeeIds && employeeIds.length > 0) {
-        // החזרת הנתונים המקוריים למשתנים הגלובליים
-        miluimData = originalMiluimData;
-        salaryData = originalSalaryData;
-        attendanceData = originalAttendanceData;
+    // === 5. החישוב הראשי ===
+    const startTime = performance.now();
+
+    if (shouldUseBatches) {
+        // === חישוב עם Batches (עבור מאות/אלפי עובדים) ===
+        const batchStartTime = Date.now();
+        
+        try {
+            for (let i = 0; i < uniqueEmployees.length; i += batchSize) {
+                // בדיקת ביטול
+                if (enableCancel && window.cancelBatchCalculation) {
+                    console.log('❌ חישוב בוטל על ידי המשתמש');
+                    return;
+                }
+
+                // עיבוד הבאצ' הנוכחי
+                const batch = uniqueEmployees.slice(i, i + batchSize);
+                
+                for (let employeeId of batch) {
+                    const results = calculateMiluimForEmployeeWithCache(employeeId);
+                    calculationResults.push(...results);
+                }
+                
+                const processedCount = Math.min(i + batchSize, totalEmployees);
+                
+                // עדכון Progress Bar
+                if (showProgress) {
+                    const progressPercent = (processedCount / totalEmployees) * 100;
+                    const progressFill = document.getElementById('progressFill');
+                    const currentCount = document.getElementById('currentCount');
+                    const timeEstimate = document.getElementById('timeEstimate');
+                    
+                    if (progressFill) progressFill.style.width = progressPercent + '%';
+                    if (currentCount) currentCount.textContent = processedCount;
+                    
+                    // חישוב זמן משוער
+                    if (timeEstimate && processedCount > 0) {
+                        const elapsed = Date.now() - batchStartTime;
+                        const avgTime = elapsed / processedCount;
+                        const remaining = (avgTime * (totalEmployees - processedCount)) / 1000;
+                        
+                        if (remaining > 60) {
+                            const min = Math.floor(remaining / 60);
+                            const sec = Math.floor(remaining % 60);
+                            timeEstimate.textContent = `זמן משוער: ${min}:${sec.toString().padStart(2, '0')}`;
+                        } else {
+                            timeEstimate.textContent = `זמן משוער: ${Math.floor(remaining)} שניות`;
+                        }
+                    }
+                }
+                
+                // מנוחה קצרה לדפדפן
+                await new Promise(resolve => setTimeout(resolve, 30));
+            }
+            
+            // סיום חישוב עם Batches - הצגת תוצאות
+            processResults();
+            
+        } catch (error) {
+            console.error('שגיאה בחישוב Batches:', error);
+            document.getElementById('resultsContainer').innerHTML = 
+                `<div class="error">שגיאה בחישוב: ${error.message}</div>`;
+        }
+        
+    } else {
+        // === חישוב רגיל (עבור מאות עובדים) ===
+        setTimeout(() => {
+            try {
+                for (let employeeId of uniqueEmployees) {
+                    const results = calculateMiluimForEmployeeWithCache(employeeId);
+                    calculationResults.push(...results);
+                }
+                
+                // הצגת תוצאות
+                processResults();
+                
+            } catch (error) {
+                console.error('שגיאה בחישוב רגיל:', error);
+                document.getElementById('resultsContainer').innerHTML = 
+                    `<div class="error">שגיאה בחישוב: ${error.message}</div>`;
+            }
+        }, 100);
     }
 
     return calculationResults;
 }
+
+// === דוגמאות שימוש ===
+
+// 1. חישוב רגיל לכל העובדים
+// calculateMiluim();
+
+// 2. חישוב עם progress bar למאות עובדים
+// calculateMiluim({ batchSize: 20, showProgress: true });
+
+// 3. חישוב עם אפשרות ביטול לאלפי עובדים  
+// calculateMiluim({ batchSize: 50, showProgress: true, enableCancel: true });
+
+// 4. חישוב לעובד ספציפי
+// calculateMiluim({ employeeIds: ['123456789'], addEmployeeHeader: true });
+
+// 5. החזרת תוצאות ללא הצגה
+// const results = await calculateMiluim({ returnResults: true });
         function loadExcelFile(file) {
             if (!file) return;
             
