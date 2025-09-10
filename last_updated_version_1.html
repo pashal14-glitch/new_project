@@ -941,7 +941,7 @@ const cacheSystem = new MiluimCalculatorCache();
         if (daysDiff <= 1) {
             
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
-            finalValue = Math.max(finalValue, prevBasicResult.dailyValue);
+            finalValue = prevBasicResult.dailyValue;
         }
     }
                           
