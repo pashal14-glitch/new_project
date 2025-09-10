@@ -2354,10 +2354,11 @@ if (document.getElementById('employeeInput')) {
         });
 // משתנה גלובלי
 let filterWorker = null;
-// 🔧 פונקציה מתוקנת ל-Worker
+
+// יצירת Inline Worker
 function createInlineWorker() {
-    const workerCode = `
-        // פונקציה פשוטה לחישוב תאריך מ-Excel
+     const workerCode = `
+        // 🔥 פונקציה פשוטה לחישוב תאריך מ-Excel
         function simpleExcelToDate(serialNumber) {
             if (typeof serialNumber !== 'number') return null;
             
@@ -2366,66 +2367,33 @@ function createInlineWorker() {
             return new Date(resultDate.getFullYear(), resultDate.getMonth(), resultDate.getDate());
         }
 
-        // 🔥 פונקציה מתוקנת עם זיהוי נכון של עובדים
-        function isCrossMonthService(result) {
-            if (!self.miluimData) return false;
-            
-            // ✅ חפש לפי employeeId בלבד (לא לפי תאריכים מדויקים)
-            const employeeOriginalPeriods = self.miluimData.filter(m => {
-                // השווה גם כמספר וגם כמחרוזת
-                return m.employeeId == result.employeeId || 
-                       m.employeeId === result.employeeId.toString() ||
-                       m.employeeId.toString() === result.employeeId;
-            });
-            
-            console.log(\`🔍 עובד \${result.employeeId}: נמצאו \${employeeOriginalPeriods.length} תקופות\`);
-            
-            // אם לא נמצאו תקופות - נסה חיפוש נוסף
-            if (employeeOriginalPeriods.length === 0) {
-                console.log(\`⚠️ לא נמצאו תקופות לעובד \${result.employeeId}\`);
-                return false;
-            }
-            
-            // בדוק כל תקופה אם היא חוצה חודשים
-            for (let period of employeeOriginalPeriods) {
-                // ✅ טיפול מתקדם בתאריכים - גם מספרים וגם מחרוזות
-                let startDate, endDate;
-                
-                if (typeof period.startDate === 'number') {
-                    startDate = simpleExcelToDate(period.startDate);
-                } else if (typeof period.startDate === 'string') {
-                    startDate = new Date(period.startDate);
-                } else if (period.startDate instanceof Date) {
-                    startDate = period.startDate;
-                }
-                
-                if (typeof period.endDate === 'number') {
-                    endDate = simpleExcelToDate(period.endDate);
-                } else if (typeof period.endDate === 'string') {
-                    endDate = new Date(period.endDate);
-                } else if (period.endDate instanceof Date) {
-                    endDate = period.endDate;
-                }
-                
-                // בדוק אם התאריכים תקינים ושונים בחודש/שנה
-                if (startDate && endDate) {
-                    if (startDate.getMonth() !== endDate.getMonth() || 
-                        startDate.getFullYear() !== endDate.getFullYear()) {
-                        console.log(\`✅ נמצאה תקופה חוצת חודשים לעובד \${result.employeeId}: \${startDate.toDateString()} - \${endDate.toDateString()}\`);
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
-        }
-
         self.onmessage = function(e) {
             const { results, filters, miluimData } = e.data;
             self.miluimData = miluimData;
             
-            console.log(\`🚀 Worker התחיל: \${results.length} תוצאות, \${miluimData.length} נתוני מילואים\`);
-            
+            // 🔥 פונקציה מתוקנת עם החישוב הפשוט
+            function isCrossMonthService(result) {
+                if (!self.miluimData) return false;
+                
+                const employeeOriginalPeriods = self.miluimData.filter(m => 
+                    m.employeeId === result.employeeId
+                );
+                
+                for (let period of employeeOriginalPeriods) {
+                    // 🔥 השתמש בחישוב הפשוט
+                    const startDate = simpleExcelToDate(period.startDate);
+                    const endDate = simpleExcelToDate(period.endDate);
+                    
+                    if (startDate && endDate) {
+                        if (startDate.getMonth() !== endDate.getMonth() || 
+                            startDate.getFullYear() !== endDate.getFullYear()) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }    
             // הסינון
             let filteredResults = results.filter(result => {
                 // סינון עובד
@@ -2448,13 +2416,13 @@ function createInlineWorker() {
                             if (!(result.limitedByNewMiluim || result.isValueLocked)) return false;
                             break;
                         case 'gap':
-                            if (Math.abs((result.paidAmount || 0) - (result.continuousValue || 0)) <= 1) return false;
+                            if (Math.abs(result.paidAmount - result.continuousValue) <= 1) return false;
                             break;
                         case 'crossMonth':
-                            // 🔥 השתמש בפונקציה המתוקנת
                             if (!isCrossMonthService(result)) return false;
                             break;
                         case 'regular':
+                            // צריך להעביר קבועים
                             const EMERGENCY_START = new Date('2023-10-07');
                             if (result.startDate >= EMERGENCY_START) return false;
                             break;
@@ -2469,12 +2437,7 @@ function createInlineWorker() {
                 return true;
             });
             
-            console.log(\`✅ Worker סיים: \${filteredResults.length} תוצאות מסוננות\`);
             self.postMessage(filteredResults);
-        };
-        
-        self.onerror = function(error) {
-            console.error('❌ שגיאה ב-Worker:', error);
         };
     `;
     
@@ -2482,96 +2445,26 @@ function createInlineWorker() {
     return new Worker(URL.createObjectURL(blob));
 }
 
-// 🔧 גרסה משופרת של initFilterWorker
+// אתחול Worker
 function initFilterWorker() {
-    // אם Worker כבר קיים ופעיל - השתמש בו
-    if (filterWorker && filterWorker.readyState !== undefined) {
+    if (!filterWorker) {
         try {
-            // בדוק אם ה-Worker עדיין פעיל
-            if (filterWorker.readyState === filterWorker.OPEN || 
-                filterWorker.readyState === filterWorker.CONNECTING) {
-                console.log('✅ משתמש ב-Worker קיים');
-                return true;
-            }
+            filterWorker = createInlineWorker();
+            console.log('Inline Web Worker נוצר בהצלחה');
         } catch (error) {
-            console.log('⚠️ Worker קיים אבל לא פעיל, יוצר חדש');
-            filterWorker = null;
-        }
-    }
-    
-    try {
-        // נסה ליצור Worker חדש
-        filterWorker = createInlineWorker();
-        
-        if (!filterWorker) {
-            console.error('❌ לא הצלחתי ליצור Worker');
+            console.error('שגיאה ביצירת Worker:', error);
             return false;
         }
-        
-        // הוסף מטפל שגיאות גלובלי
-        filterWorker.onerror = function(error) {
-            console.error('❌ שגיאה גלובלית ב-Worker:', error);
-            // נקה את ה-Worker הפגום
-            if (filterWorker) {
-                try {
-                    filterWorker.terminate();
-                } catch (e) {
-                    console.log('⚠️ לא הצלחתי לסגור Worker פגום');
-                }
-                filterWorker = null;
-            }
-        };
-        
-        // הוסף מטפל סגירה
-        filterWorker.onclose = function() {
-            console.log('🔄 Worker נסגר');
-            filterWorker = null;
-        };
-        
-        console.log('✅ Worker חדש נוצר בהצלחה');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ שגיאה ביצירת Worker:', error);
-        filterWorker = null;
-        return false;
     }
+    return true;
 }
 
-// 🔧 פונקציה לניקוי Worker (להוסיף לקוד)
-function cleanupFilterWorker() {
-    if (filterWorker) {
-        try {
-            filterWorker.terminate();
-            console.log('🧹 Worker נוקה בהצלחה');
-        } catch (error) {
-            console.error('⚠️ שגיאה בניקוי Worker:', error);
-        } finally {
-            filterWorker = null;
-        }
-    }
-}
-// 🚀 פונקציית applyFilters מתוקנת ומיטובת
 function applyFilters() {
     if (calculationResults.length === 0) return;
     
-    // 🔧 בדיקת גודל נתונים - מעל 200MB עבור לסינון רגיל
-    const estimatedDataSize = calculationResults.length * 1000; // הערכה גסה
-    const miluimDataSize = miluimData.length * 500; // הערכה גסה
-    const totalSize = estimatedDataSize + miluimDataSize;
-    
-    console.log(`📊 הערכת גודל נתונים: ${(totalSize / 1024 / 1024).toFixed(1)}MB`);
-    
-    // אם הנתונים גדולים מדי או שיש פחות מ-500 תוצאות - השתמש בסינון רגיל
-    if (totalSize > 200 * 1024 * 1024 || calculationResults.length < 500) {
-        console.log('🔄 משתמש בסינון רגיל בגלל גודל נתונים');
-        applyFiltersRegular();
-        return;
-    }
-    
     // נסה ליצור Worker
     if (!initFilterWorker()) {
-        console.log('🔄 נחזור לסינון רגיל - Worker לא זמין');
+        console.log('נחזור לסינון רגיל');
         applyFiltersRegular();
         return;
     }
@@ -2583,55 +2476,34 @@ function applyFilters() {
         miluimType: document.getElementById('miluimTypeFilter').value
     };
     
-    // 🔥 אופטימיזציה: שלח רק מה שצריך לWorker
-    let dataToSend;
-    
-    if (filters.miluimType === 'crossMonth') {
-        // רק עבור crossMonth שלח את כל הנתונים הגולמיים
-        dataToSend = {
-            results: calculationResults,
-            filters: filters,
-            miluimData: miluimData // שלח רק אם צריך
-        };
-        console.log('📤 שולח נתונים מלאים ל-Worker (crossMonth filter)');
-    } else {
-        // עבור סינונים אחרים - אל תשלח miluimData
-        dataToSend = {
-            results: calculationResults,
-            filters: filters,
-            miluimData: [] // רשימה ריקה
-        };
-        console.log('📤 שולח נתונים חלקיים ל-Worker (סינון רגיל)');
-    }
-    
     // הצג Loading
     document.getElementById('resultsContainer').innerHTML = `
         <div class="loading" style="padding: 40px; text-align: center;">
             🔄 מסנן ${calculationResults.length} תוצאות ברקע...
-            <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                ${filters.miluimType === 'crossMonth' ? 'מחפש תקופות חוצות חודשים...' : 'מסנן תוצאות...'}
-            </div>
         </div>
-    `;
+    `;  
+      
+    // שלח לWorker
+      filterWorker.postMessage({
+        results: calculationResults,
+        filters: filters,
+        miluimData: miluimData  // 🔥 הוסף את הנתונים המקוריים
+    });
     
-    // 🕒 Timeout מותאם לגודל הנתונים
-    const timeoutDuration = Math.min(30000, Math.max(5000, calculationResults.length * 2));
-    
-    let timeoutId = setTimeout(() => {
-        console.log(`⏰ Worker תקוע (${timeoutDuration}ms) - עוצר ועובר לסינון רגיל`);
-        cleanupFilterWorker();
-        applyFiltersRegular();
-    }, timeoutDuration);
-    
-    // 🔄 מטפל הודעות עם ניקוי אוטומטי
+    // קבל תוצאות
     filterWorker.onmessage = function(e) {
-        clearTimeout(timeoutId);
-        
         const filteredResults = e.data;
-        console.log(`✅ סינון Worker הסתיים: ${filteredResults.length} מתוך ${calculationResults.length}`);
+        console.log(`סינון הסתיים: ${filteredResults.length} מתוך ${calculationResults.length}`);
         
-        // הצג תוצאות
+        // ✅ תיקון: השתמש בפונקציה החדשה במקום הקוד המסוכן הישן
         if (filteredResults.length > 200) {
+            // ❌ קוד ישן מסוכן:
+            // const originalResults = calculationResults;
+            // calculationResults = filteredResults;
+            // displayResultsPaginated(1, 50);
+            // calculationResults = originalResults;
+            
+            // ✅ קוד חדש בטוח:
             displayResults(filteredResults, { 
                 isFiltered: true, 
                 sourceData: calculationResults,
@@ -2640,6 +2512,10 @@ function applyFilters() {
                 title: '🔍 תוצאות מסוננות (עם עמודים)'
             });
         } else {
+            // ❌ קוד ישן:
+            // displayFilteredResults(filteredResults);
+            
+            // ✅ קוד חדש:
             displayResults(filteredResults, { 
                 isFiltered: true, 
                 sourceData: calculationResults,
@@ -2647,171 +2523,71 @@ function applyFilters() {
             });
         }
         
-        // נקה Worker אחרי השימוש לחסכון בזיכרון
-        setTimeout(() => {
-            if (filterWorker) {
-                console.log('🧹 מנקה Worker אחרי שימוש');
-                cleanupFilterWorker();
-            }
-        }, 1000);
+        // ❌ זה לא נדרש יותר - הפונקציה החדשה עושה זאת אוטומטית:
+        // updateFilteredStats(filteredResults);
     };
     
-    // 🔄 מטפל שגיאות משופר
     filterWorker.onerror = function(error) {
-        clearTimeout(timeoutId);
-        console.error('❌ שגיאה בעיבוד Worker:', error);
-        cleanupFilterWorker();
+        console.error('שגיאה ב-Worker:', error);
         applyFiltersRegular();
     };
+}
+
+// ✅ גם תקני את applyFiltersRegular (אם יש לך):
+function applyFiltersRegular() {
+    if (calculationResults.length === 0) return;
     
-    // שלח נתונים ל-Worker עם try-catch
-    try {
-        const startTime = performance.now();
-        
-        filterWorker.postMessage(dataToSend);
-        
-        const sendTime = performance.now() - startTime;
-        console.log(`📤 נתונים נשלחו ל-Worker תוך ${sendTime.toFixed(1)}ms`);
-        
-        // אם השליחה לקחה יותר מ-100ms - זה סימן לבעיה
-        if (sendTime > 100) {
-            console.warn('⚠️ שליחה איטית ל-Worker - שקול להשתמש בסינון רגיל');
-        }
-        
-    } catch (error) {
-        clearTimeout(timeoutId);
-        console.error('❌ שגיאה בשליחה ל-Worker:', error);
-        cleanupFilterWorker();
-        applyFiltersRegular();
+    // הכן פילטרים
+    const filters = {
+        employee: document.getElementById('employeeFilter').value.trim(),
+        year: document.getElementById('yearFilter').value,
+        miluimType: document.getElementById('miluimTypeFilter').value
+    };
+    
+    // סנן את הנתונים
+    let filteredResults = [...calculationResults];
+    
+    // סינון לפי מספר עובד
+    if (filters.employee) {
+        filteredResults = filteredResults.filter(result => 
+            result.employeeId.toString().includes(filters.employee)
+        );
     }
-}
-
-// 🔧 Worker מתוקן עם אופטימיזציות
-function createInlineWorker() {
-    const workerCode = `
-        // Cache למניעת חישובים חוזרים
-        let employeeCache = new Map();
-        
-        function simpleExcelToDate(serialNumber) {
-            if (typeof serialNumber !== 'number') return null;
-            const resultDate = new Date(1900, 0, 1);
-            resultDate.setDate(resultDate.getDate() + serialNumber - 2);
-            return new Date(resultDate.getFullYear(), resultDate.getMonth(), resultDate.getDate());
-        }
-
-        // 🔥 פונקציה מיטובת עם Cache
-        function isCrossMonthService(result) {
-            // בדוק cache קודם
-            const cacheKey = result.employeeId;
-            if (employeeCache.has(cacheKey)) {
-                return employeeCache.get(cacheKey);
-            }
-            
-            if (!self.miluimData || self.miluimData.length === 0) {
-                employeeCache.set(cacheKey, false);
-                return false;
-            }
-            
-            // חיפוש אופטימלי
-            const employeeOriginalPeriods = self.miluimData.filter(m => {
-                return m.employeeId == result.employeeId || 
-                       m.employeeId === result.employeeId.toString() ||
-                       m.employeeId.toString() === result.employeeId;
-            });
-            
-            if (employeeOriginalPeriods.length === 0) {
-                employeeCache.set(cacheKey, false);
-                return false;
-            }
-            
-            // בדיקה מהירה לחצייה
-            for (let period of employeeOriginalPeriods) {
-                let startDate, endDate;
-                
-                if (typeof period.startDate === 'number') {
-                    startDate = simpleExcelToDate(period.startDate);
-                } else if (typeof period.startDate === 'string') {
-                    startDate = new Date(period.startDate);
-                } else if (period.startDate instanceof Date) {
-                    startDate = period.startDate;
-                }
-                
-                if (typeof period.endDate === 'number') {
-                    endDate = simpleExcelToDate(period.endDate);
-                } else if (typeof period.endDate === 'string') {
-                    endDate = new Date(period.endDate);
-                } else if (period.endDate instanceof Date) {
-                    endDate = period.endDate;
-                }
-                
-                if (startDate && endDate) {
-                    if (startDate.getMonth() !== endDate.getMonth() || 
-                        startDate.getFullYear() !== endDate.getFullYear()) {
-                        employeeCache.set(cacheKey, true);
-                        return true;
-                    }
-                }
-            }
-            
-            employeeCache.set(cacheKey, false);
-            return false;
-        }
-
-        self.onmessage = function(e) {
-            const startTime = performance.now();
-            const { results, filters, miluimData } = e.data;
-            
-            self.miluimData = miluimData;
-            employeeCache.clear(); // נקה cache לכל סינון חדש
-            
-            console.log(\`🚀 Worker מתחיל: \${results.length} תוצאות\`);
-            
-            // סינון מיטוב
-            let filteredResults = results.filter(result => {
-                // סינון עובד - מהיר ביותר
-                if (filters.employee && !result.employeeId.toString().includes(filters.employee)) {
-                    return false;
-                }
-                
-                // סינון שנה - מהיר
-                if (filters.year && result.startDate.getFullYear().toString() !== filters.year) {
-                    return false;
-                }
-                
-                // סינון סוג מילואים - עמיד ביותר
-                if (filters.miluimType) {
-                    switch (filters.miluimType) {
-                        case 'new':
-                            return result.isNewMiluim;
-                        case 'locked':
-                            return result.limitedByNewMiluim || result.isValueLocked;
-                        case 'gap':
-                            return Math.abs((result.paidAmount || 0) - (result.continuousValue || 0)) > 1;
-                        case 'crossMonth':
-                            return isCrossMonthService(result);
-                        case 'regular':
-                            const EMERGENCY_START = new Date('2023-10-07');
-                            return result.startDate < EMERGENCY_START;
-                        case 'emergency':
-                            const EMERGENCY_START2 = new Date('2023-10-07');
-                            const NEW_MILUIM_START = new Date('2025-05-01');
-                            return result.startDate >= EMERGENCY_START2 && result.startDate < NEW_MILUIM_START;
-                    }
-                }
-                
-                return true;
-            });
-            
-            const processingTime = performance.now() - startTime;
-            console.log(\`✅ Worker סיים תוך \${processingTime.toFixed(1)}ms: \${filteredResults.length} תוצאות\`);
-            
-            self.postMessage(filteredResults);
-        };
-    `;
     
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    return new Worker(URL.createObjectURL(blob));
-}
+    // סינון לפי שנה
+    if (filters.year) {
+        filteredResults = filteredResults.filter(result => 
+            result.startDate.getFullYear().toString() === filters.year
+        );
+    }
+    
+    // סינון לפי סוג מילואים
+    if (filters.miluimType) {
+        filteredResults = filteredResults.filter(result => {
+            switch (filters.miluimType) {
+                case 'regular':
+                    const EMERGENCY_START = new Date('2023-10-07');
+                    return result.startDate < EMERGENCY_START;
+                case 'emergency':
+                    const EMERGENCY_START2 = new Date('2023-10-07');
+                    const NEW_MILUIM_START = new Date('2025-05-01');
+                    return result.startDate >= EMERGENCY_START2 && result.startDate < NEW_MILUIM_START;
+                case 'new':
+                    return result.isNewMiluim;
+                case 'locked':
+                    return result.limitedByNewMiluim || result.isValueLocked;
+                case 'gap':
+                    return Math.abs((result.paidAmount || 0) - result.continuousValue) > 0.01;
+                case 'crossMonth':
+                    const startDate = new Date(result.startDate);
+                    const endDate = new Date(result.endDate);
+                    return (startDate.getMonth() !== endDate.getMonth() || 
+                            startDate.getFullYear() !== endDate.getFullYear());
+                default:
+                    return true;
+            }
+        });
+    }
     
     // ✅ השתמש בפונקציה החדשה
     displayResults(filteredResults, { 
