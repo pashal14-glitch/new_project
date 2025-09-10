@@ -590,7 +590,9 @@
         let originalMiluimData = [];
         let originalSalaryData = [];
         let originalAttendanceData = []; 
-        let showCrossMonthOnly =[] ;   
+        let showCrossMonthOnly =[] ; 
+        let currentDisplayData = [];
+        let currentDisplayOptions = {};
        
 
         // Constants
@@ -1805,7 +1807,7 @@ if (uniqueEmployees.length > 100) {
 function displayResults(data = calculationResults, options = {}) {
     const {
         page = 1,
-        itemsPerPage = null, // null = no pagination
+        itemsPerPage = null,
         showPagination = true,
         title = null,
         subtitle = null,
@@ -1814,12 +1816,15 @@ function displayResults(data = calculationResults, options = {}) {
         isFiltered = false,
         isSingleEmployee = false,
         employeeId = null,
-        sourceData = calculationResults // המערך המקורי לחישוב originalIndex
+        sourceData = calculationResults
     } = options;
+    
+    // שמירת הנתונים הנוכחיים
+    currentDisplayData = data;
+    currentDisplayOptions = options;
     
     const container = document.getElementById('resultsContainer');
     
-    // בדיקה שיש נתונים
     if (!data || data.length === 0) {
         let emptyMessage = 'לא נמצאו תוצאות';
         if (isFiltered) {
@@ -1829,7 +1834,6 @@ function displayResults(data = calculationResults, options = {}) {
         return;
     }
     
-    // חישוב pagination אם נדרש
     let pageData = data;
     let totalPages = 1;
     let start = 0;
@@ -1842,10 +1846,8 @@ function displayResults(data = calculationResults, options = {}) {
         pageData = data.slice(start, end);
     }
     
-    // בניית HTML
     let html = '';
     
-    // כותרת אם נדרשת
     if (title) {
         html += `
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; text-align: center;">
@@ -1855,11 +1857,9 @@ function displayResults(data = calculationResults, options = {}) {
         `;
     }
     
-    // סיכום לעובד יחיד
     if (isSingleEmployee && employeeId) {
         const totalPeriods = data.length;
         const totalDays = data.reduce((sum, r) => sum + (r.serviceDays || r.miluimDays || 0), 0);
-        const totalBruto = data.reduce((sum, r) => sum + (r.recommendedValue || 0), 0);
         const totalPayment = data.reduce((sum, r) => sum + ((r.continuousValue || 0) * (r.miluimDays || 0)), 0);
         
         html += `
@@ -1880,7 +1880,6 @@ function displayResults(data = calculationResults, options = {}) {
         `;
     }
     
-    // טבלת תוצאות
     html += `
         <div class="results-table">
             <table>
@@ -1905,25 +1904,20 @@ function displayResults(data = calculationResults, options = {}) {
                 <tbody>
     `;
     
-    // שורות הטבלה
     pageData.forEach((result, index) => {
-        // חישוב האינדקס הנכון
         let correctIndex;
         if (itemsPerPage) {
-            // במקרה של pagination - globalIndex
             correctIndex = start + index;
         } else if (isFiltered) {
-            // במקרה של סינון - originalIndex במערך המקורי
             correctIndex = sourceData.findIndex(r => 
                 r.employeeId === result.employeeId && 
                 r.startDate.getTime() === result.startDate.getTime()
             );
         } else {
-            // תצוגה רגילה
             correctIndex = index;
         }
         
-        const rowClass = getRowClass(result);
+        const rowClass = getRowClass ? getRowClass(result) : '';
         
         html += `
             <tr class="${rowClass}">
@@ -1931,16 +1925,16 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${formatDate(result.startDate)}</td>
                 <td>${formatDate(result.endDate)}</td>
                 <td>${result.miluimDays || result.serviceDays || 0}</td>
-                <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue.toFixed(2)}</td>
-                <td>${result.recommendedValue.toFixed(2)}</td>
-                <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue.toFixed(2)} ${result.isValueLocked ? '🔒' : ''}</td>
+                <td class="${result.calculationType === 'חלופי' ? 'alternative-calc' : ''}">${result.basicValue ? result.basicValue.toFixed(2) : '0'}</td>
+                <td>${result.recommendedValue ? result.recommendedValue.toFixed(2) : '0'}</td>
+                <td class="${result.limitedByNewMiluim || result.isValueLocked ? 'locked-value' : ''}">${result.continuousValue ? result.continuousValue.toFixed(2) : '0'} ${result.isValueLocked ? '🔒' : ''}</td>
                 <td>${result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '-'}</td>
                 <td>${result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '-'}</td>
                 <td>${result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '-'}</td>
                 <td><strong>${formatCurrency((result.continuousValue || 0) * (result.miluimDays || 0))}</strong></td>
                 <td><button class="details-btn" onclick="showDetails(${correctIndex})">פירוט</button></td>
                 <td>${result.paidAmount || 0}</td>
-                <td class="amount-difference ${(result.paidAmount - result.continuousValue) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - result.continuousValue).toFixed(0)}</td>
+                <td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)}</td>
             </tr>
         `;
     });
@@ -1951,7 +1945,6 @@ function displayResults(data = calculationResults, options = {}) {
         </div>
     `;
     
-    // מידע סיכום
     if (isFiltered || isSingleEmployee || itemsPerPage) {
         html += `
             <div style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; text-align: center;">
@@ -1969,55 +1962,67 @@ function displayResults(data = calculationResults, options = {}) {
         `;
     }
     
-    // הצגת התוצאות
     container.innerHTML = html;
     
-    // הוספת pagination אם נדרש
+    // הכפתורים החדשים שלא יגרמו לשגיאות
     if (itemsPerPage && showPagination && totalPages > 1) {
         const paginationDiv = document.createElement('div');
         paginationDiv.style.cssText = 'text-align: center; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;';
+        
         paginationDiv.innerHTML = `
             <div style="margin-bottom: 15px; font-size: 1.1em; font-weight: bold;">
                 מציג ${start + 1}-${Math.min(end, data.length)} מתוך ${data.length} תוצאות
             </div>
             <div style="margin-bottom: 15px;">
-                ${page > 1 ? `<button class="btn" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, page: ${page-1}})" style="margin: 0 5px;">⬅️ עמוד קודם</button>` : ''}
+                ${page > 1 ? `<button class="btn" onclick="navigateToPage(${page-1})" style="margin: 0 5px;">⬅️ עמוד קודם</button>` : ''}
                 <span style="margin: 0 15px; font-size: 1.1em; font-weight: bold;">עמוד ${page} מתוך ${totalPages}</span>
-                ${page < totalPages ? `<button class="btn" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, page: ${page+1}})" style="margin: 0 5px;">עמוד הבא ➡️</button>` : ''}
+                ${page < totalPages ? `<button class="btn" onclick="navigateToPage(${page+1})" style="margin: 0 5px;">עמוד הבא ➡️</button>` : ''}
             </div>
             <div>
                 <button class="btn" style="background: #27ae60; margin: 0 5px;" onclick="exportToExcel()">
                     📥 יצא הכל לאקסל (כל ${sourceData.length} התוצאות)
                 </button>
-                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 50, page: 1})">
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="changeItemsPerPage(50)">
                     50 בעמוד
                 </button>
-                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 100, page: 1})">
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="changeItemsPerPage(100)">
                     100 בעמוד
                 </button>
-                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="displayResults(${JSON.stringify(data)}, {...${JSON.stringify(options)}, itemsPerPage: 200, page: 1})">
+                <button class="btn" style="background: #3498db; margin: 0 5px;" onclick="changeItemsPerPage(200)">
                     200 בעמוד
                 </button>
             </div>
         `;
+        
         container.appendChild(paginationDiv);
     }
     
-    // עדכון סטטיסטיקות אם נדרש
-    if (showStats) {
+    if (showStats && typeof updateSummaryStats === 'function') {
         updateSummaryStats(data);
     }
     
-    // הצגת קטע יצוא אם נדרש
     if (showExport) {
-        document.getElementById('exportSection').style.display = 'block';
+        const exportSection = document.getElementById('exportSection');
+        if (exportSection) exportSection.style.display = 'block';
     }
     
-    // שמירת תוצאות עובד יחיד
     if (isSingleEmployee) {
         window.singleEmployeeResults = data;
     }
 }
+
+// 🔧 הוסף 3 פונקציות קטנות אלה:
+function navigateToPage(newPage) {
+    const newOptions = { ...currentDisplayOptions, page: newPage };
+    displayResults(currentDisplayData, newOptions);
+}
+
+function changeItemsPerPage(newItemsPerPage) {
+    const newOptions = { ...currentDisplayOptions, itemsPerPage: newItemsPerPage, page: 1 };
+    displayResults(currentDisplayData, newOptions);
+}
+
+console.log('🔧 תיקון pagination טעון!');
 
 // פונקציות עזר
 function updateSummaryStats(data = calculationResults) {
