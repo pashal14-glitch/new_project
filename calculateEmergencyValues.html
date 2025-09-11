@@ -1144,7 +1144,7 @@ if (!isNewCluster) {
         .sort((a, b) => b.endDate - a.endDate);
     
     // Go backward to find cluster start
-  let checkDate = getMonthStart(serviceStartDate);
+let checkDate = calculateCheckDateFromMonthStart(serviceStartDate, 90);
     for (let prevMiluim of employeeMiluim) {
         const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
         if (gap <= 90) {
