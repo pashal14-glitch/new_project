@@ -811,6 +811,13 @@ const cacheSystem = new MiluimCalculatorCache();
     
     return `${day}.${month}.${year}`;
 }
+        /**
+ * מחזיר תחילת חודש של התאריך הנתון
+ */
+function getMonthStart(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
         // 🔥 הוסף כאן את הפונקציה החדשה:
         /**
          * מחשב תאריך בדיקה לאחור מתחילת חודש השירות
@@ -975,7 +982,7 @@ const cacheSystem = new MiluimCalculatorCache();
 
     // For regular miluim - check previous service in 60 days before
     
-    const checkDate = calculateCheckDateFromMonthStart(serviceStartDate, 60);
+  const checkDate = calculateCheckDateFromMonthStart(serviceStartDate, 60);
     
     
     let previousValue = 0;
@@ -1035,8 +1042,8 @@ const cacheSystem = new MiluimCalculatorCache();
            const miluimStart = parseExcelDate(miluim.startDate);
            
            if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-           const serviceMonthStart = calculateCheckDateFromMonthStart(serviceStartDate, 0); // 0 ימים = תחילת חודש
-           const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
+    const serviceMonthStart = getMonthStart(serviceStartDate);
+    const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
                
                // If gap is <= 90 days, same cluster
                if (daysDiff <= 90) {
@@ -1120,8 +1127,8 @@ const cacheSystem = new MiluimCalculatorCache();
                     const miluimStart = parseExcelDate(miluim.startDate);
                     
                     if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-                     const serviceMonthStart = calculateCheckDateFromMonthStart(serviceStartDate, 0);
-                     const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
+                const serviceMonthStart = getMonthStart(serviceStartDate);
+                const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
                         
                         // If gap is <= 90 days, same cluster
                         if (daysDiff <= 90) {
@@ -1142,7 +1149,7 @@ if (!isNewCluster) {
         .sort((a, b) => b.endDate - a.endDate);
     
     // Go backward to find cluster start
-   let checkDate = calculateCheckDateFromMonthStart(serviceStartDate, 0);
+  let checkDate = getMonthStart(serviceStartDate);
     for (let prevMiluim of employeeMiluim) {
         const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
         if (gap <= 90) {
