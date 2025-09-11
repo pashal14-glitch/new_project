@@ -814,24 +814,20 @@ const cacheSystem = new MiluimCalculatorCache();
         /**
  * מחזיר תחילת חודש של התאריך הנתון
  */
-function getMonthStart(date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
+   function getMonthStart(date) {
+    // וודא שזה Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
 }
 
-        // 🔥 הוסף כאן את הפונקציה החדשה:
-        /**
-         * מחשב תאריך בדיקה לאחור מתחילת חודש השירות
-         * @param {Date} serviceStartDate - תאריך תחילת השירות
-         * @param {number} daysBack - כמה ימים לאחור לבדוק
-         * @returns {Date} תאריך הבדיקה
-         */
-        function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
-            const serviceMonthStart = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
-            const checkDate = new Date(serviceMonthStart);
-            checkDate.setDate(checkDate.getDate() - daysBack);
-            return checkDate;
-        }
-
+function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
+    // וודא שזה Date object
+    const dateObj = serviceStartDate instanceof Date ? serviceStartDate : new Date(serviceStartDate);
+    const serviceMonthStart = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
+    const checkDate = new Date(serviceMonthStart);
+    checkDate.setDate(checkDate.getDate() - daysBack);
+    return checkDate;
+}
         function formatCurrency(amount) {
             return new Intl.NumberFormat('he-IL', {
                 style: 'currency',
