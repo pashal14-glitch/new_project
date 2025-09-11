@@ -960,8 +960,7 @@ function getServiceMonthStart(serviceStartDate) {
                 monthsUsed
             };
         }
-
-        function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
+function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                  // For new miluim (after 01.05.2025) - don't consider previous service
     if (serviceStartDate >= NEW_MILUIM_START) {
         return basicValue;
@@ -969,14 +968,14 @@ function getServiceMonthStart(serviceStartDate) {
 
     // For regular miluim - check previous service in 60 days before
     
-    const serviceMonthStart = getServiceMonthStart(serviceStartDate);
-const checkDate = new Date(serviceMonthStart);
-checkDate.setDate(checkDate.getDate() - 60);
+    const checkDate = new Date(serviceStartDate);
+    checkDate.setDate(checkDate.getDate() - 60);
+    
     
     let previousValue = 0;
     
     for (let miluim of miluimData) {
-        if (miluim.employeeId == employeeId) {
+        if (miluim.employeeId === employeeId) {
             const miluimEnd = parseExcelDate(miluim.endDate);
             const miluimStart = parseExcelDate(miluim.startDate);
             
@@ -2178,12 +2177,12 @@ function showDetails(index) {
     document.getElementById('detailsContent').innerHTML = html;
     document.getElementById('detailsModal').style.display = 'block';
 }
-        // Export functionality
-        function exportToExcel() {
+      // Export functionality - מעודכן עם ערך כפייה רצוף
+function exportToExcel() {
     // יצירת הנתונים המסוננים בזמן הייצוא
     let dataToExport = [...calculationResults];
     
-    // החל את אותם סינונים שקיימים בממשק
+    // החל אותן סינונים שקיימים במממשק
     const employeeFilter = document.getElementById('employeeFilter').value.trim();
     const yearFilter = document.getElementById('yearFilter').value;
     const miluimTypeFilter = document.getElementById('miluimTypeFilter').value;
@@ -2214,8 +2213,7 @@ function showDetails(index) {
                     return result.limitedByNewMiluim || result.isValueLocked;
                 case 'gap':
                     const calculatedDifference = (result.paidAmount || 0) - (result.continuousValue || 0);
-                    return Math.abs(calculatedDifference) > 1; // 
-                   // return result.amountDifference && result.amountDifference !== 0;
+                    return Math.abs(calculatedDifference) > 1;
                 case 'crossMonth':
                      return isCrossMonthService(result); 
                      default:                   
@@ -2229,34 +2227,67 @@ function showDetails(index) {
         return;
     }
     
-    // שאר הקוד הקיים שלך לייצוא אבל עם dataToExport במקום calculationResults
-  const wsData = [
-    ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפוי']
-];    
-    for (let result of dataToExport) { // שנה מ-calculationResults ל-dataToExport
+    // 🔥 החלק החדש - עיבוד ערך כפייה רצוף
+    const processedData = processCompulsionForExport(dataToExport);
+    
+    const wsData = [
+        ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה']
+    ];    
+   
+   for (let result of processedData) {
         wsData.push([
             result.employeeId,
-            formatDate(result.startDate),
-            formatDate(result.endDate),
-            result.miluimDays,
-            result.basicValue.toFixed(2),
-            result.recommendedValue.toFixed(2),
-            result.continuousValue.toFixed(2),
-            result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '',
-            result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '',
-            result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '',
-            (result.continuousValue * result.miluimDays).toFixed(2),
+            result.startDate,                       
+            result.endDate,                         
+            parseInt(result.miluimDays),            
+            parseFloat(result.basicValue.toFixed(2)),           
+            parseFloat(result.recommendedValue.toFixed(2)),     
+            parseFloat(result.continuousValue.toFixed(2)),      
+            result.emergencyValue > 0 ? parseFloat(result.emergencyValue.toFixed(2)) : '',
+            result.maxEmergencyValue > 0 ? parseFloat(result.maxEmergencyValue.toFixed(2)) : '',
+            result.emergencyClusterStart || '',     
+            parseFloat((result.continuousValue * result.miluimDays).toFixed(2)), 
             result.calculationType,
             result.isNewMiluim ? 'כן' : 'לא',
             result.isNewCluster ? 'כן' : 'לא',
-             result.paidAmount || 0,
-            ((result.paidAmount || 0) - result.continuousValue).toFixed(0),
-             result.compulsion || 0
+            parseFloat(result.paidAmount || 0),     
+            parseFloat(((result.paidAmount || 0) - result.continuousValue).toFixed(0)), 
+            parseFloat(result.compulsionContinuous || result.compulsion || 0)  // 🔥 השדה החדש!
         ]);
     }
     
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // הגדרת פורמטים לתאים
+    const range = XLSX.utils.decode_range(ws['!ref']);
+
+    for (let R = 1; R <= range.e.r; R++) {
+        // תאריכים (עמודות B, C, J)
+        ['B', 'C', 'J'].forEach(col => {
+            const cellAddress = col + (R + 1);
+            if (ws[cellAddress] && ws[cellAddress].v instanceof Date) {
+                ws[cellAddress].z = 'dd/mm/yyyy';
+                ws[cellAddress].t = 'd';
+            }
+        });
+        
+        // מספרים שלמים (עמודה D)
+        const dCellAddress = 'D' + (R + 1);
+        if (ws[dCellAddress] && typeof ws[dCellAddress].v === 'number') {
+            ws[dCellAddress].z = '0';
+            ws[dCellAddress].t = 'n';
+        }
+        
+         // סכומי כסף (עמודות E, F, G, H, I, K, O, Q)
+        ['E', 'F', 'G', 'H', 'I', 'K', 'O', 'Q'].forEach(col => {
+            const cellAddress = col + (R + 1);
+            if (ws[cellAddress] && typeof ws[cellAddress].v === 'number') {
+                ws[cellAddress].z = '#,##0.00"₪"';
+                ws[cellAddress].t = 'n';
+            }
+        });
+    }
     
     // Auto-size columns
     const colWidths = wsData[0].map(() => ({ wch: 15 }));
@@ -2266,6 +2297,64 @@ function showDetails(index) {
     
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
+}
+
+// 🔥 הפונקציה החדשה לעיבוד ערך כפייה רצוף
+function processCompulsionForExport(data) {
+    // קבוצת נתונים לפי עובד
+    const employeeGroups = {};
+    
+    data.forEach(result => {
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = [];
+        }
+        employeeGroups[result.employeeId].push({...result});
+    });
+    
+    // עיבוד כל עובד בנפרד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const employeeData = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה
+        employeeData.sort((a, b) => a.startDate - b.startDate);
+        
+        let lastCompulsion = 0;
+        
+        for (let i = 0; i < employeeData.length; i++) {
+            const current = employeeData[i];
+            const prev = i > 0 ? employeeData[i-1] : null;
+            
+            // בדיקה אם יש רצף (פער <= 1 יום)
+            if (prev) {
+                const gapDays = (current.startDate - prev.endDate) / (1000 * 60 * 60 * 24);
+                
+                if (gapDays <= 1) {
+                    // רצף - השתמש בערך הקודם אם הנוכחי ריק
+                    if (!current.compulsion || current.compulsion === 0) {
+                        current.compulsionContinuous = lastCompulsion;
+                    } else {
+                        current.compulsionContinuous = current.compulsion;
+                        lastCompulsion = current.compulsion;
+                    }
+                } else {
+                    // לא רצף - עדכן את הערך הנוכחי
+                    current.compulsionContinuous = current.compulsion || 0;
+                    if (current.compulsion && current.compulsion !== 0) {
+                        lastCompulsion = current.compulsion;
+                    }
+                }
+            } else {
+                // התקופה הראשונה
+                current.compulsionContinuous = current.compulsion || 0;
+                if (current.compulsion && current.compulsion !== 0) {
+                    lastCompulsion = current.compulsion;
+                }
+            }
+        }
+    });
+    
+    // החזרת כל הנתונים כרשימה שטוחה
+    return Object.values(employeeGroups).flat();
 }
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
