@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -2169,13 +2170,12 @@ function showDetails(index) {
     document.getElementById('detailsContent').innerHTML = html;
     document.getElementById('detailsModal').style.display = 'block';
 }
-      
-  // 🔥 פונקציית ייצוא משופרת עם פורמטים נכונים
-function exportToExcel() {
+        // Export functionality
+        function exportToExcel() {
     // יצירת הנתונים המסוננים בזמן הייצוא
     let dataToExport = [...calculationResults];
     
-    // החל את אותם סינונים שקיימים במממשק
+    // החל את אותם סינונים שקיימים בממשק
     const employeeFilter = document.getElementById('employeeFilter').value.trim();
     const yearFilter = document.getElementById('yearFilter').value;
     const miluimTypeFilter = document.getElementById('miluimTypeFilter').value;
@@ -2206,10 +2206,11 @@ function exportToExcel() {
                     return result.limitedByNewMiluim || result.isValueLocked;
                 case 'gap':
                     const calculatedDifference = (result.paidAmount || 0) - (result.continuousValue || 0);
-                    return Math.abs(calculatedDifference) > 1;
+                    return Math.abs(calculatedDifference) > 1; // 
+                   // return result.amountDifference && result.amountDifference !== 0;
                 case 'crossMonth':
                      return isCrossMonthService(result); 
-                default:                   
+                     default:                   
                     return true;
             }
         });
@@ -2219,124 +2220,145 @@ function exportToExcel() {
         alert('אין נתונים לייצוא.');
         return;
     }
-
-    // 🔥 יצירת הנתונים עם הפורמטים הנכונים
-    const wsData = [
-        ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה']
-    ];    
     
-    // 🔥 מילוי הנתונים עם טיפוסי נתונים נכונים
-    for (let result of dataToExport) {
+    // שאר הקוד הקיים שלך לייצוא אבל עם dataToExport במקום calculationResults
+  const wsData = [
+    ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפוי']
+];    
+    for (let result of dataToExport) { // שנה מ-calculationResults ל-dataToExport
         wsData.push([
-            result.employeeId.toString(), // טקסט
-            result.startDate,             // 🔥 תאריך כ-Date object
-            result.endDate,               // 🔥 תאריך כ-Date object
-            parseInt(result.miluimDays),  // 🔥 מספר שלם
-            parseFloat(result.basicValue.toFixed(2)),      // 🔥 מספר עשרוני
-            parseFloat(result.recommendedValue.toFixed(2)), // 🔥 מספר עשרוני
-            parseFloat(result.continuousValue.toFixed(2)),  // 🔥 מספר עשרוני
-            result.emergencyValue > 0 ? parseFloat(result.emergencyValue.toFixed(2)) : '', // 🔥 מספר או ריק
-            result.maxEmergencyValue > 0 ? parseFloat(result.maxEmergencyValue.toFixed(2)) : '', // 🔥 מספר או ריק
-            result.emergencyClusterStart || '', // תאריך או ריק
-            parseFloat((result.continuousValue * result.miluimDays).toFixed(2)), // 🔥 מספר עשרוני
-            result.calculationType,       // טקסט
-            result.isNewMiluim ? 'כן' : 'לא', // טקסט
-            result.isNewCluster ? 'כן' : 'לא', // טקסט
-            parseFloat(result.paidAmount || 0), // 🔥 מספר עשרוני
-            parseFloat(((result.paidAmount || 0) - result.continuousValue).toFixed(0)), // 🔥 מספר שלם
-            parseFloat(result.compulsion || 0) // 🔥 מספר עשרוני
+            result.employeeId,
+            formatDate(result.startDate),
+            formatDate(result.endDate),
+            result.miluimDays,
+            result.basicValue.toFixed(2),
+            result.recommendedValue.toFixed(2),
+            result.continuousValue.toFixed(2),
+            result.emergencyValue > 0 ? result.emergencyValue.toFixed(2) : '',
+            result.maxEmergencyValue > 0 ? result.maxEmergencyValue.toFixed(2) : '',
+            result.emergencyClusterStart ? formatDate(result.emergencyClusterStart) : '',
+            (result.continuousValue * result.miluimDays).toFixed(2),
+            result.calculationType,
+            result.isNewMiluim ? 'כן' : 'לא',
+            result.isNewCluster ? 'כן' : 'לא',
+             result.paidAmount || 0,
+            ((result.paidAmount || 0) - result.continuousValue).toFixed(0),
+             result.compulsion || 0
         ]);
     }
     
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     
-    // 🔥🔥🔥 חלק חדש וחשוב: הגדרת פורמטים לעמודות
-    
-    // 1️⃣ הגדרת רוחב עמודות
-    const colWidths = [
-        { wch: 12 }, // מספר עובד
-        { wch: 12 }, // תאריך התחלה
-        { wch: 12 }, // תאריך סיום
-        { wch: 8 },  // ימי מילואים
-        { wch: 12 }, // E - ערך בסיסי
-        { wch: 12 }, // F - ערך מומלץ
-        { wch: 12 }, // G - ערך רציף
-        { wch: 12 }, // I - חירום 90
-        { wch: 14 }, // J - מקסימום 120%
-        { wch: 14 }, // K - תחילת אשכול
-        { wch: 14 }, // סה״כ תשלום
-        { wch: 12 }, // סוג חישוב
-        { wch: 12 }, // מילואים חדשים
-        { wch: 12 }, // אשכול חירום
-        { wch: 12 }, // L - ערך בשכר
-        { wch: 8 },  // M - פער
-        { wch: 12 }  // N-ערך כפייה
-    ];
+    // Auto-size columns
+    const colWidths = wsData[0].map(() => ({ wch: 15 }));
     ws['!cols'] = colWidths;
-    
-    // 2️⃣ הגדרת פורמטים לתאים ספציפיים
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    
-    for (let R = 1; R <= range.e.r; R++) { // מתחיל מ-1 כדי לדלג על כותרות
-        // 🔥 עמודות תאריך (B, C) - פורמט תאריך ישראלי
-        ['B', 'C', 'J'].forEach(col => {
-            const cellAddress = col + (R + 1);
-            if (ws[cellAddress] && ws[cellAddress].v instanceof Date) {
-                ws[cellAddress].z = 'dd/mm/yyyy'; // 🔥 פורמט תאריך ישראלי
-                ws[cellAddress].t = 'd'; // 🔥 טיפוס תאריך
-            }
-        });
-        
-        // 🔥 עמודות מספריות (D) - מספרים שלמים
-        ['D'].forEach(col => {
-            const cellAddress = col + (R + 1);
-            if (ws[cellAddress] && typeof ws[cellAddress].v === 'number') {
-                ws[cellAddress].z = '0'; // 🔥 פורמט מספר שלם
-                ws[cellAddress].t = 'n'; // 🔥 טיפוס מספר
-            }
-        });
-        
-        // 🔥 עמודות כספיות (E, F, G, H, I, K, O, Q) - פורמט כסף
-        ['E', 'F', 'G', 'H', 'I', 'K', 'O', 'Q'].forEach(col => {
-            const cellAddress = col + (R + 1);
-            if (ws[cellAddress] && typeof ws[cellAddress].v === 'number' && ws[cellAddress].v !== '') {
-                ws[cellAddress].z = '#,##0.00₪'; // 🔥 פורמט כסף עם סמל שקל
-                ws[cellAddress].t = 'n'; // 🔥 טיפוס מספר
-            }
-        });
-        
-        // 🔥 עמודת פער (P) - מספר שלם עם צבע (חיובי/שלילי)
-        const peerCellAddress = 'P' + (R + 1);
-        if (ws[peerCellAddress] && typeof ws[peerCellAddress].v === 'number') {
-            if (ws[peerCellAddress].v > 0) {
-                ws[peerCellAddress].z = '+#,##0₪;[RED]-#,##0₪'; // 🔥 חיובי בירוק, שלילי באדום
-            } else {
-                ws[peerCellAddress].z = '[GREEN]+#,##0₪;[RED]-#,##0₪'; // 🔥 חיובי בירוק, שלילי באדום
-            }
-            ws[peerCellAddress].t = 'n';
-        }
-    }
-    
-    // 3️⃣ עיצוב כותרות
-    for (let C = range.s.c; C <= range.e.c; C++) {
-        const headerAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-        if (ws[headerAddress]) {
-            ws[headerAddress].s = {
-                font: { bold: true, color: { rgb: "FFFFFF" } },
-                fill: { fgColor: { rgb: "4472C4" } },
-                alignment: { horizontal: "center", vertical: "center" }
-            };
-        }
-    }
     
     XLSX.utils.book_append_sheet(wb, ws, 'תוצאות מילואים');
     
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
-    
-    console.log('✅ ייצוא הושלם עם פורמטים נכונים!');
 }
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFileUpload();
+            
+            // הודעת לוג על התיקונים
+            console.log('🔥 מחשבון מילואים - גרסה מתוקנת!');
+            console.log('✅ תוקן: parseExcelDate (value-1 במקום value-2)');
+            console.log('✅ תוקן: ApplyBrutoMinimumFromCSV מוגדר');
+            console.log('✅ תוקן: ApplyFinalLimitsFromCSV מוגדר');
+            console.log('✅ תוקן: GetBrutoForMonth מחיל ברוטו מינימלי');
+            console.log('✅ תוקן: calculateBasicDailyValue משתמש בגבולות סופיים');
+            
+            document.getElementById('calculateBtn').addEventListener('click', function() {
+    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
+    
+    console.log(`מספר עובדים לחישוב: ${uniqueEmployees.length}`);
+    
+    // אם יש יותר מ-100 עובדים, השתמש בגרסה המקוטעת
+    if (uniqueEmployees.length > 100) {
+        console.log('משתמש בחישוב מקוטע (Batched)');
+        calculateMiluim({
+            batchSize: 20,
+            showProgress: true,
+            enableCancel: true
+        });
+    } else {
+        console.log('îùúîù áçéùåá øâéì');
+        calculateMiluim({
+            batchSize: 0,
+            showProgress: false
+        });
+    }
+});
+
+            // Event listeners לעובד בודד
+if (document.getElementById('employeeInput')) {
+    document.getElementById('employeeInput').addEventListener('input', validateEmployee);
+    document.getElementById('employeeInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !document.getElementById('calculateSingleBtn').disabled) {
+           const selectedEmployee = document.getElementById('employeeInput').value.trim();
+    calculateMiluim({
+        employeeIds: [selectedEmployee],
+        addEmployeeHeader: true,
+        batchSize: 0
+    });
+        }
+    });
+}
+            
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                miluimData = [];
+                salaryData = [];
+                attendanceData = [];
+                calculationResults = [];
+                
+                // Reset upload status
+                document.querySelector('.upload-card').classList.remove('uploaded');
+                updateUploadStatus(false);
+                
+                // Reset sheet status
+                updateSheetStatus('sheet1Status', false, '📊 גליון מילואים: ❌');
+                updateSheetStatus('sheet2Status', false, '💰 גליון שכר: ❌');
+                updateSheetStatus('sheet3Status', false, '📅 גליון נוכחות: ❌');
+                document.getElementById('sheetsStatus').style.display = 'none';
+                
+                // Clear file input
+                document.getElementById('excelFile').value = '';
+                
+                // Remove messages
+                document.querySelectorAll('.success, .error').forEach(msg => msg.remove());
+                
+                // Reset UI
+                document.getElementById('calculateBtn').disabled = true;
+                document.getElementById('resultsContainer').innerHTML = '';
+                document.getElementById('summaryStats').style.display = 'none';
+                document.getElementById('exportSection').style.display = 'none';
+            });
+            
+            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            
+            // Modal close
+            document.querySelector('.close').addEventListener('click', function() {
+                document.getElementById('detailsModal').style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('detailsModal');
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Filters - עם פונקציה גלובלית
+            document.getElementById('employeeFilter').addEventListener('input', applyFilters);
+            document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+            
+            // הוספת פונקציה גלובלית
+            window.clearFilters = clearFilters;
+        });
 // משתנה גלובלי
 let filterWorker = null;
 
