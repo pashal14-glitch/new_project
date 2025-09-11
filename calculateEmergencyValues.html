@@ -1008,99 +1008,105 @@ function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
             return Math.max(basicValue, previousValue);
         }
 
- function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
-   // For miluim before emergency period
-   if (serviceStartDate < EMERGENCY_START) {
-       return {
-           value: recommendedValue,
-           isLocked: false
-       };
-   } 
+function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
+    // For miluim before emergency period
+    if (serviceStartDate < EMERGENCY_START) {
+        return {
+            value: recommendedValue,
+            isLocked: false
+        };
+    } 
 
-   // àí ìà ÷éáìðå isNewMiluim, çùá àåúå
-   if (isNewMiluim === null) {
-       const allEmployeeRecords = miluimData
-           .filter(m => m.employeeId === employeeId)
-           .map(m => ({
-               startDate: m.startDate,
-               endDate: m.endDate
-           }));
-       isNewMiluim = IsNewMiluim(employeeId, serviceStartDate, allEmployeeRecords);
-   }   
+    // אם לא קיבלנו isNewMiluim, חשב אותו
+    if (isNewMiluim === null) {
+        const allEmployeeRecords = miluimData
+            .filter(m => m.employeeId === employeeId)
+            .map(m => ({
+                startDate: m.startDate,
+                endDate: m.endDate
+            }));
+        isNewMiluim = IsNewMiluim(employeeId, serviceStartDate, allEmployeeRecords);
+    }   
 
-   // For emergency period - check if part of existing cluster
-   let isNewCluster = true;
-   
-   // Check if this is part of existing emergency cluster
-   for (let miluim of miluimData) {
-       if (miluim.employeeId === employeeId) {
-           const miluimEnd = parseExcelDate(miluim.endDate);
-           const miluimStart = parseExcelDate(miluim.startDate);
-           
-           if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-const daysDiff = (serviceStartDate - miluimEnd) / (1000 * 60 * 60 * 24);
-               
-               // If gap is <= 90 days, same cluster
-               if (daysDiff <= 90) {
-                   isNewCluster = false;
-                   break;
-               }
-           }
-       }
-   }
-   
-   // If part of existing cluster, check if need to limit value
-   if (!isNewCluster) {
-       // Find cluster start date (same logic as in calculateEmergencyValues)
-       const employeeMiluim = miluimData
-           .filter(m => m.employeeId === employeeId)
-           .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
-           .filter(m => m.endDate < serviceStartDate && m.startDate >= EMERGENCY_START)
-           .sort((a, b) => b.endDate - a.endDate);
-       
-       let clusterStartDate = serviceStartDate;
-       let checkDate = serviceStartDate;
-       
-       for (let prevMiluim of employeeMiluim) {
-           const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
-           if (gap <= 90) {
-               clusterStartDate = prevMiluim.startDate;
-               checkDate = prevMiluim.startDate;
-           } else {
-               break;
-           }
-       }
+    // For emergency period - check if part of existing cluster
+    let isNewCluster = true;
     
-       // ?? ùéîåù á-CACHE ìçéùåá òøê J ùì úçéìú äàùëåì
-       let clusterJValue;
-       const clusterKey = cacheSystem.createKey(employeeId, clusterStartDate);
+    // Check if this is part of existing emergency cluster
+    for (let miluim of miluimData) {
+        if (miluim.employeeId === employeeId) {
+            const miluimEnd = parseExcelDate(miluim.endDate);
+            const miluimStart = parseExcelDate(miluim.startDate);
+            
+            if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
+                // 🔥 תיקון: חישוב 90 ימים מתחילת חודש השירות
+                const checkDate90 = calculateCheckDateFromMonthStart(serviceStartDate, 90);
+                const daysDiff = (checkDate90 - miluimEnd) / (1000 * 60 * 60 * 24);
+                
+                // If gap is <= 90 days, same cluster
+                if (daysDiff <= 90) {
+                    isNewCluster = false;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // If part of existing cluster, check if need to limit value
+    if (!isNewCluster) {
+        // Find cluster start date (same logic as in calculateEmergencyValues)
+        const employeeMiluim = miluimData
+            .filter(m => m.employeeId === employeeId)
+            .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
+            .filter(m => m.endDate < serviceStartDate && m.startDate >= EMERGENCY_START)
+            .sort((a, b) => b.endDate - a.endDate);
+        
+        let clusterStartDate = serviceStartDate;
+        // 🔥 תיקון: התחלה עם תחילת חודש השירות פחות 90 ימים
+        let checkDate = calculateCheckDateFromMonthStart(serviceStartDate, 90);
+        
+        for (let prevMiluim of employeeMiluim) {
+            // 🔥 תיקון: חישוב עקבי של 90 ימים מתחילת חודש
+            const checkDate90 = calculateCheckDateFromMonthStart(checkDate, 90);
+            const gap = (checkDate90 - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
+            
+            if (gap <= 90) {
+                clusterStartDate = prevMiluim.startDate;
+                checkDate = prevMiluim.startDate;
+            } else {
+                break;
+            }
+        }
+     
+        // שימוש ב-CACHE לחישוב ערך J של תחילת האשכול
+        let clusterJValue;
+        const clusterKey = cacheSystem.createKey(employeeId, clusterStartDate);
+        
+        if (cacheSystem.cache.has(clusterKey)) {
+            // קח מהמטמון
+            const cachedClusterResult = cacheSystem.cache.get(clusterKey);
+            clusterJValue = cachedClusterResult.recommendedValue * 1.2;
+            console.log(`🎯 CACHE HIT לתחילת אשכול: ${clusterKey}`);
+        } else {
+            // fallback - חישוב רגיל
+            const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
+            const clusterRecommendedValue = calculateRecommendedValue(employeeId, clusterStartDate, clusterStartCalc.dailyValue);
+            clusterJValue = clusterRecommendedValue * 1.2;
+            console.log(`🔄 חישוב fallback לתחילת אשכול: ${clusterKey}`);
+        }
        
-       if (cacheSystem.cache.has(clusterKey)) {
-           // ? ÷ç îäîèîåï
-           const cachedClusterResult = cacheSystem.cache.get(clusterKey);
-           clusterJValue = cachedClusterResult.recommendedValue * 1.2;
-           console.log(`? CACHE HIT ìúçéìú àùëåì: ${clusterKey}`);
-       } else {
-           // fallback - çéùåá øâéì
-           const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
-           const clusterRecommendedValue = calculateRecommendedValue(employeeId, clusterStartDate, clusterStartCalc.dailyValue);
-           clusterJValue = clusterRecommendedValue * 1.2;
-           console.log(`?? çéùåá fallback ìúçéìú àùëåì: ${clusterKey}`);
-       }
-      
-       // Only limit if current value is higher than cluster J value AND it's new miluim
-       if (recommendedValue > clusterJValue && isNewMiluim) {
-           return {
-               value: clusterJValue,
-               isLocked: true // òøê ðòåì áâìì òøê âáåä
-           };
-       }
-   }
-   
-   return {
-       value: recommendedValue,
-       isLocked: false
-   };
+        // Only limit if current value is higher than cluster J value AND it's new miluim
+        if (recommendedValue > clusterJValue && isNewMiluim) {
+            return {
+                value: clusterJValue,
+                isLocked: true // ערך נעול בגלל ערך גבוה
+            };
+        }
+    }
+    
+    return {
+        value: recommendedValue,
+        isLocked: false
+    };
 }
         function calculateEmergencyValues(employeeId, serviceStartDate, continuousValue) {
             if (serviceStartDate < EMERGENCY_START) {
