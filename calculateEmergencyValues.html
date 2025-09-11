@@ -1008,7 +1008,7 @@ function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
             return Math.max(basicValue, previousValue);
         }
 
-            function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
+ function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
    // For miluim before emergency period
    if (serviceStartDate < EMERGENCY_START) {
        return {
@@ -1038,8 +1038,7 @@ function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
            const miluimStart = parseExcelDate(miluim.startDate);
            
            if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-    const serviceMonthStart = getMonthStart(serviceStartDate);
-    const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
+const daysDiff = (serviceStartDate - miluimEnd) / (1000 * 60 * 60 * 24);
                
                // If gap is <= 90 days, same cluster
                if (daysDiff <= 90) {
@@ -1103,7 +1102,7 @@ function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
        isLocked: false
    };
 }
-     function calculateEmergencyValues(employeeId, serviceStartDate, continuousValue) {
+        function calculateEmergencyValues(employeeId, serviceStartDate, continuousValue) {
             if (serviceStartDate < EMERGENCY_START) {
                 return {
                     emergencyValue: 0,
@@ -1123,8 +1122,8 @@ function calculateCheckDateFromMonthStart(serviceStartDate, daysBack) {
                     const miluimStart = parseExcelDate(miluim.startDate);
                     
                     if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-                const serviceMonthStart = getMonthStart(serviceStartDate);
-                const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
+            const checkDate90 = calculateCheckDateFromMonthStart(serviceStartDate, 90);
+            const daysDiff = (checkDate90 - miluimEnd) / (1000 * 60 * 60 * 24);
                         
                         // If gap is <= 90 days, same cluster
                         if (daysDiff <= 90) {
