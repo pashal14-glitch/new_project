@@ -2204,7 +2204,9 @@ function showDetails(index) {
                 case 'locked':
                     return result.limitedByNewMiluim || result.isValueLocked;
                 case 'gap':
-                    return result.amountDifference && result.amountDifference !== 0;
+                    const calculatedDifference = (result.paidAmount || 0) - (result.continuousValue || 0);
+                    return Math.abs(calculatedDifference) > 1; // 
+                   // return result.amountDifference && result.amountDifference !== 0;
                 case 'crossMonth':
                      return isCrossMonthService(result); 
                      default:                   
