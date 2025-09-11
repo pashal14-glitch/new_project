@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -652,7 +653,7 @@ class MiluimCalculatorCache {
     const recommendedValue = calculateRecommendedValue(employeeId, serviceStartDate, basicResult.dailyValue);
     
     const allEmployeeRecords = miluimData
-        .filter(m => m.employeeId === employeeId)
+        .filter(m => m.employeeId == employeeId)
         .map(m => ({
             startDate: m.startDate,
             endDate: m.endDate
@@ -665,7 +666,7 @@ class MiluimCalculatorCache {
     const emergencyValues = calculateEmergencyValues(employeeId, serviceStartDate, continuousResult.value);
     
     const originalMiluim = miluimData.find(m =>
-        m.employeeId === employeeId && 
+        m.employeeId == employeeId && 
         parseExcelDate(m.startDate).getTime() === serviceStartDate.getTime()
     );
 
@@ -812,6 +813,11 @@ const cacheSystem = new MiluimCalculatorCache();
     
     return `${day}.${month}.${year}`;
 }
+// פונקציה שמחשבת תחילת חודש של שירות 
+function getServiceMonthStart(serviceStartDate) {
+    const dateObj = serviceStartDate instanceof Date ? serviceStartDate : new Date(serviceStartDate);
+    return new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
+}
 
         function formatCurrency(amount) {
             return new Intl.NumberFormat('he-IL', {
@@ -846,7 +852,7 @@ const cacheSystem = new MiluimCalculatorCache();
             let bestBruto = 0;
             
             for (let salary of salaryData) {
-                if (salary.employeeId === employeeId) {
+                if (salary.employeeId == employeeId) {
                     const salaryDate = parseExcelDate(salary.monthYear);
                     if (salaryDate && salaryDate >= monthStart && salaryDate <= monthEnd) {
                         bestBruto = Math.max(bestBruto, salary.bruto || 0);
@@ -868,7 +874,7 @@ const cacheSystem = new MiluimCalculatorCache();
     const isNewMiluim = serviceStartDate >= new Date(2025, 4, 1); // 1 במאי 2025
     
     for (let attendance of attendanceData) {
-        if (attendance.employeeId === employeeId) {
+        if (attendance.employeeId == employeeId) {
             const attendanceDate = parseExcelDate(attendance.monthYear);
             if (attendanceDate >= monthStart && attendanceDate <= monthEnd) {
                 // בחר את העמודה הנכונה לפי סוג המילואים
@@ -930,7 +936,7 @@ const cacheSystem = new MiluimCalculatorCache();
     
 
     const employeeMiluim = miluimData
-        .filter(m => m.employeeId === employeeId)
+        .filter(m => m.employeeId == employeeId)
         .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
         .filter(m => m.startDate && m.endDate && m.endDate < serviceStartDate)
         .sort((a, b) => b.endDate - a.endDate);
@@ -963,14 +969,14 @@ const cacheSystem = new MiluimCalculatorCache();
 
     // For regular miluim - check previous service in 60 days before
     
-    const checkDate = new Date(serviceStartDate);
-    checkDate.setDate(checkDate.getDate() - 60);
-    
+    const serviceMonthStart = getServiceMonthStart(serviceStartDate);
+const checkDate = new Date(serviceMonthStart);
+checkDate.setDate(checkDate.getDate() - 60);
     
     let previousValue = 0;
     
     for (let miluim of miluimData) {
-        if (miluim.employeeId === employeeId) {
+        if (miluim.employeeId == employeeId) {
             const miluimEnd = parseExcelDate(miluim.endDate);
             const miluimStart = parseExcelDate(miluim.startDate);
             
@@ -1006,7 +1012,7 @@ const cacheSystem = new MiluimCalculatorCache();
    // àí ìà ÷éáìðå isNewMiluim, çùá àåúå
    if (isNewMiluim === null) {
        const allEmployeeRecords = miluimData
-           .filter(m => m.employeeId === employeeId)
+           .filter(m => m.employeeId == employeeId)
            .map(m => ({
                startDate: m.startDate,
                endDate: m.endDate
@@ -1019,12 +1025,13 @@ const cacheSystem = new MiluimCalculatorCache();
    
    // Check if this is part of existing emergency cluster
    for (let miluim of miluimData) {
-       if (miluim.employeeId === employeeId) {
+       if (miluim.employeeId == employeeId) {
            const miluimEnd = parseExcelDate(miluim.endDate);
            const miluimStart = parseExcelDate(miluim.startDate);
            
            if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-               const daysDiff = (serviceStartDate - miluimEnd) / (1000 * 60 * 60 * 24);
+               const serviceMonthStart = getServiceMonthStart(serviceStartDate);
+               const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
                
                // If gap is <= 90 days, same cluster
                if (daysDiff <= 90) {
@@ -1039,19 +1046,19 @@ const cacheSystem = new MiluimCalculatorCache();
    if (!isNewCluster) {
        // Find cluster start date (same logic as in calculateEmergencyValues)
        const employeeMiluim = miluimData
-           .filter(m => m.employeeId === employeeId)
+           .filter(m => m.employeeId == employeeId)
            .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
            .filter(m => m.endDate < serviceStartDate && m.startDate >= EMERGENCY_START)
            .sort((a, b) => b.endDate - a.endDate);
        
        let clusterStartDate = serviceStartDate;
-       let checkDate = serviceStartDate;
+       let checkDate = getServiceMonthStart(serviceStartDate);
        
        for (let prevMiluim of employeeMiluim) {
            const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
            if (gap <= 90) {
                clusterStartDate = prevMiluim.startDate;
-               checkDate = prevMiluim.startDate;
+              checkDate = getServiceMonthStart(prevMiluim.startDate);
            } else {
                break;
            }
@@ -1103,12 +1110,13 @@ const cacheSystem = new MiluimCalculatorCache();
             let clusterStartDate = serviceStartDate;
             
             for (let miluim of miluimData) {
-                if (miluim.employeeId === employeeId) {
+                if (miluim.employeeId == employeeId) {
                     const miluimEnd = parseExcelDate(miluim.endDate);
                     const miluimStart = parseExcelDate(miluim.startDate);
                     
                     if (miluimEnd < serviceStartDate && miluimStart >= EMERGENCY_START) {
-                        const daysDiff = (serviceStartDate - miluimEnd) / (1000 * 60 * 60 * 24);
+                      const serviceMonthStart = getServiceMonthStart(serviceStartDate);
+                      const daysDiff = (serviceMonthStart - miluimEnd) / (1000 * 60 * 60 * 24);
                         
                         // If gap is <= 90 days, same cluster
                         if (daysDiff <= 90) {
@@ -1123,19 +1131,19 @@ const cacheSystem = new MiluimCalculatorCache();
 if (!isNewCluster) {
     // Create array of all employee miluim before current date
     const employeeMiluim = miluimData
-        .filter(m => m.employeeId === employeeId)
+        .filter(m => m.employeeId == employeeId)
         .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
         .filter(m => m.endDate < serviceStartDate && m.startDate >= EMERGENCY_START)
         .sort((a, b) => b.endDate - a.endDate);
     
-    // Go backward to find cluster start
-    let checkDate = serviceStartDate;
-    for (let prevMiluim of employeeMiluim) {
-        const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
-        if (gap <= 90) {
-            clusterStartDate = prevMiluim.startDate;
-            checkDate = prevMiluim.startDate;
-            
+
+   // Go backward to find cluster start
+let checkDate = getServiceMonthStart(serviceStartDate);
+for (let prevMiluim of employeeMiluim) {
+    const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
+    if (gap <= 90) {
+        clusterStartDate = prevMiluim.startDate;
+        checkDate = getServiceMonthStart(prevMiluim.startDate);           
             // If reached pre-emergency period, stop
             if (prevMiluim.startDate < EMERGENCY_START) {
                 break;
@@ -1161,7 +1169,7 @@ if (!isNewCluster) {
 }
 // 🔥 הוסף פונקציה לבדיקת תקופות גולשות מקוריות
 function hasOriginalCrossMonthPeriods(employeeId) {
-    const employeeOriginalPeriods = miluimData.filter(m => m.employeeId === employeeId);
+    const employeeOriginalPeriods = miluimData.filter(m => m.employeeId == employeeId);
     
     for (let period of employeeOriginalPeriods) {
         if (typeof period.startDate === 'number' && typeof period.endDate === 'number') {
@@ -1185,7 +1193,7 @@ function hasOriginalCrossMonthPeriods(employeeId) {
 
 // 🔥 עדכן את calculateMiluimForEmployeeWithCache
 function calculateMiluimForEmployeeWithCache(employeeId) {
-    const employeeMiluim = miluimData.filter(m => m.employeeId === employeeId);
+    const employeeMiluim = miluimData.filter(m => m.employeeId == employeeId);
     const results = [];
     
     // 🔥 חשב פעם אחת לכל עובד
@@ -1763,7 +1771,7 @@ if (uniqueEmployees.length > 100) {
         
         let originalBruto = 0;
         for (let salary of salaryData) {
-            if (salary.employeeId === employeeId) {
+            if (salary.employeeId == employeeId) {
                 const salaryDate = parseExcelDate(salary.monthYear);
                 if (salaryDate && salaryDate >= monthStart && salaryDate <= monthEnd) {
                     originalBruto = Math.max(originalBruto, salary.bruto || 0);
