@@ -1219,7 +1219,8 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
             ...cacheResult,
             endDate: endDate,
             miluimDays: miluim.miluimDays || Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1,
-            hasOriginalCrossMonthPeriods: hasCrossMonthPeriods  // 🔥 הוסף את המאפיין!
+            hasOriginalCrossMonthPeriods: hasCrossMonthPeriods,  // 🔥 הוסף את המאפיין!
+            isCrossMonth: miluim.crossMonth === 1 
         };
         
         results.push(result);
@@ -2224,8 +2225,9 @@ function exportToExcel() {
                 case 'gap':
                     const calculatedDifference = (result.paidAmount || 0) - (result.continuousValue || 0);
                     return Math.abs(calculatedDifference) > 1;
-                case 'crossMonth':
-                     return isCrossMonthService(result); 
+               case 'crossMonth':
+               if (!result.isCrossMonth) return false;
+             break;
                      default:                   
                     return true;
             }
@@ -2510,8 +2512,8 @@ function createInlineWorker() {
                             if (Math.abs(result.paidAmount - result.continuousValue) <= 1) return false;
                             break;
                         case 'crossMonth':
-                            if (!isCrossMonthService(result)) return false;
-                            break;
+                       if (!result.isCrossMonth) return false;
+                      break;
                         case 'regular':
                             // צריך להעביר קבועים
                             const EMERGENCY_START = new Date('2023-10-07');
