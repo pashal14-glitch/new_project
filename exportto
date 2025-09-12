@@ -1189,7 +1189,16 @@ function hasOriginalCrossMonthPeriods(employeeId) {
     }
     return false;
 }
-
+function isCrossMonthService(result) {
+    // חפש את הרשומה המתאימה בנתוני המילואים
+    const miluimRecord = self.miluimData.find(m => 
+        m.employeeId == result.employeeId && 
+        Math.abs(parseExcelDate(m.startDate) - result.startDate) < 86400000
+    );
+    
+    // קרא מעמודה 13 (אינדקס 12) - 0 = לא גולש, 1 = גולש
+    return miluimRecord?.crossMonth === 1;
+}
 // 🔥 עדכן את calculateMiluimForEmployeeWithCache
 function calculateMiluimForEmployeeWithCache(employeeId) {
     const employeeMiluim = miluimData.filter(m => m.employeeId == employeeId);
@@ -1545,7 +1554,8 @@ async function calculateMiluim(config = {}) {
                         endDate: row[2],
                         days: row[3],
                         paidAmount: parseFloat(row[11]),
-                        compulsion: parseFloat(row[12])
+                        compulsion: parseFloat(row[12]),
+                        crossMonth:row[13]
                     })).filter(item => item.employeeId);
                     break;
                     
@@ -2474,30 +2484,7 @@ function createInlineWorker() {
         self.onmessage = function(e) {
             const { results, filters, miluimData } = e.data;
             self.miluimData = miluimData;
-            
-            // 🔥 פונקציה מתוקנת עם החישוב הפשוט
-            function isCrossMonthService(result) {
-                if (!self.miluimData) return false;
                 
-                const employeeOriginalPeriods = self.miluimData.filter(m => 
-                    m.employeeId === result.employeeId
-                );
-                
-                for (let period of employeeOriginalPeriods) {
-                    // 🔥 השתמש בחישוב הפשוט
-                    const startDate = simpleExcelToDate(period.startDate);
-                    const endDate = simpleExcelToDate(period.endDate);
-                    
-                    if (startDate && endDate) {
-                        if (startDate.getMonth() !== endDate.getMonth() || 
-                            startDate.getFullYear() !== endDate.getFullYear()) {
-                            return true;
-                        }
-                    }
-                }
-                
-                return false;
-            }    
             // הסינון
             let filteredResults = results.filter(result => {
                 // סינון עובד
