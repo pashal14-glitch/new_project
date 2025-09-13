@@ -2793,19 +2793,64 @@ function applyFiltersRegular() {
 // ========================
 // שלב ב' - אנליזה מתקדמת
 // ========================
-
 function analyzeGaps_basic() {
-    console.log("🔍 מתחיל ניתוח מתקדם...");
+    console.log("🔍 מתחיל ניתוח פערים...");
     
     if (!calculationResults || calculationResults.length === 0) {
-        alert("לא נמצאו תוצאות חישוב. הרץ תחילה 'חשב מילואים'");
+        alert("❌ לא נמצאו תוצאות חישוב. הרץ תחילה 'חשב מילואים'");
         return;
     }
     
-    const analysis = categorizeGaps();
-    showAnalysisWindow(analysis);
+    let totalRecords = calculationResults.length;
+    let gapsFound = 0;
+    let noGaps = 0;
+    
+    calculationResults.forEach((result, index) => {
+        // הפער הנכון: עמודה L (paidAmount) מינוס עמודה G (continuousValue)
+        const columnG = result.continuousValue || 0;
+        const columnL = result.paidAmount || 0;
+        const gap = Math.abs(columnL - columnG);
+        
+        if (columnL > 0 && gap > 1) { // יש נתון בעמודה L ויש פער משמעותי
+            gapsFound++;
+            console.log(`פער זוהה - עובד ${result.employeeId}: עמודה G=${columnG.toFixed(2)}, עמודה L=${columnL.toFixed(2)}, פער=${gap.toFixed(2)}`);
+        } else {
+            noGaps++;
+        }
+    });
+    
+    // הצגת התוצאות
+    document.getElementById('analysisSummary').innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                <h4>סה"כ רשומות</h4>
+                <div style="font-size: 1.5em; color: #2196f3;">${totalRecords}</div>
+            </div>
+            <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                <h4>ללא פערים</h4>
+                <div style="font-size: 1.5em; color: #4caf50;">${noGaps}</div>
+                <small>(${(noGaps/totalRecords*100).toFixed(1)}%)</small>
+            </div>
+            <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                <h4>פערים זוהו</h4>
+                <div style="font-size: 1.5em; color: #ff9800;">${gapsFound}</div>
+                <small>(${(gapsFound/totalRecords*100).toFixed(1)}%)</small>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('analysisCategories').innerHTML = `
+        <h3>📋 פערים שנמצאו:</h3>
+        <p>נמצאו ${gapsFound} פערים בין עמודה G (ערך רציף) לעמודה L (ערך בשכר)</p>
+        <p>פרטים מלאים בקונסול (F12)</p>
+    `;
+    
+    // פתיחת החלון
+    document.getElementById('analysisOverlay').style.display = 'block';
+    document.getElementById('analysisWindow').style.display = 'block';
+    
+    console.log(`✅ ניתוח הושלם: ${gapsFound} פערים מתוך ${totalRecords} רשומות`);
 }
-
 function categorizeGaps() {
     const categories = {
         monthlyRule: { name: "ערך גבוה חודשי (לפני 1.5.2025)", status: "ok", items: [] },
