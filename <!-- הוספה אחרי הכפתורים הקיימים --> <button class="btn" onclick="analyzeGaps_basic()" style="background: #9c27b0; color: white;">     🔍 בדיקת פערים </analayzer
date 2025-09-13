@@ -2714,6 +2714,165 @@ function applyFiltersRegular() {
             itemsPerPage: calculationResults.length > 500 ? 100 : null });
             updateSummaryStats();
         }
+// ========================
+// שלב ב' - אנליזה מתקדמת
+// ========================
+
+function analyzeGaps_basic() {
+    console.log("🔍 מתחיל ניתוח מתקדם...");
+    
+    if (!calculationResults || calculationResults.length === 0) {
+        alert("לא נמצאו תוצאות חישוב. הרץ תחילה 'חשב מילואים'");
+        return;
+    }
+    
+    const analysis = categorizeGaps();
+    showAnalysisWindow(analysis);
+}
+
+function categorizeGaps() {
+    const categories = {
+        monthlyRule: { name: "ערך גבוה חודשי (לפני 1.5.2025)", status: "ok", items: [] },
+        continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [] },
+        missing60Days: { name: "חסר ערך מ-60 ימים", status: "fix", items: [] },
+        wrongCalculation: { name: "שגיאת סוג חישוב", status: "fix", items: [] },
+        minimumValues: { name: "ערכי מינימום שגויים", status: "fix", items: [] },
+        postMayMonthly: { name: "ערך חודשי אחרי 1.5.2025", status: "fix", items: [] },
+        unknown: { name: "לא מזוהה", status: "check", items: [] }
+    };
+    
+    let totalRecords = calculationResults.length;
+    let gapsFound = 0;
+    
+    calculationResults.forEach((result, index) => {
+        // בדיקה בסיסית אם יש פער
+        if (result.actualValue && result.calculatedValue) {
+            const gap = Math.abs(result.actualValue - result.calculatedValue);
+            
+            if (gap > 1) { // פער גדול מ-1 שקל
+                gapsFound++;
+                
+                // קטגוריזציה בסיסית (לדוגמה)
+                const serviceDate = new Date(result.startDate);
+                const isBefore2025 = serviceDate < new Date('2025-05-01');
+                
+                if (isBefore2025 && gap > result.calculatedValue * 0.1) {
+                    // סביר שזה ערך גבוה מאותו חודש
+                    categories.monthlyRule.items.push({
+                        employeeId: result.employeeId,
+                        period: result.startDate + " - " + result.endDate,
+                        gap: gap.toFixed(2),
+                        calculated: result.calculatedValue?.toFixed(2),
+                        actual: result.actualValue?.toFixed(2)
+                    });
+                } else if (gap < 10) {
+                    // פער קטן - ייתכן שזה בעיית מינימום
+                    categories.minimumValues.items.push({
+                        employeeId: result.employeeId,
+                        period: result.startDate + " - " + result.endDate,
+                        gap: gap.toFixed(2),
+                        calculated: result.calculatedValue?.toFixed(2),
+                        actual: result.actualValue?.toFixed(2)
+                    });
+                } else {
+                    // לא ברור - דורש בדיקה
+                    categories.unknown.items.push({
+                        employeeId: result.employeeId,
+                        period: result.startDate + " - " + result.endDate,
+                        gap: gap.toFixed(2),
+                        calculated: result.calculatedValue?.toFixed(2),
+                        actual: result.actualValue?.toFixed(2)
+                    });
+                }
+            }
+        }
+    });
+    
+    return {
+        totalRecords,
+        gapsFound,
+        noGaps: totalRecords - gapsFound,
+        categories
+    };
+}
+
+function showAnalysisWindow(analysis) {
+    // הצגת סיכום
+    document.getElementById('analysisSummary').innerHTML = `
+        <div class="summary-stat">
+            <h4>סה"כ רשומות</h4>
+            <div style="font-size: 1.5em; color: #2196f3;">${analysis.totalRecords}</div>
+        </div>
+        <div class="summary-stat">
+            <h4>ללא פערים</h4>
+            <div style="font-size: 1.5em; color: #4caf50;">${analysis.noGaps}</div>
+            <small>(${(analysis.noGaps/analysis.totalRecords*100).toFixed(1)}%)</small>
+        </div>
+        <div class="summary-stat">
+            <h4>פערים זוהו</h4>
+            <div style="font-size: 1.5em; color: #ff9800;">${analysis.gapsFound}</div>
+            <small>(${(analysis.gapsFound/analysis.totalRecords*100).toFixed(1)}%)</small>
+        </div>
+    `;
+    
+    // הצגת קטגוריות
+    let categoriesHTML = '';
+    Object.entries(analysis.categories).forEach(([key, category]) => {
+        if (category.items.length > 0) {
+            const statusIcon = category.status === 'ok' ? '✅' : category.status === 'fix' ? '❌' : '🤔';
+            const statusText = category.status === 'ok' ? 'תקין' : category.status === 'fix' ? 'דורש תיקון' : 'בדיקה ידנית';
+            
+            categoriesHTML += `
+                <div class="category-box category-${category.status}">
+                    <div class="category-header" onclick="toggleCategory('${key}')">
+                        <span>${statusIcon} ${category.name}</span>
+                        <span>${category.items.length} מקרים | ${statusText}</span>
+                    </div>
+                    <div class="category-content" id="category-${key}">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f0f0f0;">
+                                    <th style="padding: 8px; border: 1px solid #ddd;">עובד</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">תקופה</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">מחושב</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">בפועל</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">פער</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${category.items.map(item => `
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.employeeId}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.period}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.calculated} ₪</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.actual} ₪</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${item.gap} ₪</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    document.getElementById('analysisCategories').innerHTML = categoriesHTML;
+    
+    // הצגת החלון
+    document.getElementById('analysisOverlay').style.display = 'block';
+    document.getElementById('analysisWindow').style.display = 'block';
+}
+
+function toggleCategory(categoryId) {
+    const content = document.getElementById('category-' + categoryId);
+    content.style.display = content.style.display === 'block' ? 'none' : 'block';
+}
+
+function closeAnalysis() {
+    document.getElementById('analysisOverlay').style.display = 'none';
+    document.getElementById('analysisWindow').style.display = 'none';
+}
     </script>
 <!-- חלון אנליזה נפרד -->
 <div class="overlay" id="analysisOverlay" onclick="closeAnalysis()"></div>
