@@ -487,6 +487,7 @@
             <div class="controls">
                 <button class="btn" id="calculateBtn" disabled>🧮 חשב מילואים</button>
                 <button class="btn" id="clearBtn">🗑️ נקה הכל</button>
+                <button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;"   🔍 בדיקת פערים</button>
                 <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
     👤 חישוב לעובד בודד
 </button>
@@ -2710,6 +2711,46 @@ function applyFiltersRegular() {
             itemsPerPage: calculationResults.length > 500 ? 100 : null });
             updateSummaryStats();
         }
+// ========================
+// תוספת ניתוח פערים - שלב א'
+// ========================
+
+function analyzeGaps_basic() {
+    console.log("🔍 מתחיל ניתוח פערים...");
+    
+    // בדיקה שהנתונים זמינים
+    if (!calculationResults || calculationResults.length === 0) {
+        alert("❌ לא נמצאו תוצאות חישוב.\nהרץ תחילה 'חשב מילואים' או 'חשב לכל העובדים'");
+        return;
+    }
+    
+    console.log("📊 נמצאו", calculationResults.length, "תוצאות חישוב");
+    
+    // ספירה בסיסית של פערים
+    let gapsCount = 0;
+    let totalChecked = 0;
+    
+    calculationResults.forEach((result, index) => {
+        // בדיקה אם יש נתונים לבדיקה
+        if (result.continuousValue) {
+            totalChecked++;
+            
+            // לדוגמה - בדיקה פשוטה אם יש פער מהנתונים שיש לנו
+            const calculatedValue = result.continuousValue;
+            
+            // כאן נוכל לבדוק נגד נתונים אמיתיים כשיהיו
+            // לעת עתה רק נספור רשומות עם נתונים
+            
+            console.log(`רשומה ${index}: עובד ${result.employeeId}, ערך: ${calculatedValue}`);
+        }
+    });
+    
+    alert(`✅ ניתוח ראשוני הושלם!\n` +
+          `📊 נבדקו: ${totalChecked} רשומות\n` +
+          `🔍 פרטים נוספים בקונסול (לחץ F12)`);
+    
+    console.log("✅ ניתוח הושלם. נבדקו", totalChecked, "רשומות");
+}
     </script>
 </body>
 </html>
