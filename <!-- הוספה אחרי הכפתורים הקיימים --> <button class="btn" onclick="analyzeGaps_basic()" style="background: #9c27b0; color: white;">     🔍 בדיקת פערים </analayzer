@@ -457,82 +457,6 @@
                 padding: 8px 5px;
             }
         }
-/* עיצוב חלון אנליזה */
-.analysis-window {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 1000px;
-    height: 80%;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 1001;
-    display: none;
-    overflow: hidden;
-}
-
-.analysis-header {
-    background: linear-gradient(45deg, #9c27b0, #673ab7);
-    color: white;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.analysis-content {
-    padding: 20px;
-    height: calc(100% - 80px);
-    overflow-y: auto;
-}
-
-.analysis-summary {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-}
-
-.summary-stat {
-    text-align: center;
-    padding: 10px;
-    background: white;
-    border-radius: 5px;
-}
-
-.category-box {
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    overflow: hidden;
-}
-
-.category-header {
-    padding: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.category-ok { background: #e8f5e8; border-color: #4caf50; }
-.category-fix { background: #ffebee; border-color: #f44336; }
-.category-check { background: #fff3e0; border-color: #ff9800; }
-
-.category-content {
-    padding: 15px;
-    display: none;
-    background: #fafafa;
-    max-height: 300px;
-    overflow-y: auto;
-}
     </style>
 </head>
 <body>
@@ -563,10 +487,6 @@
             <div class="controls">
                 <button class="btn" id="calculateBtn" disabled>🧮 חשב מילואים</button>
                 <button class="btn" id="clearBtn">🗑️ נקה הכל</button>
-   <!-- הוספה אחרי הכפתורים הקיימים -->
-<button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;">
-    🔍 בדיקת פערים
-</button>
                 <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
     👤 חישוב לעובד בודד
 </button>
@@ -2790,64 +2710,6 @@ function applyFiltersRegular() {
             itemsPerPage: calculationResults.length > 500 ? 100 : null });
             updateSummaryStats();
         }
-// ========================
-// תוספת ניתוח פערים - שלב א'
-// ========================
-
-function analyzeGaps_basic() {
-    console.log("🔍 מתחיל ניתוח פערים...");
-    
-    // בדיקה שהנתונים זמינים
-    if (!calculationResults || calculationResults.length === 0) {
-        alert("❌ לא נמצאו תוצאות חישוב.\nהרץ תחילה 'חשב מילואים' או 'חשב לכל העובדים'");
-        return;
-    }
-    
-    console.log("📊 נמצאו", calculationResults.length, "תוצאות חישוב");
-    
-    // ספירה בסיסית של פערים
-    let gapsCount = 0;
-    let totalChecked = 0;
-    
-    calculationResults.forEach((result, index) => {
-        // בדיקה אם יש נתונים לבדיקה
-        if (result.continuousValue) {
-            totalChecked++;
-            
-            // לדוגמה - בדיקה פשוטה אם יש פער מהנתונים שיש לנו
-            const calculatedValue = result.continuousValue;
-            
-            // כאן נוכל לבדוק נגד נתונים אמיתיים כשיהיו
-            // לעת עתה רק נספור רשומות עם נתונים
-            
-            console.log(`רשומה ${index}: עובד ${result.employeeId}, ערך: ${calculatedValue}`);
-        }
-    });
-    
-    alert(`✅ ניתוח ראשוני הושלם!\n` +
-          `📊 נבדקו: ${totalChecked} רשומות\n` +
-          `🔍 פרטים נוספים בקונסול (לחץ F12)`);
-    
-    console.log("✅ ניתוח הושלם. נבדקו", totalChecked, "רשומות");
-}
-<!-- ===== תוספת חלון אנליזה - שלב ב' ===== -->
-<div class="overlay" id="analysisOverlay" onclick="closeAnalysis()" style="display: none;"></div>
-<div class="analysis-window" id="analysisWindow" style="display: none;">
-    <div class="analysis-header">
-        <h2>🔍 ניתוח פערים במילואים</h2>
-        <button class="close-btn" onclick="closeAnalysis()">×</button>
-    </div>
-    
-    <div class="analysis-content">
-        <div class="analysis-summary" id="analysisSummary">
-            <p>טוען נתונים...</p>
-        </div>
-        
-        <div class="analysis-categories" id="analysisCategories">
-            <p>מנתח פערים...</p>
-        </div>
-    </div>
-</div>
-<!-- ===== סוף תוספת חלון אנליזה ===== -->
+    </script>
 </body>
 </html>
