@@ -2830,10 +2830,9 @@ function analyzeGaps_basic() {
     
     console.log("✅ ניתוח הושלם. נבדקו", totalChecked, "רשומות");
 }
-    </script>
-<!-- חלון אנליזה נפרד -->
-<div class="overlay" id="analysisOverlay" onclick="closeAnalysis()"></div>
-<div class="analysis-window" id="analysisWindow">
+<!-- ===== תוספת חלון אנליזה - שלב ב' ===== -->
+<div class="overlay" id="analysisOverlay" onclick="closeAnalysis()" style="display: none;"></div>
+<div class="analysis-window" id="analysisWindow" style="display: none;">
     <div class="analysis-header">
         <h2>🔍 ניתוח פערים במילואים</h2>
         <button class="close-btn" onclick="closeAnalysis()">×</button>
@@ -2841,13 +2840,14 @@ function analyzeGaps_basic() {
     
     <div class="analysis-content">
         <div class="analysis-summary" id="analysisSummary">
-            <!-- סיכום כללי -->
+            <p>טוען נתונים...</p>
         </div>
         
         <div class="analysis-categories" id="analysisCategories">
-            <!-- קטגוריות פערים -->
+            <p>מנתח פערים...</p>
         </div>
     </div>
 </div>
+<!-- ===== סוף תוספת חלון אנליזה ===== -->
 </body>
 </html>
