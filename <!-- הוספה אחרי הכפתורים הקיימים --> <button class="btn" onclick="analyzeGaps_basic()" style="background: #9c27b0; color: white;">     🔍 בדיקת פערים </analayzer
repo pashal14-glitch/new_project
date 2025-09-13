@@ -487,6 +487,10 @@
             <div class="controls">
                 <button class="btn" id="calculateBtn" disabled>🧮 חשב מילואים</button>
                 <button class="btn" id="clearBtn">🗑️ נקה הכל</button>
+<!-- הוספה אחרי הכפתורים הקיימים -->
+<button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;">
+    🔍 בדיקת פערים
+</button>
                 <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
     👤 חישוב לעובד בודד
 </button>
