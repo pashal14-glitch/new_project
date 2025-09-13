@@ -2715,5 +2715,23 @@ function applyFiltersRegular() {
             updateSummaryStats();
         }
     </script>
+<!-- חלון אנליזה נפרד -->
+<div class="overlay" id="analysisOverlay" onclick="closeAnalysis()"></div>
+<div class="analysis-window" id="analysisWindow">
+    <div class="analysis-header">
+        <h2>🔍 ניתוח פערים במילואים</h2>
+        <button class="close-btn" onclick="closeAnalysis()">×</button>
+    </div>
+    
+    <div class="analysis-content">
+        <div class="analysis-summary" id="analysisSummary">
+            <!-- סיכום כללי -->
+        </div>
+        
+        <div class="analysis-categories" id="analysisCategories">
+            <!-- קטגוריות פערים -->
+        </div>
+    </div>
+</div>
 </body>
 </html>
