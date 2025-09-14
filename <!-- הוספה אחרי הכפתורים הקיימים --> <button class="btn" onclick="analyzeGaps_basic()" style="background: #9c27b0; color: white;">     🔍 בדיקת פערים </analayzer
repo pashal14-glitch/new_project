@@ -2877,30 +2877,32 @@ function categorizeGaps() {
                     details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
                 });
             }
-// בדיקה 2: ערך כפוי מרצף
-else if (checkContinuousCompulsionRule(result)) {
-    const compulsionCheck = checkContinuousCompulsionRule(result);
-    categories.continuousValue.items.push({
-        employeeId: result.employeeId,
-        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-        gap: gap.toFixed(2),
-        columnG: columnG.toFixed(2),
-        columnL: columnL.toFixed(2),
-        explanation: compulsionCheck.explanation,
-        details: `ערך כפייה רציף: ${compulsionCheck.compulsionValue.toFixed(2)}₪`
-    });
-}
-            // אחרת - לא מזוהה (כרגע)
+            // בדיקה 2: ערך כפוי מרצף
             else {
-                categories.unknown.items.push({
-                    employeeId: result.employeeId,
-                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                    gap: gap.toFixed(2),
-                    columnG: columnG.toFixed(2),
-                    columnL: columnL.toFixed(2),
-                    explanation: "סיבת הפער לא ברורה",
-                    details: "דורש בדיקה ידנית"
-                });
+                const compulsionCheck = checkContinuousCompulsionRule(result);
+                if (compulsionCheck) {
+                    categories.continuousValue.items.push({
+                        employeeId: result.employeeId,
+                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                        gap: "0", // אין פער - זה תקין!
+                        columnG: columnG.toFixed(2),
+                        columnL: columnL.toFixed(2),
+                        explanation: compulsionCheck.explanation,
+                        details: `ערך כפייה רציף: ${compulsionCheck.compulsionValue.toFixed(2)}₪`
+                    });
+                }
+                // אחרת - לא מזוהה
+                else {
+                    categories.unknown.items.push({
+                        employeeId: result.employeeId,
+                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                        gap: gap.toFixed(2),
+                        columnG: columnG.toFixed(2),
+                        columnL: columnL.toFixed(2),
+                        explanation: "סיבת הפער לא ברורה",
+                        details: "דורש בדיקה ידנית"
+                    });
+                }
             }
         } else {
             noGaps++;
@@ -2970,7 +2972,7 @@ function checkContinuousCompulsionRule(result) {
         return null; // אין ערך כפייה
     }
     
-    // בדיקה אם הערך בשכר תואם לערך הכפייה
+    // בדיקה אם הערך בשכר (עמודה L) תואם לערך הכפייה
     const columnL = result.paidAmount || 0;
     
     if (Math.abs(columnL - compulsionValue) <= 1) { // סטייה עד 1 ש"ח
