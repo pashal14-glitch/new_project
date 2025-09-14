@@ -3001,19 +3001,23 @@ function showAnalysisWindow(analysis) {
                                 <tr style="background: #f0f0f0;">
                                     <th style="padding: 8px; border: 1px solid #ddd;">עובד</th>
                                     <th style="padding: 8px; border: 1px solid #ddd;">תקופה</th>
-                                    <th style="padding: 8px; border: 1px solid #ddd;">מחושב</th>
-                                    <th style="padding: 8px; border: 1px solid #ddd;">בפועל</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">עמודה G</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">עמודה L</th>
                                     <th style="padding: 8px; border: 1px solid #ddd;">פער</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">הסבר</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd;">פרטים נוספים</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${category.items.map(item => `
                                     <tr>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.employeeId}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;"><strong>${item.employeeId}</strong></td>
                                         <td style="padding: 8px; border: 1px solid #ddd;">${item.period}</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.calculated} ₪</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.actual} ₪</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">${item.gap} ₪</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.columnG} ₪</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; background: #e8f5e8;"><strong>${item.columnL} ₪</strong></td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #ff9800;">${item.gap} ₪</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.9em;">${item.explanation}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.8em; color: #666;">${item.details || ''}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
