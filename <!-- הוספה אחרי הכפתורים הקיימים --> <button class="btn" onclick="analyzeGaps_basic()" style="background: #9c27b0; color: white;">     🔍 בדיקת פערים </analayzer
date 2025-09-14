@@ -2877,6 +2877,19 @@ function categorizeGaps() {
                     details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
                 });
             }
+// בדיקה 2: ערך כפוי מרצף
+else if (checkContinuousCompulsionRule(result)) {
+    const compulsionCheck = checkContinuousCompulsionRule(result);
+    categories.continuousValue.items.push({
+        employeeId: result.employeeId,
+        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+        gap: gap.toFixed(2),
+        columnG: columnG.toFixed(2),
+        columnL: columnL.toFixed(2),
+        explanation: compulsionCheck.explanation,
+        details: `ערך כפייה רציף: ${compulsionCheck.compulsionValue.toFixed(2)}₪`
+    });
+}
             // אחרת - לא מזוהה (כרגע)
             else {
                 categories.unknown.items.push({
@@ -2950,7 +2963,26 @@ function checkMonthlyRuleAdvanced(result, allResults) {
     
     return null; // לא תואם לכלל
 }
-
+function checkContinuousCompulsionRule(result) {
+    // בדיקה אם יש ערך כפייה רציף
+    const compulsionValue = result.compulsionContinuous || 0;
+    if (compulsionValue <= 0) {
+        return null; // אין ערך כפייה
+    }
+    
+    // בדיקה אם הערך בשכר תואם לערך הכפייה
+    const columnL = result.paidAmount || 0;
+    
+    if (Math.abs(columnL - compulsionValue) <= 1) { // סטייה עד 1 ש"ח
+        return {
+            matched: true,
+            explanation: "תקופה רצופה לתקופה עם ערך כפוי",
+            compulsionValue: compulsionValue
+        };
+    }
+    
+    return null; // לא תואם
+}
 function showAnalysisWindow(analysis) {
     // הצגת סיכום
     document.getElementById('analysisSummary').innerHTML = `
