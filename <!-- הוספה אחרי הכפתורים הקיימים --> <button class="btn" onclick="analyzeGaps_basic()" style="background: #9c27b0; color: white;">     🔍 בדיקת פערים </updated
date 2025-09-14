@@ -2880,23 +2880,28 @@ function categorizeGaps() {
                     details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
                 });
             }
-            // בדיקה 2: ערך כפוי מרצף
-           else {
+          // בדיקה 2: ערך כפוי מרצף
+else {
     const compulsionValue = result.compulsionContinuous || 0;
+    const compulsionOriginal = result.compulsion || 0;
     const columnL = result.paidAmount || 0;
     
-    if (compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1) {
+    // בדיקה אם עמודה L תואמת לעמודה N או עמודה O
+    const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
+    const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
+    
+    if (matchesN || matchesO) {
         categories.continuousValue.items.push({
             employeeId: result.employeeId,
             period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
             gap: gap.toFixed(2),
             columnG: columnG.toFixed(2),
             columnL: columnL.toFixed(2),
-            explanation: "תקופה רצופה לתקופה עם ערך כפוי",
-            details: `ערך כפייה רציף: ${compulsionValue.toFixed(2)}₪`
+            explanation: "תקופה עם ערך כפוי תקין",
+            details: matchesN ? `תואם עמודה N: ${compulsionOriginal}₪` : `תואם עמודה O: ${compulsionValue}₪`
         });
     }
-                // אחרת - לא מזוהה
+        // אחרת - לא מזוהה
                 else {
                     categories.unknown.items.push({
                         employeeId: result.employeeId,
