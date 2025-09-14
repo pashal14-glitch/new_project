@@ -2425,7 +2425,6 @@ function exportToExcel() {
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }
-
 function processCompulsionForExport(data) {
     // קיבוץ לפי עובד
     const employeeGroups = {};
