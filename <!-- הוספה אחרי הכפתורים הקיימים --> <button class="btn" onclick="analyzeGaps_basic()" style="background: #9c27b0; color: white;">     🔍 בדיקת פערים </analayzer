@@ -2864,12 +2864,7 @@ function categorizeGaps() {
         if (columnL > 0 && gap > 1) {
             gapsFound++;
             
-            // קטגוריזציה לפי הקוד הקיים
-            const serviceDate = result.startDate; // זה כבר Date object
-            const isBefore2025 = serviceDate < new Date('2025-05-01');
-            
-            // הוספת הפער לקטגוריה המתאימה (פשוט כרגע)
-        // בדיקה 1: כלל חודשי לפני 1.5.2025 - מתקדם
+            // בדיקה 1: כלל חודשי לפני 1.5.2025 - מתקדם
             const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
             if (monthlyCheck) {
                 categories.monthlyRule.items.push({
@@ -2882,23 +2877,16 @@ function categorizeGaps() {
                     details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
                 });
             }
-{
-                categories.monthlyRule.items.push({
-                    employeeId: result.employeeId,
-                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                    gap: gap.toFixed(2),
-                    columnG: columnG.toFixed(2),
-                    columnL: columnL.toFixed(2),
-                    explanation: "החוקה החילה ערך גבוה מאותו חודש"
-                });
-            } else {
+            // אחרת - לא מזוהה (כרגע)
+            else {
                 categories.unknown.items.push({
                     employeeId: result.employeeId,
                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
                     gap: gap.toFixed(2),
                     columnG: columnG.toFixed(2),
                     columnL: columnL.toFixed(2),
-                    explanation: "סיבת הפער לא ברורה"
+                    explanation: "סיבת הפער לא ברורה",
+                    details: "דורש בדיקה ידנית"
                 });
             }
         } else {
