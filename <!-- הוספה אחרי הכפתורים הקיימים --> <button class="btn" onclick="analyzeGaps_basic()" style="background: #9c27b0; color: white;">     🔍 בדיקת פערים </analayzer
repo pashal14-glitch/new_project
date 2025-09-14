@@ -2965,25 +2965,28 @@ function checkMonthlyRuleAdvanced(result, allResults) {
     
     return null; // לא תואם לכלל
 }
-function checkContinuousCompulsionRule(result) {
-    // בדיקה אם יש ערך כפייה רציף
+
+  function checkContinuousCompulsionRule(result) {
+    // בדיקה אם יש ערך כפייה רציף (הפונקציה כבר זיהתה שזה רצף)
     const compulsionValue = result.compulsionContinuous || 0;
     if (compulsionValue <= 0) {
-        return null; // אין ערך כפייה
+        return null; // לא זוהה כרצף עם כפייה
     }
     
     // בדיקה אם הערך בשכר (עמודה L) תואם לערך הכפייה
     const columnL = result.paidAmount || 0;
     
-    if (Math.abs(columnL - compulsionValue) <= 1) { // סטייה עד 1 ש"ח
+    // אם התואם - זה תקין!
+    if (Math.abs(columnL - compulsionValue) <= 1) {
         return {
             matched: true,
-            explanation: "תקופה רצופה לתקופה עם ערך כפוי",
+            explanation: "תקופה רצופה לתקופה עם ערך כפוי - תקין",
             compulsionValue: compulsionValue
         };
     }
     
-    return null; // לא תואם
+    return null; // לא תואם - לא צריך להכניס לקטגוריה הזו
+}
 }
 function showAnalysisWindow(analysis) {
     // הצגת סיכום
