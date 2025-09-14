@@ -1441,6 +1441,9 @@ async function calculateMiluim(config = {}) {
                     itemsPerPage: calculationResults.length > 200 ? 100 : null 
                 });
             }
+// *** עיבוד ערכי כפייה רציפה לטבלת התוצאות ***
+calculationResults = processCompulsionForExport(calculationResults);
+console.log('✅ ערכי כפייה רציפה חושבו ונוספו לטבלה');
             
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
@@ -2036,6 +2039,7 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>L-ערך בשכר</th>
                         <th>M-פער</th>
                         <th>N-ערך כפייה/th>
+                        <th>O - כפייה רציפה</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2073,6 +2077,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${result.paidAmount || 0}</td>
                 <td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)}</td>
                 <td>${result.compulsion  || 0}</td>
+                <td>${result.compulsionContinuous || 0}</td>
             </tr>
         `;
     });
@@ -2358,7 +2363,7 @@ function exportToExcel() {
     const processedData = processCompulsionForExport(dataToExport);
     
     const wsData = [
-        ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה']
+        ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה','O - כפייה רציפה']
     ];    
    
    for (let result of processedData) {
@@ -2880,19 +2885,21 @@ function categorizeGaps() {
                 });
             }
             // בדיקה 2: ערך כפוי מרצף
-            else {
-                const compulsionCheck = checkContinuousCompulsionRule(result);
-                if (compulsionCheck) {
-                    categories.continuousValue.items.push({
-                        employeeId: result.employeeId,
-                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                        gap: "0", // אין פער - זה תקין!
-                        columnG: columnG.toFixed(2),
-                        columnL: columnL.toFixed(2),
-                        explanation: compulsionCheck.explanation,
-                        details: `ערך כפייה רציף: ${compulsionCheck.compulsionValue.toFixed(2)}₪`
-                    });
-                }
+           else {
+    const compulsionValue = result.compulsionContinuous || 0;
+    const columnL = result.paidAmount || 0;
+    
+    if (compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1) {
+        categories.continuousValue.items.push({
+            employeeId: result.employeeId,
+            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+            gap: gap.toFixed(2),
+            columnG: columnG.toFixed(2),
+            columnL: columnL.toFixed(2),
+            explanation: "תקופה רצופה לתקופה עם ערך כפוי",
+            details: `ערך כפייה רציף: ${compulsionValue.toFixed(2)}₪`
+        });
+    }
                 // אחרת - לא מזוהה
                 else {
                     categories.unknown.items.push({
@@ -2967,29 +2974,6 @@ function checkMonthlyRuleAdvanced(result, allResults) {
     
     return null; // לא תואם לכלל
 }
-
-  function checkContinuousCompulsionRule(result) {
-    // בדיקה אם יש ערך כפייה רציף (הפונקציה כבר זיהתה שזה רצף)
-    const compulsionValue = result.compulsionContinuous || 0;
-    if (compulsionValue <= 0) {
-        return null; // לא זוהה כרצף עם כפייה
-    }
-    
-    // בדיקה אם הערך בשכר (עמודה L) תואם לערך הכפייה
-    const columnL = result.paidAmount || 0;
-    
-    // אם התואם - זה תקין!
-    if (Math.abs(columnL - compulsionValue) <= 1) {
-        return {
-            matched: true,
-            explanation: "תקופה רצופה לתקופה עם ערך כפוי - תקין",
-            compulsionValue: compulsionValue
-        };
-    }
-    
-    return null; // לא תואם - לא צריך להכניס לקטגוריה הזו
-}
-
 function showAnalysisWindow(analysis) {
     // הצגת סיכום
     document.getElementById('analysisSummary').innerHTML = `
