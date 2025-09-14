@@ -2413,8 +2413,8 @@ function exportToExcel() {
         return;
     }
     
-    // 🔥 החלק החדש - עיבוד ערך כפייה רצוף
-    const processedData = processCompulsionForExport(dataToExport);
+// השתמש בנתונים הקיימים עם הכפייה הרציפה שכבר חושבה
+const processedData = dataToExport;
     
     const wsData = [
         ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה','O - כפייה רציפה']
@@ -2438,7 +2438,8 @@ function exportToExcel() {
             result.isNewCluster ? 'כן' : 'לא',
             parseFloat(result.paidAmount || 0),     
             parseFloat(((result.paidAmount || 0) - result.continuousValue).toFixed(0)), 
-            parseFloat(result.compulsionContinuous || result.compulsion || 0)  // 🔥 השדה החדש!
+            parseFloat(result.compulsion || 0),
+            parseFloat(result.compulsionContinuous || 0)
         ]);
     }
     
