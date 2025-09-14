@@ -1498,6 +1498,7 @@ async function calculateMiluim(config = {}) {
 // *** עיבוד ערכי כפייה רציפה לטבלת התוצאות ***
 calculateCompulsionContinuous();
 console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
+displayResults(calculationResults);
             
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
