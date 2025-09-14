@@ -2426,7 +2426,7 @@ function exportToExcel() {
     XLSX.writeFile(wb, fileName);
 }
 
-// 🔥 הפונקציה החדשה לעיבוד ערך כפייה רצוף
+// 🔥 הפונקציה המתוקנת לעיבוד ערך כפייה רצוף
 function processCompulsionForExport(data) {
     // קבוצת נתונים לפי עובד
     const employeeGroups = {};
@@ -2451,23 +2451,26 @@ function processCompulsionForExport(data) {
             const current = employeeData[i];
             const prev = i > 0 ? employeeData[i-1] : null;
             
-            // בדיקה אם יש רצף (פער <= 1 יום)
             if (prev) {
                 const gapDays = (current.startDate - prev.endDate) / (1000 * 60 * 60 * 24);
                 
                 if (gapDays <= 1) {
-                    // רצף - השתמש בערך הקודם אם הנוכחי ריק
+                    // רצף
                     if (!current.compulsion || current.compulsion === 0) {
-                        current.compulsionContinuous = lastCompulsion;
+                        // אם אין ערך בפועל – לא גוררים ערך ישן
+                        current.compulsionContinuous = 0;
+                        lastCompulsion = 0; // 👈 איפוס כדי שלא יסחוב קדימה
                     } else {
                         current.compulsionContinuous = current.compulsion;
                         lastCompulsion = current.compulsion;
                     }
                 } else {
-                    // לא רצף - עדכן את הערך הנוכחי
+                    // לא רצף – מאפסים
                     current.compulsionContinuous = current.compulsion || 0;
                     if (current.compulsion && current.compulsion !== 0) {
                         lastCompulsion = current.compulsion;
+                    } else {
+                        lastCompulsion = 0; // 👈 כאן התיקון העיקרי
                     }
                 }
             } else {
@@ -2475,6 +2478,8 @@ function processCompulsionForExport(data) {
                 current.compulsionContinuous = current.compulsion || 0;
                 if (current.compulsion && current.compulsion !== 0) {
                     lastCompulsion = current.compulsion;
+                } else {
+                    lastCompulsion = 0;
                 }
             }
         }
@@ -2483,6 +2488,7 @@ function processCompulsionForExport(data) {
     // החזרת כל הנתונים כרשימה שטוחה
     return Object.values(employeeGroups).flat();
 }
+
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             setupFileUpload();
