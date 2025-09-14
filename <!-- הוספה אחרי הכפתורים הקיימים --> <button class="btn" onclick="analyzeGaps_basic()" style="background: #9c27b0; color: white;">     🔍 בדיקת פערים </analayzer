@@ -2426,55 +2426,52 @@ function exportToExcel() {
     XLSX.writeFile(wb, fileName);
 }
 
-// 🔥 הפונקציה המתוקנת לעיבוד ערך כפייה רצוף
 function processCompulsionForExport(data) {
-    // קבוצת נתונים לפי עובד
+    // קיבוץ לפי עובד
     const employeeGroups = {};
-    
     data.forEach(result => {
         if (!employeeGroups[result.employeeId]) {
             employeeGroups[result.employeeId] = [];
         }
         employeeGroups[result.employeeId].push({...result});
     });
-    
-    // עיבוד כל עובד בנפרד
+
     Object.keys(employeeGroups).forEach(employeeId => {
         const employeeData = employeeGroups[employeeId];
-        
+
         // מיון לפי תאריך התחלה
         employeeData.sort((a, b) => a.startDate - b.startDate);
-        
+
         let lastCompulsion = 0;
-        
+
         for (let i = 0; i < employeeData.length; i++) {
             const current = employeeData[i];
             const prev = i > 0 ? employeeData[i-1] : null;
-            
+
             if (prev) {
                 const gapDays = (current.startDate - prev.endDate) / (1000 * 60 * 60 * 24);
-                
+
                 if (gapDays <= 1) {
-                    // רצף
+                    // --- רצף ---
                     if (!current.compulsion || current.compulsion === 0) {
-                        // אם אין ערך בפועל – לא גוררים ערך ישן
-                        current.compulsionContinuous = 0;
-                        lastCompulsion = 0; // 👈 איפוס כדי שלא יסחוב קדימה
+                        // אין ערך -> ממשיכים את הערך הקודם
+                        current.compulsionContinuous = lastCompulsion;
                     } else {
+                        // יש ערך -> משתמשים בו
                         current.compulsionContinuous = current.compulsion;
                         lastCompulsion = current.compulsion;
                     }
                 } else {
-                    // לא רצף – מאפסים
+                    // --- לא רצף ---
                     current.compulsionContinuous = current.compulsion || 0;
                     if (current.compulsion && current.compulsion !== 0) {
                         lastCompulsion = current.compulsion;
                     } else {
-                        lastCompulsion = 0; // 👈 כאן התיקון העיקרי
+                        lastCompulsion = 0; // איפוס חשוב
                     }
                 }
             } else {
-                // התקופה הראשונה
+                // --- התקופה הראשונה ---
                 current.compulsionContinuous = current.compulsion || 0;
                 if (current.compulsion && current.compulsion !== 0) {
                     lastCompulsion = current.compulsion;
@@ -2484,10 +2481,10 @@ function processCompulsionForExport(data) {
             }
         }
     });
-    
-    // החזרת כל הנתונים כרשימה שטוחה
+
     return Object.values(employeeGroups).flat();
 }
+
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
