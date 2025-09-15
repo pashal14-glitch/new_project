@@ -1488,9 +1488,6 @@ async function calculateMiluim(config = {}) {
 
     // === 4. פונקציה מרכזית לעיבוד תוצאות ===
     const processResults = () => {
-// חישוב ערכי כפייה רציפה לפני הצגת התוצאות
-    calculateCompulsionContinuous();
-    console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
         if (autoDisplayResults) {
             // Header לעובד בודד
             if (addEmployeeHeader && employeeIds && employeeIds.length === 1) {
@@ -1503,13 +1500,13 @@ async function calculateMiluim(config = {}) {
                     container.innerHTML = '';
                     container.appendChild(header);
                     displayResults(calculationResults, { 
-                        itemsPerPage: calculationResults.length > 200 ? 100 : null 
+                        itemsPerPage: calculationResults.length > 100 ? 50 : null 
                     });
                 }, 50);
             } else {
                 // הצגה רגילה
                 displayResults(calculationResults, { 
-                    itemsPerPage: calculationResults.length > 200 ? 100 : null 
+                    itemsPerPage: calculationResults.length > 100 ? 50 : null 
                 });
             }
        
@@ -1585,6 +1582,10 @@ async function calculateMiluim(config = {}) {
                 await new Promise(resolve => setTimeout(resolve, 30));
             }
             
+            // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
+            calculateCompulsionContinuous();
+            console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
+            
             // סיום חישוב עם Batches - הצגת תוצאות
             processResults();
             
@@ -1602,6 +1603,10 @@ async function calculateMiluim(config = {}) {
                     const results = calculateMiluimForEmployeeWithCache(employeeId);
                     calculationResults.push(...results);
                 }
+                
+                // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
+                calculateCompulsionContinuous();
+                console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
                 
                 // הצגת תוצאות
                 processResults();
