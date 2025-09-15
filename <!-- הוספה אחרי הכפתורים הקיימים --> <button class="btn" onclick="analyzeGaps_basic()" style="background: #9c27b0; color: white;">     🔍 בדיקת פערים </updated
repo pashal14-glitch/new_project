@@ -2891,16 +2891,17 @@ function categorizeGaps() {
             let categoryFound = false;
             
             // בדיקת כלל חודשי מתקדם
-            const monthlyRuleResult = checkMonthlyRuleAdvanced(result, calculationResults);
-            if (monthlyRuleResult && monthlyRuleResult.matched) {
+           // בדיקה 1: כלל חודשי לפני 1.5.2025 - מתקדם
+            const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
+            if (monthlyCheck) {
                 categories.monthlyRule.items.push({
                     employeeId: result.employeeId,
                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
                     gap: gap.toFixed(2),
                     columnG: columnG.toFixed(2),
                     columnL: columnL.toFixed(2),
-                    explanation: monthlyRuleResult.explanation,
-                    details: monthlyRuleResult.details || ""
+                    explanation: monthlyCheck.explanation,
+                    details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
                 });
                 categoryFound = true;
             }
