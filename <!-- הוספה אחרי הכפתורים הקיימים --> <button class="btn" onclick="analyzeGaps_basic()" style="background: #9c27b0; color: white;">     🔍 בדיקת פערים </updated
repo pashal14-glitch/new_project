@@ -3137,6 +3137,177 @@ function calculateCurrentLogicWithoutMinimum(employeeId, serviceStartDate, total
     
     return totalBruto / 90;
 }
+// 🆕 פונקציה לייצוא ניתוח פערים לאקסל
+function exportGapsToExcel() {
+    console.log("🔄 מתחיל ייצוא ניתוח פערים לאקסל...");
+    
+    // חישוב הנתונים מחדש
+    const analysis = categorizeGaps();
+    
+    // יצירת workbook חדש
+    const wb = XLSX.utils.book_new();
+    
+    // 1. יצירת גליון סיכום
+    createSummarySheet(wb, analysis);
+    
+    // 2. יצירת גליון לכל קטגוריה עם פריטים
+    Object.entries(analysis.categories).forEach(([categoryKey, category]) => {
+        if (category.items.length > 0) {
+            createCategorySheet(wb, categoryKey, category);
+        }
+    });
+    
+    // 3. יצירת גליון כל הפערים
+    createAllGapsSheet(wb, analysis);
+    
+    // יצירת שם קובץ עם תאריך ושעה
+    const now = new Date();
+    const timestamp = now.toISOString().slice(0, 16).replace(/[:-]/g, '').replace('T', '_');
+    const filename = `ניתוח_פערים_${timestamp}.xlsx`;
+    
+    // הורדת הקובץ
+    XLSX.writeFile(wb, filename);
+    
+    console.log(`✅ ייצוא הושלם: ${filename}`);
+    alert(`✅ הקובץ נוצר בהצלחה!\n📁 ${filename}`);
+}
+
+// פונקציה ליצירת גליון סיכום
+function createSummarySheet(wb, analysis) {
+    const summaryData = [
+        ['ניתוח פערים - סיכום מנהלים', '', '', ''],
+        ['תאריך יצירה:', new Date().toLocaleDateString('he-IL'), '', ''],
+        ['', '', '', ''],
+        ['📊 סטטיסטיקות כלליות', '', '', ''],
+        ['סה"כ רשומות:', analysis.totalRecords, '', ''],
+        ['ללא פערים:', analysis.noGaps, `${(analysis.noGaps/analysis.totalRecords*100).toFixed(1)}%`, ''],
+        ['פערים זוהו:', analysis.gapsFound, `${(analysis.gapsFound/analysis.totalRecords*100).toFixed(1)}%`, ''],
+        ['', '', '', ''],
+        ['📋 פירוט לפי קטגוריות', '', '', ''],
+        ['קטגוריה', 'מספר מקרים', 'אחוז', 'סטטוס']
+    ];
+    
+    // הוספת נתוני קטגוריות
+    Object.entries(analysis.categories).forEach(([key, category]) => {
+        if (category.items.length > 0) {
+            const percentage = ((category.items.length / analysis.totalRecords) * 100).toFixed(1);
+            const statusText = category.status === 'ok' ? 'תקין' : 
+                              category.status === 'fix' ? 'דורש תיקון' : 'בדיקה';
+            summaryData.push([
+                category.name,
+                category.items.length,
+                `${percentage}%`,
+                statusText
+            ]);
+        }
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // עיצוב הגליון
+    ws['!cols'] = [
+        { wch: 30 }, // עמודה A
+        { wch: 15 }, // עמודה B  
+        { wch: 15 }, // עמודה C
+        { wch: 15 }  // עמודה D
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'סיכום');
+}
+
+// פונקציה ליצירת גליון לקטגוריה ספציפית
+function createCategorySheet(wb, categoryKey, category) {
+    const data = [
+        [`${category.icon} ${category.name}`, '', '', '', '', ''],
+        ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'הסבר'],
+        []
+    ];
+    
+    // הוספת נתוני הפריטים
+    category.items.forEach(item => {
+        data.push([
+            item.employeeId,
+            item.period,
+            item.gap,
+            item.columnG,
+            item.columnL,
+            item.explanation + (item.details ? ` | ${item.details}` : '')
+        ]);
+    });
+    
+    // הוספת סיכום בתחתית
+    const totalGap = category.items.reduce((sum, item) => sum + parseFloat(item.gap), 0);
+    data.push([]);
+    data.push(['סיכום:', '', totalGap.toFixed(2), '', '', `${category.items.length} מקרים`]);
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // עיצוב עמודות
+    ws['!cols'] = [
+        { wch: 12 }, // עובד
+        { wch: 25 }, // תקופה
+        { wch: 12 }, // פער
+        { wch: 12 }, // עמודה G
+        { wch: 12 }, // עמודה L
+        { wch: 40 }  // הסבר
+    ];
+    
+    // שם הגליון (מקוצר למקסימום 31 תווים)
+    let sheetName = category.name.substring(0, 31);
+    if (sheetName.endsWith('...')) {
+        sheetName = sheetName.substring(0, 28) + '...';
+    }
+    
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+}
+
+// פונקציה ליצירת גליון עם כל הפערים
+function createAllGapsSheet(wb, analysis) {
+    const data = [
+        ['כל הפערים המזוהים', '', '', '', '', '', ''],
+        ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'קטגוריה', 'הסבר'],
+        []
+    ];
+    
+    // איסוף כל הפריטים מכל הקטגוריות
+    Object.entries(analysis.categories).forEach(([key, category]) => {
+        category.items.forEach(item => {
+            data.push([
+                item.employeeId,
+                item.period,
+                item.gap,
+                item.columnG,
+                item.columnL,
+                category.name,
+                item.explanation + (item.details ? ` | ${item.details}` : '')
+            ]);
+        });
+    });
+    
+    // הוספת סיכום כללי
+    const totalItems = Object.values(analysis.categories).reduce((sum, cat) => sum + cat.items.length, 0);
+    const totalGapAmount = Object.values(analysis.categories)
+        .flatMap(cat => cat.items)
+        .reduce((sum, item) => sum + parseFloat(item.gap), 0);
+    
+    data.push([]);
+    data.push(['סה"כ:', '', totalGapAmount.toFixed(2), '', '', `${totalItems} מקרים`, '']);
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // עיצוב עמודות
+    ws['!cols'] = [
+        { wch: 12 }, // עובד
+        { wch: 25 }, // תקופה  
+        { wch: 12 }, // פער
+        { wch: 12 }, // עמודה G
+        { wch: 12 }, // עמודה L
+        { wch: 20 }, // קטגוריה
+        { wch: 50 }  // הסבר
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'כל הפערים');
+}
 function showAnalysisWindow(analysis) {
     // הצגת סיכום
     document.getElementById('analysisSummary').innerHTML = `
@@ -3153,6 +3324,15 @@ function showAnalysisWindow(analysis) {
             <h4>פערים זוהו</h4>
             <div style="font-size: 1.5em; color: #ff9800;">${analysis.gapsFound}</div>
             <small>(${(analysis.gapsFound/analysis.totalRecords*100).toFixed(1)}%)</small>
+        </div>
+        <h2>🔍 ניתוח פערים מפורט</h2>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="exportGapsToExcel()" style="background: #2e7d32; color: white;">
+                📊 ייצא לאקסל
+            </button>
+            <button class="btn" onclick="closeAnalysisWindow()" style="background: #d32f2f; color: white;">
+                ❌ סגור
+            </button>
         </div>
     `;
     
