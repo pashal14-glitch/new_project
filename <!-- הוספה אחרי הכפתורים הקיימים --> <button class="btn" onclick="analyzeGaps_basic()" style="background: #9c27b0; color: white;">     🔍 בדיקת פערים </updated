@@ -2861,8 +2861,11 @@ function categorizeGaps() {
     let totalRecords = calculationResults.length;
     let gapsFound = 0;
     let noGaps = 0;
-    
+    const analysisStartDate = new Date('2023-01-01');
     calculationResults.forEach(result => {
+    if (result.startDate < analysisStartDate) {
+        return;
+    }
         const columnG = result.continuousValue || 0;
         const columnL = result.paidAmount || 0;
         const gap = Math.abs(columnG - columnL);
