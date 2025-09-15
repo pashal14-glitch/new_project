@@ -457,6 +457,18 @@
                 padding: 8px 5px;
             }
         }
+/* 🆕 עיצוב לכפתור הייצוא */
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.analysis-buttons {
+    display: flex;
+    gap: 10px;
+}
 /* רקע שקוף - חיוני לחלון! */
 .overlay {
     position: fixed;
