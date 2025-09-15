@@ -2905,7 +2905,7 @@ function categorizeGaps() {
                 categoryFound = true;
             }
             // בדיקה 2: ערך כפוי מרצף
-else {
+if (!categoryFound) {  // ← תיקון: בדוק רק אם עדיין לא נמצא
     const compulsionValue = result.compulsionContinuous || 0;
     const compulsionOriginal = result.compulsion || 0;
     const columnL = result.paidAmount || 0;
@@ -2921,11 +2921,14 @@ else {
             gap: gap.toFixed(2),
             columnG: columnG.toFixed(2),
             columnL: columnL.toFixed(2),
+            columnN: result.compulsion || 0,           // הוסף
+            columnO: result.compulsionContinuous || 0, // הוסף
             explanation: "תקופה עם ערך כפוי תקין",
             details: matchesN ? `תואם עמודה N: ${compulsionOriginal}₪` : `תואם עמודה O: ${compulsionValue}₪`
         });
+        categoryFound = true;
     }
-            
+}
             // 🆕 אם לא נמצא בקטגוריות הקיימות - בדיקה עם השיטות החדשות
             if (!categoryFound) {
                 const diagnosis = diagnoseGapWithNewMethods(result);
