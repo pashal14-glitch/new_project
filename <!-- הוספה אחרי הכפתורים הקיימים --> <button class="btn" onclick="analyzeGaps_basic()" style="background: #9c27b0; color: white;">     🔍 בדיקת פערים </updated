@@ -2849,10 +2849,10 @@ function categorizeGaps() {
     const categories = {
         monthlyRule: { name: "ערך גבוה חודשי (לפני 1.5.2025)", status: "ok", items: [], icon: "✅" },
         continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [], icon: "✅" },
-        missing60Days: { name: "חסר ערך מ-60 ימים", status: "fix", items: [], icon: "❌" },
-        wrongCalculation: { name: "שגיאת סוג חישוב", status: "fix", items: [], icon: "❌" },
-        minimumValues: { name: "ערכי מינימום שגויים", status: "fix", items: [], icon: "❌" },
-        postMayMonthly: { name: "ערך חודשי אחרי 1.5.2025", status: "fix", items: [], icon: "❌" },
+        brutoMinimumIssue: { name: "בעיית ברוטו מינימלי", status: "fix", items: [], icon: "⚠️" },
+        wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },
+        mixedIssues: { name: "בעיות מעורבות", status: "fix", items: [], icon: "🔄" },
+        
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
     
@@ -2860,61 +2860,91 @@ function categorizeGaps() {
     let gapsFound = 0;
     let noGaps = 0;
     
-    calculationResults.forEach((result, index) => {
-        // השדות הנכונים מהקוד שלך
+    calculationResults.forEach(result => {
         const columnG = result.continuousValue || 0;
         const columnL = result.paidAmount || 0;
-        const gap = Math.abs(columnL - columnG);
+        const gap = Math.abs(columnG - columnL);
         
-        if (columnL > 0 && gap > 1) {
+        if (gap > 1) {
             gapsFound++;
+            let categoryFound = false;
             
-            // בדיקה 1: כלל חודשי לפני 1.5.2025 - מתקדם
-            const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
-            if (monthlyCheck) {
+            // בדיקת כלל חודשי מתקדם
+            const monthlyRuleResult = checkMonthlyRuleAdvanced(result, calculationResults);
+            if (monthlyRuleResult && monthlyRuleResult.matched) {
                 categories.monthlyRule.items.push({
                     employeeId: result.employeeId,
                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
                     gap: gap.toFixed(2),
                     columnG: columnG.toFixed(2),
                     columnL: columnL.toFixed(2),
-                    explanation: monthlyCheck.explanation,
-                    details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                    explanation: monthlyRuleResult.explanation,
+                    details: monthlyRuleResult.details || ""
                 });
+                categoryFound = true;
             }
-          // בדיקה 2: ערך כפוי מרצף
-else {
-    const compulsionValue = result.compulsionContinuous || 0;
-    const compulsionOriginal = result.compulsion || 0;
-    const columnL = result.paidAmount || 0;
-    
-    // בדיקה אם עמודה L תואמת לעמודה N או עמודה O
-    const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
-    const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
-    
-    if (matchesN || matchesO) {
-        categories.continuousValue.items.push({
-            employeeId: result.employeeId,
-            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-            gap: gap.toFixed(2),
-            columnG: columnG.toFixed(2),
-            columnL: columnL.toFixed(2),
-            explanation: "תקופה עם ערך כפוי תקין",
-            details: matchesN ? `תואם עמודה N: ${compulsionOriginal}₪` : `תואם עמודה O: ${compulsionValue}₪`
-        });
-    }
-        // אחרת - לא מזוהה
-                else {
-                    categories.unknown.items.push({
-                        employeeId: result.employeeId,
-                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                        gap: gap.toFixed(2),
-                        columnG: columnG.toFixed(2),
-                        columnL: columnL.toFixed(2),
-                        explanation: "סיבת הפער לא ברורה",
-                        details: "דורש בדיקה ידנית"
-                    });
+            
+            // בדיקת ערך רצוף (אם יש לך פונקציה לזה)
+            // אם לא - הוסף את הלוגיקה הרלוונטית או השאר מוערם
+            
+            // 🆕 אם לא נמצא בקטגוריות הקיימות - בדיקה עם השיטות החדשות
+            if (!categoryFound) {
+                const diagnosis = diagnoseGapWithNewMethods(result);
+                
+                if (diagnosis) {
+                    // בעיית ברוטו מינימלי
+                    if (diagnosis.matchesCurrentWithoutMin) {
+                        categories.brutoMinimumIssue.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: diagnosis.gap.toFixed(2),
+                            columnG: diagnosis.columnG.toFixed(2),
+                            columnL: diagnosis.columnL.toFixed(2),
+                            explanation: "לא הופעל ברוטו מינימלי במערכת השכר",
+                            details: `ערך ללא מינימום: ${diagnosis.currentLogicWithoutMinimum.toFixed(2)}₪`
+                        });
+                        categoryFound = true;
+                    }
+                    // שימוש ב-3 אחרונים עם מינימום (כשלא צריך)
+                    else if (diagnosis.matchesLast3WithMin) {
+                        categories.wrongMethodUsed.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: diagnosis.gap.toFixed(2),
+                            columnG: diagnosis.columnG.toFixed(2),
+                            columnL: diagnosis.columnL.toFixed(2),
+                            explanation: "השתמשו ב-3 החודשים האחרונים במקום הלוגיקה הנכונה",
+                            details: `ערך 3 אחרונים: ${diagnosis.alwaysLast3WithMinimum.toFixed(2)}₪`
+                        });
+                        categoryFound = true;
+                    }
+                    // שימוש ב-3 אחרונים ללא מינימום
+                    else if (diagnosis.matchesLast3WithoutMin) {
+                        categories.mixedIssues.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: diagnosis.gap.toFixed(2),
+                            columnG: diagnosis.columnG.toFixed(2),
+                            columnL: diagnosis.columnL.toFixed(2),
+                            explanation: "שימוש ב-3 אחרונים ללא ברוטו מינימלי",
+                            details: `ערך 3 אחרונים ללא מינימום: ${diagnosis.alwaysLast3WithoutMinimum.toFixed(2)}₪`
+                        });
+                        categoryFound = true;
+                    }
                 }
+            }
+            
+            // אם עדיין לא נמצא - לא מזוהה
+            if (!categoryFound) {
+                categories.unknown.items.push({
+                    employeeId: result.employeeId,
+                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                    gap: gap.toFixed(2),
+                    columnG: columnG.toFixed(2),
+                    columnL: columnL.toFixed(2),
+                    explanation: "סיבת הפער לא ברורה",
+                    details: "דורש בדיקה ידנית"
+                });
             }
         } else {
             noGaps++;
@@ -2926,6 +2956,44 @@ else {
         gapsFound,
         noGaps,
         categories
+    };
+}
+
+// 🆕 פונקציה חדשה לאבחון מפורט
+function diagnoseGapWithNewMethods(result) {
+    const columnG = result.continuousValue || 0;
+    const columnL = result.paidAmount || 0;
+    const gap = Math.abs(columnG - columnL);
+    const tolerance = 1.0; // סטייה של 1 ש"ח
+    
+    if (gap <= tolerance) {
+        return null; // תקין - לא צריך אבחון
+    }
+    
+    // חישוב כל הוריאציות באמצעות הפונקציות החדשות
+    const employeeId = result.employeeId;
+    const serviceStartDate = result.startDate;
+    
+    const alwaysLast3WithMinimum = calculateAlwaysLast3WithMinimum(employeeId, serviceStartDate);
+    const alwaysLast3WithoutMinimum = calculateAlwaysLast3WithoutMinimum(employeeId, serviceStartDate);
+    const currentLogicWithoutMinimum = calculateCurrentLogicWithoutMinimum(employeeId, serviceStartDate, result.workDays);
+    
+    // בדיקת התאמה לכל וריאציה
+    const matchesLast3WithMin = Math.abs(alwaysLast3WithMinimum - columnL) <= tolerance;
+    const matchesLast3WithoutMin = Math.abs(alwaysLast3WithoutMinimum - columnL) <= tolerance;
+    const matchesCurrentWithoutMin = Math.abs(currentLogicWithoutMinimum - columnL) <= tolerance;
+    
+    // החזרת התוצאה
+    return {
+        alwaysLast3WithMinimum,
+        alwaysLast3WithoutMinimum,
+        currentLogicWithoutMinimum,
+        matchesLast3WithMin,
+        matchesLast3WithoutMin,
+        matchesCurrentWithoutMin,
+        gap,
+        columnG,
+        columnL
     };
 }
 // ========================
@@ -2976,6 +3044,93 @@ function checkMonthlyRuleAdvanced(result, allResults) {
     }
     
     return null; // לא תואם לכלל
+}
+
+// פונקציה 1
+function GetBrutoForMonthRaw(employeeId, monthDate) {
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    
+    let bestBruto = 0;
+    
+    for (let salary of salaryData) {
+        if (salary.employeeId == employeeId) {
+            const salaryDate = parseExcelDate(salary.monthYear);
+            if (salaryDate && salaryDate >= monthStart && salaryDate <= monthEnd) {
+                bestBruto = Math.max(bestBruto, salary.bruto || 0);
+            }
+        }
+    }
+    
+    return bestBruto; // ללא ApplyBrutoMinimumFromCSV
+}
+
+// פונקציה 2
+function calculateAlwaysLast3WithMinimum(employeeId, serviceStartDate) {
+    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+    
+    const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
+    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+    const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
+    
+    let totalBruto = 0;
+    totalBruto += GetBrutoForMonth(employeeId, month1);
+    totalBruto += GetBrutoForMonth(employeeId, month2);
+    totalBruto += GetBrutoForMonth(employeeId, month3);
+    
+    return totalBruto / 90;
+}
+
+// פונקציה 3
+function calculateAlwaysLast3WithoutMinimum(employeeId, serviceStartDate) {
+    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+    
+    const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
+    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+    const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
+    
+    let totalBruto = 0;
+    totalBruto += GetBrutoForMonthRaw(employeeId, month1);
+    totalBruto += GetBrutoForMonthRaw(employeeId, month2);
+    totalBruto += GetBrutoForMonthRaw(employeeId, month3);
+    
+    return totalBruto / 90;
+}
+
+// פונקציה 4
+function calculateCurrentLogicWithoutMinimum(employeeId, serviceStartDate, totalWorkDays) {
+    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+    
+    let totalBruto = 0;
+    
+    if (totalWorkDays >= 60) {
+        // 3 החודשים האחרונים, ללא מינימום
+        const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
+        const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+        const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
+        
+        totalBruto += GetBrutoForMonthRaw(employeeId, month1);
+        totalBruto += GetBrutoForMonthRaw(employeeId, month2);
+        totalBruto += GetBrutoForMonthRaw(employeeId, month3);
+    } else {
+        // 3 הטובים ב-6, ללא מינימום
+        const months = [];
+        for (let i = 1; i <= 6; i++) {
+            const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
+            months.push({
+                date: month,
+                bruto: GetBrutoForMonthRaw(employeeId, month)
+            });
+        }
+        
+        const bestMonths = months
+            .sort((a, b) => b.bruto - a.bruto)
+            .slice(0, 3);
+            
+        totalBruto = bestMonths.reduce((sum, month) => sum + month.bruto, 0);
+    }
+    
+    return totalBruto / 90;
 }
 function showAnalysisWindow(analysis) {
     // הצגת סיכום
