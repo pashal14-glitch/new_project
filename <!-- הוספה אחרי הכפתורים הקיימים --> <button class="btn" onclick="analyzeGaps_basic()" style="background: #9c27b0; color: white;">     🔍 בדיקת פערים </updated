@@ -2112,7 +2112,7 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>L-ערך בשכר</th>
                         <th>M-פער</th>
                         <th>N-ערך כפייה<th>
-                        <th>O - כפייה רציפה</th>
+                        <th>O - כפייה רציפה <th>
                     </tr>
                 </thead>
                 <tbody>
