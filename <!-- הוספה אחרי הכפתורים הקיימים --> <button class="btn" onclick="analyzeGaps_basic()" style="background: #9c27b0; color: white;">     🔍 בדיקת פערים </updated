@@ -860,6 +860,7 @@ const cacheSystem = new MiluimCalculatorCache();
 }
         // Minimum bruto by year
         const BRUTO_MINIMUMS = {
+            2022: 6130,
             2023: 6455,
             2024: 6668,
             2025: 6895
