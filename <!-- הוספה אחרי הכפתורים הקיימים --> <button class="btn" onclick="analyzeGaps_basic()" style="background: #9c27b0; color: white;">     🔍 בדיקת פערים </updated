@@ -867,6 +867,7 @@ const cacheSystem = new MiluimCalculatorCache();
 
         // Daily value limits by period
         const DAILY_LIMITS = [
+            { start: new Date('2022-01-01'), end: new Date('2022-12-01'), min: 204.34, max: 1502.50 },
             { start: new Date('2023-01-01'), end: new Date('2023-10-06'), min: 215.17, max: 1582.17 },
             { start: new Date('2023-10-07'), end: new Date('2023-12-31'), min: 300.61, max: 1582.17 },
             { start: new Date('2024-01-01'), end: new Date('2024-12-31'), min: 310.52, max: 1634.33 },
