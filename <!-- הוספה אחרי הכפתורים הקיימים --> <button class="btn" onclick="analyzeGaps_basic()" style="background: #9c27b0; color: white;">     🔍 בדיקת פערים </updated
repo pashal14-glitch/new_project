@@ -2904,9 +2904,27 @@ function categorizeGaps() {
                 });
                 categoryFound = true;
             }
-            
-            // בדיקת ערך רצוף (אם יש לך פונקציה לזה)
-            // אם לא - הוסף את הלוגיקה הרלוונטית או השאר מוערם
+            // בדיקה 2: ערך כפוי מרצף
+else {
+    const compulsionValue = result.compulsionContinuous || 0;
+    const compulsionOriginal = result.compulsion || 0;
+    const columnL = result.paidAmount || 0;
+    
+    // בדיקה אם עמודה L תואמת לעמודה N או עמודה O
+    const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
+    const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
+    
+    if (matchesN || matchesO) {
+        categories.continuousValue.items.push({
+            employeeId: result.employeeId,
+            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+            gap: gap.toFixed(2),
+            columnG: columnG.toFixed(2),
+            columnL: columnL.toFixed(2),
+            explanation: "תקופה עם ערך כפוי תקין",
+            details: matchesN ? `תואם עמודה N: ${compulsionOriginal}₪` : `תואם עמודה O: ${compulsionValue}₪`
+        });
+    }
             
             // 🆕 אם לא נמצא בקטגוריות הקיימות - בדיקה עם השיטות החדשות
             if (!categoryFound) {
