@@ -1485,6 +1485,10 @@ async function calculateMiluim(config = {}) {
 
     // === 3. הכנת CACHE ===
     cacheSystem.prepareData();
+const processResults = () => {
+    // חישוב ערכי כפייה רציפה לפני הצגת התוצאות
+    calculateCompulsionContinuous();
+    console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
 
     // === 4. פונקציה מרכזית לעיבוד תוצאות ===
     const processResults = () => {
@@ -1509,10 +1513,7 @@ async function calculateMiluim(config = {}) {
                     itemsPerPage: calculationResults.length > 200 ? 100 : null 
                 });
             }
-// *** עיבוד ערכי כפייה רציפה לטבלת התוצאות ***
-calculateCompulsionContinuous();
-console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
-        
+       
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
             document.getElementById('exportSection').style.display = 'block';
