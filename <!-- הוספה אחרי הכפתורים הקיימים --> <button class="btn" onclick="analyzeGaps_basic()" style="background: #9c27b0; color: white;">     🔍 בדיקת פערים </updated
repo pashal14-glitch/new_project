@@ -1356,37 +1356,40 @@ function propagateEmergencyCompulsion4405() {
     console.log("מתחיל הפצת ערכי כפיה חירום 4405...");
     
     // מוצא את כל הערכים הייחודיים בעמודה P עם תחילת האשכול שלהם
-    const compulsionValues = new Map(); // Key: תאריך תחילת אשכול, Value: ערך כפיה
+    const compulsionValues = new Map(); // Key: עובד-תאריך תחילת אשכול, Value: מידע מלא
 
-  
     calculationResults.forEach(result => {
         if (result.emergencyCompulsion4405 && result.emergencyCompulsion4405 > 0 && result.emergencyClusterStart) {
-            const clusterStartKey = result.emergencyClusterStart.getTime();
-            compulsionValues.set(clusterStartKey, result.emergencyCompulsion4405);
+            const clusterStartKey = `${result.employeeId}-${result.emergencyClusterStart.getTime()}`;
+            compulsionValues.set(clusterStartKey, {
+                employeeId: result.employeeId,
+                clusterStart: result.emergencyClusterStart,
+                compulsionValue: result.emergencyCompulsion4405
+            });
             
-            console.log(`נמצא ערך כפיה ${result.emergencyCompulsion4405} לאשכול מתאריך ${formatDate(result.emergencyClusterStart)}`);
+            console.log(`נמצא ערך כפיה ${result.emergencyCompulsion4405} עבור עובד ${result.employeeId} לאשכול מתאריך ${formatDate(result.emergencyClusterStart)}`);
         }
     });
     
-    // הפץ את הערכים לכל התקופות עם אותה תחילת אשכול
-    compulsionValues.forEach((compulsionValue, clusterStartKey) => {
+    // הפץ את הערכים לכל התקופות עם אותה תחילת אשכול של אותו עובד
+    compulsionValues.forEach((compulsionData, clusterKey) => {
         let updatedCount = 0;
         
         calculationResults.forEach(result => {
-            if (result.emergencyClusterStart && 
-                result.emergencyClusterStart.getTime() === clusterStartKey) {
+            if (result.employeeId === compulsionData.employeeId &&
+                result.emergencyClusterStart && 
+                result.emergencyClusterStart.getTime() === compulsionData.clusterStart.getTime()) {
                 
-                result.emergencyCompulsion4405 = compulsionValue;
+                result.emergencyCompulsion4405 = compulsionData.compulsionValue;
                 updatedCount++;
             }
         });
         
-        console.log(`הופץ ערך ${compulsionValue} ל-${updatedCount} תקופות עם תחילת אשכול ${formatDate(new Date(clusterStartKey))}`);
+        console.log(`הופץ ערך ${compulsionData.compulsionValue} ל-${updatedCount} תקופות עבור עובד ${compulsionData.employeeId} עם תחילת אשכול ${formatDate(compulsionData.clusterStart)}`);
     });
     
     console.log("הושלמה הפצת ערכי כפיה חירום 4405");
-}     
-
+}
                 
 // 🔥 הוסף פונקציה לבדיקת תקופות גולשות מקוריות
 function hasOriginalCrossMonthPeriods(employeeId) {
