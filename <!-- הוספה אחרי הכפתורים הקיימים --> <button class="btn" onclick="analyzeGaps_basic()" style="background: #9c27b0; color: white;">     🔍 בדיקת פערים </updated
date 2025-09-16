@@ -1300,6 +1300,7 @@ for (let prevMiluim of employeeMiluim) {
 };
 }
 function calculateCompulsionContinuous() {
+    // קיבוץ לפי עובד
     const employeeGroups = {};
     calculationResults.forEach(result => {
         if (!employeeGroups[result.employeeId]) {
@@ -1310,23 +1311,43 @@ function calculateCompulsionContinuous() {
     
     Object.keys(employeeGroups).forEach(employeeId => {
         const employeeData = employeeGroups[employeeId];
+        // מיון לפי תאריך התחלה - בדיוק כמו בפונקציה הישנה
         employeeData.sort((a, b) => a.startDate - b.startDate);
         
+        let lastCompulsion = 0;
         for (let i = 0; i < employeeData.length; i++) {
             const current = employeeData[i];
+            const prev = i > 0 ? employeeData[i-1] : null;
             
-            if (current.compulsion && current.compulsion > 0) {
-                // הפעל את הלוגיקה המלאה של G עם הערך הכפוי
-                const continuousResult = calculateContinuousValue(
-                    employeeId, 
-                    current.startDate, 
-                    current.compulsion,  // ערך כפוי מעמודה N
-                    current.isNewMiluim
-                );
-                
-                current.compulsionContinuous = continuousResult.value;
+            if (prev) {
+                const gapDays = (current.startDate - prev.endDate) / (1000 * 60 * 60 * 24);
+                if (gapDays <= 1) {
+                    // --- רצף ---
+                    if (!current.compulsion || current.compulsion === 0) {
+                        // אין ערך -> ממשיכים את הערך הקודם
+                        current.compulsionContinuous = lastCompulsion;
+                    } else {
+                        // יש ערך -> משתמשים בו
+                        current.compulsionContinuous = current.compulsion;
+                        lastCompulsion = current.compulsion;
+                    }
+                } else {
+                    // --- לא רצף ---
+                    current.compulsionContinuous = current.compulsion || 0;
+                    if (current.compulsion && current.compulsion !== 0) {
+                        lastCompulsion = current.compulsion;
+                    } else {
+                        lastCompulsion = 0; // איפוס חשוב
+                    }
+                }
             } else {
-                current.compulsionContinuous = 0;
+                // --- התקופה הראשונה ---
+                current.compulsionContinuous = current.compulsion || 0;
+                if (current.compulsion && current.compulsion !== 0) {
+                    lastCompulsion = current.compulsion;
+                } else {
+                    lastCompulsion = 0;
+                }
             }
         }
     });
