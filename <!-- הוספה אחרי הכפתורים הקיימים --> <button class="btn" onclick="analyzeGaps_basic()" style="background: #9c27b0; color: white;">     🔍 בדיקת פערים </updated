@@ -2869,10 +2869,8 @@ function categorizeGaps() {
     const categories = {
         monthlyRule: { name: "ערך גבוה חודשי (לפני 1.5.2025)", status: "ok", items: [], icon: "✅" },
         continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [], icon: "✅" },
-        brutoMinimumIssue: { name: "בעיית ברוטו מינימלי", status: "fix", items: [], icon: "⚠️" },
-        wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },
-        mixedIssues: { name: "בעיות מעורבות", status: "fix", items: [], icon: "🔄" },
-        
+        higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום", status: "fix", items: [], icon: "🚫" },
+        wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },   
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
     
@@ -2932,49 +2930,30 @@ if (!categoryFound) {  // ← תיקון: בדוק רק אם עדיין לא נ�
         categoryFound = true;
     }
 }
-            // 🆕 אם לא נמצא בקטגוריות הקיימות - בדיקה עם השיטות החדשות
-            if (!categoryFound) {
-                const diagnosis = diagnoseGapWithNewMethods(result);
-                
-                if (diagnosis) {
-                    // בעיית ברוטו מינימלי
-                    if (diagnosis.matchesCurrentWithoutMin) {
-                        categories.brutoMinimumIssue.items.push({
-                            employeeId: result.employeeId,
-                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: diagnosis.gap.toFixed(2),
-                            columnG: diagnosis.columnG.toFixed(2),
-                            columnL: diagnosis.columnL.toFixed(2),
-                            explanation: "לא הופעל ברוטו מינימלי במערכת השכר",
-                            details: `ערך ללא מינימום: ${diagnosis.currentLogicWithoutMinimum.toFixed(2)}₪`
-                        });
-                        categoryFound = true;
-                    }
-                    // שימוש ב-3 אחרונים עם מינימום (כשלא צריך)
-                    else if (diagnosis.matchesLast3WithMin) {
-                        categories.wrongMethodUsed.items.push({
-                            employeeId: result.employeeId,
-                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: diagnosis.gap.toFixed(2),
-                            columnG: diagnosis.columnG.toFixed(2),
-                            columnL: diagnosis.columnL.toFixed(2),
-                            explanation: "השתמשו ב-3 החודשים האחרונים במקום הלוגיקה הנכונה",
-                            details: `ערך 3 אחרונים: ${diagnosis.alwaysLast3WithMinimum.toFixed(2)}₪`
-                        });
-                        categoryFound = true;
-                    }
-                    // שימוש ב-3 אחרונים ללא מינימום
-                    else if (diagnosis.matchesLast3WithoutMin) {
-                        categories.mixedIssues.items.push({
-                            employeeId: result.employeeId,
-                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: diagnosis.gap.toFixed(2),
-                            columnG: diagnosis.columnG.toFixed(2),
-                            columnL: diagnosis.columnL.toFixed(2),
-                            explanation: "שימוש ב-3 אחרונים ללא ברוטו מינימלי",
-                            details: `ערך 3 אחרונים ללא מינימום: ${diagnosis.alwaysLast3WithoutMinimum.toFixed(2)}₪`
-                        });
-                        categoryFound = true;
+// 🆕 אם לא נמצא בקטגוריות הקיימות - בדיקה עם השיטות החדשות
+if (!categoryFound) {
+    const diagnosis = diagnoseGapWithNewMethods(result);
+    
+    if (diagnosis) {
+        // תקלת חוקה - לא נתן ערך גבוה מ-60 יום
+        if (diagnosis.issue === "60DayHigherValueNotGiven") {
+            categories.higherValue60DayIssue = categories.higherValue60DayIssue || {
+                name: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום",
+                status: "fix",
+                items: [],
+                icon: "🚫"
+            };
+            
+            categories.higherValue60DayIssue.items.push({
+                employeeId: result.employeeId,
+                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                gap: (diagnosis.columnF - diagnosis.columnL).toFixed(2),
+                columnG: diagnosis.columnG.toFixed(2),
+                columnL: diagnosis.columnL.toFixed(2),
+                explanation: diagnosis.explanation,
+                details: `חישוב בסיסי (E): ${diagnosis.columnE.toFixed(2)}₪ | ערך מ-60 יום (F): ${diagnosis.columnF.toFixed(2)}₪ | שולם: ${diagnosis.columnL.toFixed(2)}₪`
+            });
+            categoryFound = true;
                     }
                 }
             }
@@ -3004,42 +2983,42 @@ if (!categoryFound) {  // ← תיקון: בדוק רק אם עדיין לא נ�
     };
 }
 
-// 🆕 פונקציה חדשה לאבחון מפורט
 function diagnoseGapWithNewMethods(result) {
     const columnG = result.continuousValue || 0;
     const columnL = result.paidAmount || 0;
     const gap = Math.abs(columnG - columnL);
-    const tolerance = 1.0; // סטייה של 1 ש"ח
+    const tolerance = 1.0;
     
     if (gap <= tolerance) {
-        return null; // תקין - לא צריך אבחון
+        return null; // תקין
     }
     
-    // חישוב כל הוריאציות באמצעות הפונקציות החדשות
     const employeeId = result.employeeId;
     const serviceStartDate = result.startDate;
     
-    const alwaysLast3WithMinimum = calculateAlwaysLast3WithMinimum(employeeId, serviceStartDate);
-    const alwaysLast3WithoutMinimum = calculateAlwaysLast3WithoutMinimum(employeeId, serviceStartDate);
-    const currentLogicWithoutMinimum = calculateCurrentLogicWithoutMinimum(employeeId, serviceStartDate, result.workDays);
+    // חישוב הערכים
+    const columnE = calculateBasicDailyValue(employeeId, serviceStartDate); // 1000
+    const columnF = calculateRecommendedValue(employeeId, serviceStartDate); // 1200
     
-    // בדיקת התאמה לכל וריאציה
-    const matchesLast3WithMin = Math.abs(alwaysLast3WithMinimum - columnL) <= tolerance;
-    const matchesLast3WithoutMin = Math.abs(alwaysLast3WithoutMinimum - columnL) <= tolerance;
-    const matchesCurrentWithoutMin = Math.abs(currentLogicWithoutMinimum - columnL) <= tolerance;
+    // התנאים לזיהוי "תקלת חוקה - יש לתת ערך גבוה מ-60 יום":
+    const condition1 = Math.abs(columnL - columnE) <= tolerance; // L = E (שולם לפי בסיסי)
+    const condition2 = columnF > columnE; // F גבוה מ-E (יש ערך גבוה יותר מ-60 יום)
+    const condition3 = Math.abs(columnG - columnF) <= tolerance; // G = F (המערכת חישבה נכון)
     
-    // החזרת התוצאה
-    return {
-        alwaysLast3WithMinimum,
-        alwaysLast3WithoutMinimum,
-        currentLogicWithoutMinimum,
-        matchesLast3WithMin,
-        matchesLast3WithoutMin,
-        matchesCurrentWithoutMin,
-        gap,
-        columnG,
-        columnL
-    };
+    if (condition1 && condition2 && condition3) {
+        return {
+            issue: "60DayHigherValueNotGiven",
+            explanation: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום אחרונים",
+            columnE: columnE,
+            columnF: columnF,
+            columnG: columnG,
+            columnL: columnL,
+            shouldHavePaid: columnF
+        };
+    }
+    
+    // אם לא - המשך לבדיקות אחרות...
+    return null;
 }
 // ========================
 // פונקציית בדיקה מתקדמת - כלל חודשי
@@ -3091,26 +3070,7 @@ function checkMonthlyRuleAdvanced(result, allResults) {
     return null; // לא תואם לכלל
 }
 
-// פונקציה 1
-function GetBrutoForMonthRaw(employeeId, monthDate) {
-    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-    
-    let bestBruto = 0;
-    
-    for (let salary of salaryData) {
-        if (salary.employeeId == employeeId) {
-            const salaryDate = parseExcelDate(salary.monthYear);
-            if (salaryDate && salaryDate >= monthStart && salaryDate <= monthEnd) {
-                bestBruto = Math.max(bestBruto, salary.bruto || 0);
-            }
-        }
-    }
-    
-    return bestBruto; // ללא ApplyBrutoMinimumFromCSV
-}
-
-// פונקציה 2
+// חישוב לפי שלושה חודשים אחרונים מותאם לברוטו מינמלי
 function calculateAlwaysLast3WithMinimum(employeeId, serviceStartDate) {
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
     
@@ -3126,55 +3086,28 @@ function calculateAlwaysLast3WithMinimum(employeeId, serviceStartDate) {
     return totalBruto / 90;
 }
 
-// פונקציה 3
-function calculateAlwaysLast3WithoutMinimum(employeeId, serviceStartDate) {
+function calculateBest3From6WithMinimum(employeeId, serviceStartDate) {
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
     
-    const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
-    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
-    const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
-    
-    let totalBruto = 0;
-    totalBruto += GetBrutoForMonthRaw(employeeId, month1);
-    totalBruto += GetBrutoForMonthRaw(employeeId, month2);
-    totalBruto += GetBrutoForMonthRaw(employeeId, month3);
-    
-    return totalBruto / 90;
-}
-
-// פונקציה 4
-function calculateCurrentLogicWithoutMinimum(employeeId, serviceStartDate, totalWorkDays) {
-    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
-    
-    let totalBruto = 0;
-    
-    if (totalWorkDays >= 60) {
-        // 3 החודשים האחרונים, ללא מינימום
-        const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
-        const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
-        const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
-        
-        totalBruto += GetBrutoForMonthRaw(employeeId, month1);
-        totalBruto += GetBrutoForMonthRaw(employeeId, month2);
-        totalBruto += GetBrutoForMonthRaw(employeeId, month3);
-    } else {
-        // 3 הטובים ב-6, ללא מינימום
-        const months = [];
-        for (let i = 1; i <= 6; i++) {
-            const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
-            months.push({
-                date: month,
-                bruto: GetBrutoForMonthRaw(employeeId, month)
-            });
-        }
-        
-        const bestMonths = months
-            .sort((a, b) => b.bruto - a.bruto)
-            .slice(0, 3);
-            
-        totalBruto = bestMonths.reduce((sum, month) => sum + month.bruto, 0);
+    // בניית רשימת 6 החודשים האחרונים
+    const months = [];
+    for (let i = 1; i <= 6; i++) {
+        const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
+        months.push({
+            date: month,
+            bruto: GetBrutoForMonth(employeeId, month) // עם מינימום ברוטו
+        });
     }
     
+    // מיון לפי ברוטו מהגבוה לנמוך ולקיחת 3 הטובים
+    const bestMonths = months
+        .sort((a, b) => b.bruto - a.bruto)
+        .slice(0, 3);
+    
+    // חישוב סכום ברוטו של 3 החודשים הטובים
+    const totalBruto = bestMonths.reduce((sum, month) => sum + month.bruto, 0);
+    
+    // חזרת ערך יומי
     return totalBruto / 90;
 }
 // 🆕 פונקציה לייצוא ניתוח פערים לאקסל
