@@ -2447,7 +2447,7 @@ const processedData = dataToExport;
             parseFloat(result.paidAmount || 0),     
             parseFloat(((result.paidAmount || 0) - result.continuousValue).toFixed(0)), 
             parseFloat(result.compulsion || 0),
-            parseFloat(result.compulsionContinuous || 0)
+            parseFloat(result.compulsionContinuous || 0),
             parseFloat(result.emergencyCompulsion4405 || 0)
         ]);
     }
