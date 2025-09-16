@@ -1331,6 +1331,41 @@ function calculateCompulsionContinuous() {
         }
     });
 }
+function propagateEmergencyCompulsion4405() {
+    console.log("מתחיל הפצת ערכי כפיה חירום 4405...");
+    
+    // מוצא את כל הערכים הייחודיים בעמודה P עם תחילת האשכול שלהם
+    const compulsionValues = new Map(); // Key: תאריך תחילת אשכול, Value: ערך כפיה
+
+  
+    calculationResults.forEach(result => {
+        if (result.emergencyCompulsion4405 && result.emergencyCompulsion4405 > 0 && result.emergencyClusterStart) {
+            const clusterStartKey = result.emergencyClusterStart.getTime();
+            compulsionValues.set(clusterStartKey, result.emergencyCompulsion4405);
+            
+            console.log(`נמצא ערך כפיה ${result.emergencyCompulsion4405} לאשכול מתאריך ${formatDate(result.emergencyClusterStart)}`);
+        }
+    });
+    
+    // הפץ את הערכים לכל התקופות עם אותה תחילת אשכול
+    compulsionValues.forEach((compulsionValue, clusterStartKey) => {
+        let updatedCount = 0;
+        
+        calculationResults.forEach(result => {
+            if (result.emergencyClusterStart && 
+                result.emergencyClusterStart.getTime() === clusterStartKey) {
+                
+                result.emergencyCompulsion4405 = compulsionValue;
+                updatedCount++;
+            }
+        });
+        
+        console.log(`הופץ ערך ${compulsionValue} ל-${updatedCount} תקופות עם תחילת אשכול ${formatDate(new Date(clusterStartKey))}`);
+    });
+    
+    console.log("הושלמה הפצת ערכי כפיה חירום 4405");
+}     
+
                 
 // 🔥 הוסף פונקציה לבדיקת תקופות גולשות מקוריות
 function hasOriginalCrossMonthPeriods(employeeId) {
@@ -1568,6 +1603,8 @@ async function calculateMiluim(config = {}) {
             // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
             calculateCompulsionContinuous();
             console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
+            propagateEmergencyCompulsion4405(); // 
+            console.log('ערכי כפיה חירום 4405 הופצו לאשכולות');
             
             // סיום חישוב עם Batches - הצגת תוצאות
             processResults();
@@ -1590,6 +1627,8 @@ async function calculateMiluim(config = {}) {
                 // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
                 calculateCompulsionContinuous();
                 console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
+            propagateEmergencyCompulsion4405(); // 
+            console.log('ערכי כפיה חירום 4405 הופצו לאשכולות');
                 
                 // הצגת תוצאות
                 processResults();
