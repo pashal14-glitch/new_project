@@ -2891,7 +2891,6 @@ function analyzeGaps_basic() {
     const analysis = categorizeGaps();
     showAnalysisWindow(analysis);
 }
-
 function categorizeGaps() {
     // בדיקת Debug
     console.log("🔍 התחלת בדיקת פערים...");
@@ -2914,6 +2913,7 @@ function categorizeGaps() {
         continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [], icon: "✅" },
         higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום", status: "fix", items: [], icon: "🚫" },
         forceValueNotApplied: { name: "אי החלת ערך כפייה", status: "fix", items: [], icon: "🚨" },
+        emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" }, // 🔥 חדש!
         wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },   
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
@@ -2930,12 +2930,29 @@ function categorizeGaps() {
         
         const columnG = result.continuousValue || 0;
         const columnL = result.paidAmount || 0;
-        const columnO = result.compulsionContinuous || 0; // הוספה
+        const columnO = result.compulsionContinuous || 0;
+        const columnP = result.emergencyCompulsion4405 || 0; // 🔥 הוסף את זה
         const gap = Math.abs(columnG - columnL);
         let categoryFound = false;
         
-        // 🔥 בדיקה חדשה ראשונה - אי החלת ערך כפייה
-        if (columnO > 0 && Math.abs(columnL - columnO) > 1) {
+        // 🔥 בדיקה 1: מילואים חדשים עם G > P
+        if (result.isNewMiluim && columnP > 0 && columnG > columnP && Math.abs(columnL - columnG) <= 1) {
+            categories.emergencyCompulsionNotApplied.items.push({
+                employeeId: result.employeeId,
+                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                gap: (columnG - columnP).toFixed(2),
+                columnG: columnG.toFixed(2),
+                columnL: columnL.toFixed(2),
+                columnP: columnP.toFixed(2),
+                explanation: "מילואים חדשים - G גבוה מ-P",
+                details: `צריך לקבל כפיית ערך חירום ${columnP}₪ במקום ${columnG}₪`
+            });
+            categoryFound = true;
+            gapsFound++;
+        }
+
+        // בדיקה 2: אי החלת ערך כפייה רגיל
+        if (!categoryFound && columnO > 0 && Math.abs(columnL - columnO) > 1) {
             categories.forceValueNotApplied.items.push({
                 employeeId: result.employeeId,
                 period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
@@ -2950,11 +2967,11 @@ function categorizeGaps() {
             gapsFound++;
         }
         
-        // רק אם לא נמצאה תקלת כפייה, בדוק פערי G-L
+        // בדיקה 3: פערי G-L (רק אם לא נמצאה תקלת כפייה)
         if (!categoryFound && gap > 1) {
             gapsFound++;
             
-            // בדיקת כלל חודשי מתקדם
+            // כלל חודשי
             const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
             if (monthlyCheck) {
                 categories.monthlyRule.items.push({
@@ -2968,13 +2985,12 @@ function categorizeGaps() {
                 });
                 categoryFound = true;
             }
-            // בדיקה 2: ערך כפוי מרצף
+            
+            // ערך כפוי מרצף
             if (!categoryFound) {
                 const compulsionValue = result.compulsionContinuous || 0;
                 const compulsionOriginal = result.compulsion || 0;
-                const columnL = result.paidAmount || 0;
                 
-                // בדיקה אם עמודה L תואמת לעמודה N או עמודה O
                 const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
                 const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
                 
@@ -2994,7 +3010,7 @@ function categorizeGaps() {
                 }
             }
             
-            // אם עדיין לא נמצא - לא מזוהה
+            // לא מזוהה
             if (!categoryFound) {
                 categories.unknown.items.push({
                     employeeId: result.employeeId,
@@ -3018,7 +3034,6 @@ function categorizeGaps() {
         categories
     };
 }
-
 function diagnoseGapWithNewMethods(result) {
     const columnG = result.continuousValue || 0;
     const columnL = result.paidAmount || 0;
