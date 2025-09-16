@@ -2990,16 +2990,24 @@ function diagnoseGapWithNewMethods(result) {
     const tolerance = 1.0;
     
     if (gap <= tolerance) {
-        return null; // תקין
+        return null;
     }
     
     const employeeId = result.employeeId;
     const serviceStartDate = result.startDate;
     
-    // חישוב הערכים
-    const columnE = calculateBasicDailyValue(employeeId, serviceStartDate); // 1000
-    const columnF = calculateRecommendedValue(employeeId, serviceStartDate); // 1200
+    // תיקון - שימוש נכון בפונקציות
+    const basicResult = calculateBasicDailyValue(employeeId, serviceStartDate);
+    const columnE = basicResult.dailyValue; // לקחת את dailyValue מהאובייקט
     
+    const columnF = calculateRecommendedValue(employeeId, serviceStartDate, columnE); // העברת basicValue
+    
+    console.log(`Debug for employee ${employeeId}:`);
+    console.log(`columnE (basic): ${columnE}`);
+    console.log(`columnF (recommended): ${columnF}`);
+    console.log(`columnG (continuous): ${columnG}`);
+    console.log(`columnL (paid): ${columnL}`);
+  
     // התנאים לזיהוי "תקלת חוקה - יש לתת ערך גבוה מ-60 יום":
     const condition1 = Math.abs(columnL - columnE) <= tolerance; // L = E (שולם לפי בסיסי)
     const condition2 = columnF > columnE; // F גבוה מ-E (יש ערך גבוה יותר מ-60 יום)
