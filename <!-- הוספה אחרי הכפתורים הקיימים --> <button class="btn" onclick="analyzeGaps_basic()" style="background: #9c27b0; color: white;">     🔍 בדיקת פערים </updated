@@ -1364,7 +1364,7 @@ function propagateEmergencyCompulsion4405() {
             compulsionValues.set(clusterStartKey, {
                 employeeId: result.employeeId,
                 clusterStart: result.emergencyClusterStart,
-                compulsionValue: result.emergencyCompulsion4405
+                compulsionValue: Math.round(result.emergencyCompulsion4405 * 1.2 * 100) / 100
             });
             
             console.log(`נמצא ערך כפיה ${result.emergencyCompulsion4405} עבור עובד ${result.employeeId} לאשכול מתאריך ${formatDate(result.emergencyClusterStart)}`);
