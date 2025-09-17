@@ -3111,21 +3111,22 @@ function diagnoseGapWithNewMethods(result) {
     console.log(`columnL (paid): ${columnL}`);
   
     // התנאים לזיהוי "תקלת חוקה - יש לתת ערך גבוה מ-60 יום":
-    const condition1 = Math.abs(columnL - columnE) <= tolerance; // L = E (שולם לפי בסיסי)
-    const condition2 = columnF > columnE; // F גבוה מ-E (יש ערך גבוה יותר מ-60 יום)
-    const condition3 = Math.abs(columnG - columnF) <= tolerance; // G = F (המערכת חישבה נכון)
-    
-    if (condition1 && condition2 && condition3) {
-        return {
-            issue: "60DayHigherValueNotGiven",
-            explanation: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום אחרונים",
-            columnE: columnE,
-            columnF: columnF,
-            columnG: columnG,
-            columnL: columnL,
-            shouldHavePaid: columnF
-        };
-    }
+const condition1 = Math.abs(columnL - columnE) <= tolerance; // L = E (שולם לפי בסיסי)
+const condition2 = columnF > columnE; // F גבוה מ-E (יש ערך גבוה יותר מ-60 יום)
+const condition3 = Math.abs(columnG - columnF) <= tolerance; // G = F (המערכת חישבה נכון)
+const condition4 = !result.isNewMiluim; // 🆕 לא מילואים חדשים!
+
+if (condition1 && condition2 && condition3 && condition4) {
+    return {
+        issue: "60DayHigherValueNotGiven",
+        explanation: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום אחרונים",
+        columnE: columnE,
+        columnF: columnF,
+        columnG: columnG,
+        columnL: columnL,
+        shouldHavePaid: columnF
+    };
+}
     
     // אם לא - המשך לבדיקות אחרות...
     return null;
