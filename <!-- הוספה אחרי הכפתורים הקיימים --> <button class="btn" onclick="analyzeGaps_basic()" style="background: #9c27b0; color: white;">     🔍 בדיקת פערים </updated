@@ -2924,7 +2924,8 @@ function categorizeGaps() {
     const categories = {
         monthlyRule: { name: "ערך בגין חודשי (לפני 1.5.2025)", status: "ok", items: [], icon: "✅" },
         continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [], icon: "✅" },
-        higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך בגין מ-60 יום", status: "fix", items: [], icon: "🚫" },
+        higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך בגין מ-60 יום (מילואים רגילים)", status: "fix", items: [], icon: "🚫" },
+        newMiluimHigherValueIssue: { name: "תקלת חוקה - אין לתת ערך בגין מ-60 יום (מילואים חדשים)", status: "fix", items: [], icon: "⚠️" },
         forceValueNotApplied: { name: "אי החלת ערך כפייה", status: "fix", items: [], icon: "🚨" },
         emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" },
         minimumValueIssue: { name: "שולם ערך קטן משכר מינימום", status: "fix", items: [], icon: "💰" },
@@ -3019,53 +3020,118 @@ function categorizeGaps() {
                     gapsFound++;
                 }
                 
-                // בדיקה 2.3: בדיקות נוספות (מהקוד המקורי)
+                // בדיקה 2.3: פונקציית אבחון מתקדמת - מילואים רגילים שלא קיבלו ערך גבוה מ-60 יום
                 else {
-                    const gap = Math.abs(columnG - columnL);
-                    
-                    // בדיקה אם זה מילואים חדשים עם בעיית 60 יום
-                    if (result.isNewMiluim && result.startDate >= new Date(2025, 4, 1)) {
+                    const diagnosis = diagnoseGapWithNewMethods(result);
+                    if (diagnosis && diagnosis.issue === "60DayHigherValueNotGiven") {
                         categories.higherValue60DayIssue.items.push({
                             employeeId: result.employeeId,
                             period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: gap.toFixed(2),
-                            columnG: columnG.toFixed(2),
-                            columnL: columnL.toFixed(2),
-                            explanation: "מילואים חדשים - יש לתת ערך בגין מ-60 יום",
-                            details: `הפער: ${gap.toFixed(2)}₪`
+                            gap: (diagnosis.columnF - diagnosis.columnL).toFixed(2),
+                            columnG: diagnosis.columnG.toFixed(2),
+                            columnL: diagnosis.columnL.toFixed(2),
+                            explanation: diagnosis.explanation,
+                            details: `חישוב בסיסי (E): ${diagnosis.columnE.toFixed(2)}₪ | ערך מ-60 יום (F): ${diagnosis.columnF.toFixed(2)}₪ | שולם: ${diagnosis.columnL.toFixed(2)}₪`
                         });
                         categoryFound = true;
                         gapsFound++;
                     }
                     
-                    // בדיקה אם זה שימוש בשיטה שגויה
-                    else if (result.startDate < new Date(2025, 4, 1)) {
-                        categories.wrongMethodUsed.items.push({
-                            employeeId: result.employeeId,
-                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: gap.toFixed(2),
-                            columnG: columnG.toFixed(2),
-                            columnL: columnL.toFixed(2),
-                            explanation: "שימוש בשיטה שגויה",
-                            details: `הפער: ${gap.toFixed(2)}₪`
-                        });
-                        categoryFound = true;
-                        gapsFound++;
-                    }
-                    
-                    // לא מזוהה
+                    // בדיקה 2.4: פונקציית אבחון מתקדמת - מילואים חדשים שקיבלו ערך גבוה
                     else {
-                        categories.unknown.items.push({
-                            employeeId: result.employeeId,
-                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: gap.toFixed(2),
-                            columnG: columnG.toFixed(2),
-                            columnL: columnL.toFixed(2),
-                            explanation: "סיבת הפער לא ברורה",
-                            details: "דורש בדיקה ידנית"
-                        });
-                        categoryFound = true;
-                        gapsFound++;
+                        const newMiluimDiagnosis = diagnoseNewMiluimHigherValue(result);
+                        if (newMiluimDiagnosis && newMiluimDiagnosis.issue === "NewMiluimHigherValueGiven") {
+                            categories.newMiluimHigherValueIssue.items.push({
+                                employeeId: result.employeeId,
+                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                gap: (newMiluimDiagnosis.columnL - newMiluimDiagnosis.columnE).toFixed(2),
+                                columnG: columnG.toFixed(2),
+                                columnL: newMiluimDiagnosis.columnL.toFixed(2),
+                                columnE: newMiluimDiagnosis.columnE.toFixed(2),
+                                explanation: newMiluimDiagnosis.explanation,
+                                details: `היה צריך לקבל ערך בסיסי ${newMiluimDiagnosis.columnE.toFixed(2)}₪ אבל קיבל ${newMiluimDiagnosis.columnL.toFixed(2)}₪`
+                            });
+                            categoryFound = true;
+                            gapsFound++;
+                        }
+                        
+                        // בדיקה 2.5: בדיקות נוספות (מהקוד המקורי)
+                        else {
+                            const gap = Math.abs(columnG - columnL);
+                            
+                            // בדיקת כלל חודשי מתקדם
+                            const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
+                            if (monthlyCheck) {
+                                categories.monthlyRule.items.push({
+                                    employeeId: result.employeeId,
+                                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                    gap: gap.toFixed(2),
+                                    columnG: columnG.toFixed(2),
+                                    columnL: columnL.toFixed(2),
+                                    explanation: monthlyCheck.explanation,
+                                    details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                                });
+                                categoryFound = true;
+                                gapsFound++;
+                            }
+                            
+                            // בדיקת ערך כפוי מרצף - התאמה
+                            else {
+                                const compulsionValue = result.compulsionContinuous || 0;
+                                const compulsionOriginal = result.compulsion || 0;
+                                
+                                const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
+                                const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
+                                
+                                if (matchesN || matchesO) {
+                                    categories.continuousValue.items.push({
+                                        employeeId: result.employeeId,
+                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                        gap: gap.toFixed(2),
+                                        columnG: columnG.toFixed(2),
+                                        columnL: columnL.toFixed(2),
+                                        columnN: result.compulsion || 0,
+                                        columnO: result.compulsionContinuous || 0,
+                                        explanation: "תקופה עם ערך כפוי תקין",
+                                        details: matchesN ? 
+                                            `תואם עמודה N: ${compulsionOriginal}₪` : 
+                                            `תואם עמודה O: ${compulsionValue}₪`
+                                    });
+                                    categoryFound = true;
+                                    gapsFound++;
+                                }
+                                
+                                // בדיקה אם זה שימוש בשיטה שגויה
+                                else if (result.startDate < new Date(2025, 4, 1)) {
+                                    categories.wrongMethodUsed.items.push({
+                                        employeeId: result.employeeId,
+                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                        gap: gap.toFixed(2),
+                                        columnG: columnG.toFixed(2),
+                                        columnL: columnL.toFixed(2),
+                                        explanation: "שימוש בשיטה שגויה",
+                                        details: `הפער: ${gap.toFixed(2)}₪`
+                                    });
+                                    categoryFound = true;
+                                    gapsFound++;
+                                }
+                                
+                                // לא מזוהה
+                                else {
+                                    categories.unknown.items.push({
+                                        employeeId: result.employeeId,
+                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                        gap: gap.toFixed(2),
+                                        columnG: columnG.toFixed(2),
+                                        columnL: columnL.toFixed(2),
+                                        explanation: "סיבת הפער לא ברורה",
+                                        details: "דורש בדיקה ידנית"
+                                    });
+                                    categoryFound = true;
+                                    gapsFound++;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3083,7 +3149,7 @@ function categorizeGaps() {
         noGaps,
         categories
     };
-} 
+}
    
 function diagnoseGapWithNewMethods(result) {
     const columnG = result.continuousValue || 0;
@@ -3129,6 +3195,34 @@ if (condition1 && condition2 && condition3 && condition4) {
 }
     
     // אם לא - המשך לבדיקות אחרות...
+    return null;
+}
+function diagnoseNewMiluimHigherValue(result) {
+    if (!result.isNewMiluim) return null;
+    
+    const columnG = result.continuousValue || 0;
+    const columnL = result.paidAmount || 0;
+    const tolerance = 1.0;
+    
+    // חישוב ערך בסיסי
+    const basicResult = calculateBasicDailyValue(result.employeeId, result.startDate);
+    const columnE = basicResult.dailyValue;
+    
+    // בדיקה: האם שולם יותר מהערך הבסיסי?
+    if (Math.abs(columnL - columnE) <= tolerance) {
+        return null; // שולם ערך בסיסי - תקין
+    }
+    
+    if (columnL > columnE + tolerance) {
+        return {
+            issue: "NewMiluimHigherValueGiven",
+            explanation: "מילואים חדשים - שולם ערך גבוה במקום בסיסי",
+            columnE: columnE,
+            columnL: columnL,
+            shouldHavePaid: columnE
+        };
+    }
+    
     return null;
 }
 // ========================
