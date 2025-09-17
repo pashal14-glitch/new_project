@@ -2969,7 +2969,7 @@ function categorizeGaps() {
         }
         
         // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
-        else if (result.isNewMiluim && columnP > 0 && columnL > columnP && Math.abs(columnL - columnP) > 1) {
+        else if (result.isNewMiluim && columnP > 0 && columnL > columnP) > 1) {
             categories.emergencyCompulsionNotApplied.items.push({
                 employeeId: result.employeeId,
                 period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
