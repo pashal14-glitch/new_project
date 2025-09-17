@@ -1041,7 +1041,7 @@ function getServiceMonthStart(serviceStartDate) {
             let calculation = 'רגיל';
             let monthsUsed = [month1, month2, month3];
             
-            if (totalWorkDays >= 60) {
+            if (totalWorkDays > 60) {
                 // חישוב רגיל - 3 חודשים לפני השירות
                 totalBruto = GetBrutoForMonth(employeeId, month1) +
                            GetBrutoForMonth(employeeId, month2) +
