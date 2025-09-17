@@ -1081,7 +1081,8 @@ function getServiceMonthStart(serviceStartDate) {
         if (daysDiff <= 1) {
             
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
-            finalValue = prevBasicResult.dailyValue;
+            const minimumDaily = getMinimumDailyForDate(serviceStartDate);
+            finalValue = max(prevBasicResult.dailyValue;minimumDaily)
         }
     }
                           
