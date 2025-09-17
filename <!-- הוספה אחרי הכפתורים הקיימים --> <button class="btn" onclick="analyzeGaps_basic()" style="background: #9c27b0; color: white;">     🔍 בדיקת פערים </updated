@@ -2915,29 +2915,20 @@ function analyzeGaps_basic() {
     const analysis = categorizeGaps();
     showAnalysisWindow(analysis);
 }
+
 function categorizeGaps() {
     // בדיקת Debug
     console.log("🔍 התחלת בדיקת פערים...");
     console.log("מספר תוצאות:", calculationResults.length);
-    
-    // בדוק דוגמא של עמודה O
-    const sampleWithO = calculationResults.find(r => r.compulsionContinuous > 0);
-    if (sampleWithO) {
-        console.log("דוגמא עם ערך בעמודה O:", {
-            employeeId: sampleWithO.employeeId,
-            columnO: sampleWithO.compulsionContinuous,
-            columnL: sampleWithO.paidAmount
-        });
-    } else {
-        console.log("⚠️ לא נמצאו רשומות עם ערך בעמודה O");
-    }
 
     const categories = {
-        monthlyRule: { name: "ערך גבוה חודשי (לפני 1.5.2025)", status: "ok", items: [], icon: "✅" },
+        monthlyRule: { name: "ערך בגין חודשי (לפני 1.5.2025)", status: "ok", items: [], icon: "✅" },
         continuousValue: { name: "ערך כפוי מרצף", status: "ok", items: [], icon: "✅" },
-        higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך גבוה מ-60 יום", status: "fix", items: [], icon: "🚫" },
+        higherValue60DayIssue: { name: "תקלת חוקה - יש לתת ערך בגין מ-60 יום", status: "fix", items: [], icon: "🚫" },
         forceValueNotApplied: { name: "אי החלת ערך כפייה", status: "fix", items: [], icon: "🚨" },
-        emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" }, // 🔥 חדש!
+        emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" },
+        minimumValueIssue: { name: "שולם ערך קטן משכר מינימום", status: "fix", items: [], icon: "💰" },
+        incorrectMinimumBruto: { name: "תקלה בחוקה - ברוטו מינימלי לא תקין", status: "fix", items: [], icon: "📊" },
         wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },   
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
@@ -2955,98 +2946,133 @@ function categorizeGaps() {
         const columnG = result.continuousValue || 0;
         const columnL = result.paidAmount || 0;
         const columnO = result.compulsionContinuous || 0;
-        const columnP = result.emergencyCompulsion4405 || 0; // 🔥 הוסף את זה
-        const gap = Math.abs(columnG - columnL);
+        const columnP = result.emergencyCompulsion4405 || 0;
         let categoryFound = false;
         
-        // 🔥 בדיקה 1: מילואים חדשים עם G > P
-        if (result.isNewMiluim && columnP > 0 && columnG > columnP && Math.abs(columnL - columnG) <= 1) {
-            categories.emergencyCompulsionNotApplied.items.push({
-                employeeId: result.employeeId,
-                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                gap: (columnG - columnP).toFixed(2),
-                columnG: columnG.toFixed(2),
-                columnL: columnL.toFixed(2),
-                columnP: columnP.toFixed(2),
-                explanation: "מילואים חדשים - G גבוה מ-P",
-                details: `צריך לקבל כפיית ערך חירום ${columnP}₪ במקום ${columnG}₪`
-            });
-            categoryFound = true;
-            gapsFound++;
-        }
-
-        // בדיקה 2: אי החלת ערך כפייה רגיל
-        if (!categoryFound && columnO > 0 && Math.abs(columnL - columnO) > 1) {
+        // **שלב 1: בדיקת ערכי כפייה - זה חייב להתאמה לערך משולם!**
+        
+        // בדיקה 1.1: ערך כפוי מרצף (עמודה O)
+        if (columnO > 0 && Math.abs(columnL - columnO) > 1) {
             categories.forceValueNotApplied.items.push({
                 employeeId: result.employeeId,
                 period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                gap: Math.abs(columnL - columnO).toFixed(2),
+                gap: (columnL - columnO).toFixed(2),
                 columnG: columnG.toFixed(2),
                 columnL: columnL.toFixed(2),
                 columnO: columnO.toFixed(2),
-                explanation: "תקלת חוקה - לא הוחל ערך כפוי",
-                details: `אמור לקבל ${columnO}₪ אבל קיבל ${columnL}₪`
+                explanation: "יש ערך כפוי מרצף - לא הותאם לתשלום",
+                details: `שולם ${columnL}₪ במקום ${columnO}₪ - פער של ${(columnL - columnO).toFixed(2)}₪`
             });
             categoryFound = true;
             gapsFound++;
         }
         
-        // בדיקה 3: פערי G-L (רק אם לא נמצאה תקלת כפייה)
-        if (!categoryFound && gap > 1) {
+        // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
+        else if (result.isNewMiluim && columnP > 0 && columnL > columnP && Math.abs(columnL - columnP) > 1) {
+            categories.emergencyCompulsionNotApplied.items.push({
+                employeeId: result.employeeId,
+                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                gap: (columnL - columnP).toFixed(2),
+                columnG: columnG.toFixed(2),
+                columnL: columnL.toFixed(2),
+                columnP: columnP.toFixed(2),
+                explanation: "מילואים חדשים - שולם יותר מערך הכפייה החירום",
+                details: `שולם ${columnL}₪ במקום ${columnP}₪ - יתרת תשלום ${(columnL - columnP).toFixed(2)}₪`
+            });
+            categoryFound = true;
             gapsFound++;
+        }
+        
+        // **שלב 2: בדיקות כשאין ערכי כפייה (O=0 ו-P=0)**
+        else if (columnO === 0 && columnP === 0 && Math.abs(columnG - columnL) > 1) {
             
-            // כלל חודשי
-            const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
-            if (monthlyCheck) {
-                categories.monthlyRule.items.push({
+            // בדיקה 2.1: ערך קטן משכר מינימום
+            if (checkMinimumValue(columnL, result.startDate)) {
+                const minimumDaily = getMinimumDailyForDate(result.startDate);
+                categories.minimumValueIssue.items.push({
                     employeeId: result.employeeId,
                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                    gap: gap.toFixed(2),
+                    gap: (minimumDaily - columnL).toFixed(2),
                     columnG: columnG.toFixed(2),
                     columnL: columnL.toFixed(2),
-                    explanation: monthlyCheck.explanation,
-                    details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                    explanation: "שולם ערך קטן משכר מינימום",
+                    details: `שולם ${columnL}₪ - פחות מהמינימום ${minimumDaily}₪ לתאריך השירות`
                 });
                 categoryFound = true;
+                gapsFound++;
             }
             
-            // ערך כפוי מרצף
-            if (!categoryFound) {
-                const compulsionValue = result.compulsionContinuous || 0;
-                const compulsionOriginal = result.compulsion || 0;
-                
-                const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
-                const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
-                
-                if (matchesN || matchesO) {
-                    categories.continuousValue.items.push({
+            // בדיקה 2.2: בדיקת ברוטו מינימלי לא תקין
+            else {
+                const alternativeValue = calculateBasicFromMinimumDaily(result.employeeId, result.startDate);
+                if (Math.abs(columnL - alternativeValue) <= 1) {
+                    categories.incorrectMinimumBruto.items.push({
                         employeeId: result.employeeId,
                         period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                        gap: gap.toFixed(2),
+                        gap: (columnG - columnL).toFixed(2),
                         columnG: columnG.toFixed(2),
                         columnL: columnL.toFixed(2),
-                        columnN: result.compulsion || 0,
-                        columnO: result.compulsionContinuous || 0,
-                        explanation: "תקופה עם ערך כפוי תקין",
-                        details: matchesN ? `תואם עמודה N: ${compulsionOriginal}₪` : `תואם עמודה O: ${compulsionValue}₪`
+                        explanation: "תקלה בחוקה - ברוטו מינימלי לא תקין",
+                        details: `חושב לפי ברוטו מינימלי ${alternativeValue.toFixed(2)}₪ במקום ערך נכון ${columnG.toFixed(2)}₪`
                     });
                     categoryFound = true;
+                    gapsFound++;
+                }
+                
+                // בדיקה 2.3: בדיקות נוספות (מהקוד המקורי)
+                else {
+                    const gap = Math.abs(columnG - columnL);
+                    
+                    // בדיקה אם זה מילואים חדשים עם בעיית 60 יום
+                    if (result.isNewMiluim && result.startDate >= new Date(2025, 4, 1)) {
+                        categories.higherValue60DayIssue.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: gap.toFixed(2),
+                            columnG: columnG.toFixed(2),
+                            columnL: columnL.toFixed(2),
+                            explanation: "מילואים חדשים - יש לתת ערך בגין מ-60 יום",
+                            details: `הפער: ${gap.toFixed(2)}₪`
+                        });
+                        categoryFound = true;
+                        gapsFound++;
+                    }
+                    
+                    // בדיקה אם זה שימוש בשיטה שגויה
+                    else if (result.startDate < new Date(2025, 4, 1)) {
+                        categories.wrongMethodUsed.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: gap.toFixed(2),
+                            columnG: columnG.toFixed(2),
+                            columnL: columnL.toFixed(2),
+                            explanation: "שימוש בשיטה שגויה",
+                            details: `הפער: ${gap.toFixed(2)}₪`
+                        });
+                        categoryFound = true;
+                        gapsFound++;
+                    }
+                    
+                    // לא מזוהה
+                    else {
+                        categories.unknown.items.push({
+                            employeeId: result.employeeId,
+                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                            gap: gap.toFixed(2),
+                            columnG: columnG.toFixed(2),
+                            columnL: columnL.toFixed(2),
+                            explanation: "סיבת הפער לא ברורה",
+                            details: "דורש בדיקה ידנית"
+                        });
+                        categoryFound = true;
+                        gapsFound++;
+                    }
                 }
             }
-            
-            // לא מזוהה
-            if (!categoryFound) {
-                categories.unknown.items.push({
-                    employeeId: result.employeeId,
-                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                    gap: gap.toFixed(2),
-                    columnG: columnG.toFixed(2),
-                    columnL: columnL.toFixed(2),
-                    explanation: "סיבת הפער לא ברורה",
-                    details: "דורש בדיקה ידנית"
-                });
-            }
-        } else if (!categoryFound) {
+        }
+        
+        // אם לא נמצא פער או הפער קטן מ-1 ש"ח
+        if (!categoryFound) {
             noGaps++;
         }
     });
@@ -3057,7 +3083,8 @@ function categorizeGaps() {
         noGaps,
         categories
     };
-}
+} 
+   
 function diagnoseGapWithNewMethods(result) {
     const columnG = result.continuousValue || 0;
     const columnL = result.paidAmount || 0;
@@ -3193,6 +3220,65 @@ function calculateBest3From6WithMinimum(employeeId, serviceStartDate) {
     // חזרת ערך יומי
     return totalBruto / 90;
 }
+// פונקציות עזר חדשות - מחוץ לפונקציה הראשית
+function checkMinimumValue(columnL, serviceStartDate) {
+    // מציאת הערך המינימלי לפי תאריך השירות
+    for (let limit of DAILY_LIMITS) {
+        if (serviceStartDate >= limit.start && serviceStartDate <= limit.end) {
+            return columnL < limit.min;
+        }
+    }
+    // Default to latest limits if no match found
+    const latestLimit = DAILY_LIMITS[DAILY_LIMITS.length - 1];
+    return columnL < latestLimit.min;
+}
+
+function getMinimumDailyForDate(serviceStartDate) {
+    // מציאת הערך המינימלי לפי תאריך השירות
+    for (let limit of DAILY_LIMITS) {
+        if (serviceStartDate >= limit.start && serviceStartDate <= limit.end) {
+            return limit.min;
+        }
+    }
+    // Default to latest limits if no match found
+    const latestLimit = DAILY_LIMITS[DAILY_LIMITS.length - 1];
+    return latestLimit.min;
+}
+
+function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
+    // פונקציה זהה לcalculateBasicDailyValue, אבל עם ברוטו מינימלי במקום האמיתי
+    const minimumDaily = getMinimumDailyForDate(serviceStartDate);
+    const minimumMonthly = minimumDaily * 30; // חישוב ברוטו מינימלי לחודש
+    
+    // חישוב זהה לפונקציה המקורית
+    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+    
+    const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
+    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+    const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
+    
+    // בדיקת ימי עבודה ב-3 חודשים (כמו בפונקציה המקורית)
+    const workDays1 = GetWorkDaysForMonth(employeeId, month1, serviceStartDate);
+    const workDays2 = GetWorkDaysForMonth(employeeId, month2, serviceStartDate);
+    const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
+    const totalWorkDays = workDays1 + workDays2 + workDays3;
+    
+    let totalBruto = 0;
+    
+    if (totalWorkDays >= 60) {
+        // חישוב רגיל - 3 חודשים עם ברוטו מינימלי
+        totalBruto = minimumMonthly + minimumMonthly + minimumMonthly; // 3 חודשים
+    } else {
+        // חישוב חלופי - 3 החודשים הטובים מ-6 (אבל כולם זהים כי ברוטו מינימלי)
+        totalBruto = minimumMonthly * 3;
+    }
+    
+    const dailyValue = totalBruto / 90;
+    let finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
+    
+    return finalValue;
+}
+
 // 🆕 פונקציה לייצוא ניתוח פערים לאקסל
 function exportGapsToExcel() {
     console.log("🔄 מתחיל ייצוא ניתוח פערים לאקסל...");
