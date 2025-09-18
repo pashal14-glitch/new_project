@@ -3342,9 +3342,11 @@ function getMinimumDailyForDate(serviceStartDate) {
 }
 
 function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
-    // פונקציה זהה לcalculateBasicDailyValue, אבל עם ברוטו מינימלי במקום האמיתי
+    // פונקציה שמחקה את תקלת החוקה: שימוש בברוטו מינימלי מחושב (יום מינימום * 30)
+    // במקום הברוטו מינימלי הקבוע מהטבלה
+    
     const minimumDaily = getMinimumDailyForDate(serviceStartDate);
-    const minimumMonthly = minimumDaily * 30; // חישוב ברוטו מינימלי לחודש
+    const calculatedMinimumMonthly = minimumDaily * 30; // התקלה - חישוב במקום קבוע!
     
     // חישוב זהה לפונקציה המקורית
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
@@ -3362,11 +3364,25 @@ function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
     let totalBruto = 0;
     
     if (totalWorkDays >= 60) {
-        // חישוב רגיל - 3 חודשים עם ברוטו מינימלי
-        totalBruto = minimumMonthly + minimumMonthly + minimumMonthly; // 3 חודשים
+        // חישוב רגיל - 3 חודשים, אבל עם ברוטו מחושב (התקלה)
+        // במקום GetBrutoForMonth (שמחיל קבועים נכונים), נשתמש בברוטו המחושב השגוי
+        const bruto1 = Math.max(getBestBrutoForMonth(employeeId, month1), calculatedMinimumMonthly);
+        const bruto2 = Math.max(getBestBrutoForMonth(employeeId, month2), calculatedMinimumMonthly);
+        const bruto3 = Math.max(getBestBrutoForMonth(employeeId, month3), calculatedMinimumMonthly);
+        totalBruto = bruto1 + bruto2 + bruto3;
     } else {
-        // חישוב חלופי - 3 החודשים הטובים מ-6 (אבל כולם זהים כי ברוטו מינימלי)
-        totalBruto = minimumMonthly * 3;
+        // חישוב חלופי - 3 החודשים הטובים מ-6, אבל עם ברוטו מחושב
+        const months = [];
+        for (let i = 1; i <= 6; i++) {
+            const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
+            const brutoBest = getBestBrutoForMonth(employeeId, month);
+            const brutoWithCalculatedMin = Math.max(brutoBest, calculatedMinimumMonthly);
+            months.push({ date: month, bruto: brutoWithCalculatedMin });
+        }
+        
+        // מיון לפי ברוטו יורד ולקיחת 3 הטובים
+        months.sort((a, b) => b.bruto - a.bruto);
+        totalBruto = months.slice(0, 3).reduce((sum, month) => sum + month.bruto, 0);
     }
     
     const dailyValue = totalBruto / 90;
@@ -3375,6 +3391,24 @@ function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
     return finalValue;
 }
 
+// פונקציה עזר - מחזירה ברוטו גולמי בלי החלת מינימום (לפני התקלה)
+function getBestBrutoForMonth(employeeId, monthDate) {
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    
+    let bestBruto = 0;
+    
+    for (let salary of salaryData) {
+        if (salary.employeeId == employeeId) {
+            const salaryDate = parseExcelDate(salary.monthYear);
+            if (salaryDate && salaryDate >= monthStart && salaryDate <= monthEnd) {
+                bestBruto = Math.max(bestBruto, salary.bruto || 0);
+            }
+        }
+    }
+    
+    return bestBruto; // ללא החלת מינימום - זה מה שהיה לפני התקלה
+}
 // 🆕 פונקציה לייצוא ניתוח פערים לאקסל
 function exportGapsToExcel() {
     console.log("🔄 מתחיל ייצוא ניתוח פערים לאקסל...");
