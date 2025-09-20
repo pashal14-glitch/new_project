@@ -3006,7 +3006,7 @@ function categorizeGaps() {
             // בדיקה 2.2: בדיקת ברוטו מינימלי לא תקין
             else {
                 const alternativeValue = calculateBasicFromMinimumDaily(result.employeeId, result.startDate);
-                if (Math.abs(columnL - alternativeValue) <= 1 && Math.abs(columnG - columnL) <= 1) {
+                if (Math.abs(columnL - alternativeValue) <= 1 && Math.abs(columnG - columnL) > 1) {
                     categories.incorrectMinimumBruto.items.push({
                         employeeId: result.employeeId,
                         period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
