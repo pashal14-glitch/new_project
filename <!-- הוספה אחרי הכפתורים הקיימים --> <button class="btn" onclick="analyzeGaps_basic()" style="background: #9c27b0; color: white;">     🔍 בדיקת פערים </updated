@@ -2931,7 +2931,6 @@ function categorizeGaps() {
         emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" },
         minimumValueIssue: { name: "שולם ערך קטן משכר מינימום", status: "fix", items: [], icon: "💰" },
         incorrectMinimumBruto: { name: "תקלה בחוקה - ברוטו מינימלי לא תקין", status: "fix", items: [], icon: "📊" },
-        wrongMethodUsed: { name: "שימוש בשיטה שגויה", status: "fix", items: [], icon: "❌" },   
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
     
@@ -3102,21 +3101,7 @@ function categorizeGaps() {
                                     gapsFound++;
                                 }
                                 
-                                // בדיקה אם זה שימוש בשיטה שגויה
-                                else if (result.startDate < new Date(2025, 4, 1)) {
-                                    categories.wrongMethodUsed.items.push({
-                                        employeeId: result.employeeId,
-                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                        gap: gap.toFixed(2),
-                                        columnG: columnG.toFixed(2),
-                                        columnL: columnL.toFixed(2),
-                                        explanation: "שימוש בשיטה שגויה",
-                                        details: `הפער: ${gap.toFixed(2)}₪`
-                                    });
-                                    categoryFound = true;
-                                    gapsFound++;
-                                }
-                                
+                              
                                 // לא מזוהה
                                 else {
                                     categories.unknown.items.push({
