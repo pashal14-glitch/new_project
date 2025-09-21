@@ -1022,9 +1022,8 @@ function getServiceMonthStart(serviceStartDate) {
     return totalDays;
 }
 
-// Core calculation functions - מתוקן לפי המפרט         
 function calculateBasicDailyValue(employeeId, serviceStartDate) {
-    // 🔥 תיקון: חישוב 3 החודשים שלפני תחילת חודש השירות (לא +1)
+    // חישוב 3 החודשים שלפני תחילת חודש השירות
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
                      
     const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
@@ -1065,9 +1064,6 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
     }
                      
     const dailyValue = totalBruto / 90;
-
-    // 🔥 תיקון: הוסרה החלת הגבלות כאן - תעבור לסוף הפונקציה
-    // let finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
      
     const employeeMiluim = miluimData
         .filter(m => m.employeeId == employeeId)
@@ -1075,19 +1071,33 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
         .filter(m => m.startDate && m.endDate && m.endDate < serviceStartDate)
         .sort((a, b) => b.endDate - a.endDate);
 
-    let finalValue; // 🔥 תיקון: הכרזה ללא ערך התחלתי
+    let finalValue;
 
     if (employeeMiluim.length > 0) {
         const mostRecentMiluim = employeeMiluim[0];
         const daysDiff = (serviceStartDate - mostRecentMiluim.endDate) / (1000 * 60 * 60 * 24);
                  
         if (daysDiff <= 1) {
-            const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
             const minimumDaily = getMinimumDailyForDate(serviceStartDate);
             
-            // 🔥 תיקון חשוב: בדיקה האם הערך הקודם נחתך בגלל מקסימום
-            const prevUnlimited = prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue;
-            const prevLimited = prevBasicResult.dailyValue;
+            // הכרזה על המשתנים
+            let prevUnlimited, prevLimited;
+            
+            // תיקון: חיפוש בcache במקום חישוב מחדש
+            const prevKey = cacheSystem.createKey(employeeId, mostRecentMiluim.startDate);
+            
+            if (cacheSystem.cache.has(prevKey)) {
+                // נמצא בcache - השתמש בערך שכבר חושב
+                const cachedResult = cacheSystem.cache.get(prevKey);
+                prevLimited = cachedResult.basicValue;
+                prevUnlimited = cachedResult.basicValue; // אין dailyValueBeforeLimits בcache
+            } else {
+                // לא נמצא בcache - fallback לחישוב מחדש
+                const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
+                prevUnlimited = prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue;
+                prevLimited = prevBasicResult.dailyValue;
+            }
+            
             const wasCappedByMax = prevUnlimited > prevLimited;
             
             if (wasCappedByMax) {
@@ -1109,14 +1119,13 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
                                    
     return {
         dailyValue: finalValue,
-        dailyValueBeforeLimits: dailyValue, // 🔥 תיקון: שמירת הערך לפני הגבלות לשימוש עתידי
+        dailyValueBeforeLimits: dailyValue,
         totalBruto,
         calculationType: calculation,
         workDays: totalWorkDays,
         monthsUsed
     };
 }
-
 function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                  // For new miluim (after 01.05.2025) - don't consider previous service
     if (serviceStartDate >= NEW_MILUIM_START) {
