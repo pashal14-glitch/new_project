@@ -2972,208 +2972,276 @@ function categorizeGaps() {
     let noGaps = 0;
     const analysisStartDate = new Date('2023-01-01');
     
+    // קיבוץ תוצאות לפי עובד
+    const employeeGroups = {};
     calculationResults.forEach(result => {
-        if (result.startDate < analysisStartDate) {
-            return;
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = [];
         }
+        employeeGroups[result.employeeId].push(result);
+    });
+
+    // ניתוח כל עובד בנפרד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const periods = employeeGroups[employeeId].sort((a, b) => a.startDate - b.startDate);
         
-        const columnG = result.continuousValue || 0;
-        const columnL = result.paidAmount || 0;
-        const columnO = result.compulsionContinuous || 0;
-        const columnP = result.emergencyCompulsion4405 || 0;
-        let categoryFound = false;
+        let lastErrorType = null;
+        let originalErrorDate = null;
         
-        // **שלב 1: בדיקת ערכי כפייה - זה חייב להתאמה לערך משולם!**
-        
-        // בדיקה 1.1: ערך כפוי מרצף (עמודה O)
-        if (columnO > 0 && Math.abs(columnL - columnO) > 1) {
-            categories.forceValueNotApplied.items.push({
-                employeeId: result.employeeId,
-                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                gap: (columnL - columnO).toFixed(2),
-                columnG: columnG.toFixed(2),
-                columnL: columnL.toFixed(2),
-                columnO: columnO.toFixed(2),
-                explanation: "יש ערך כפוי מרצף - לא הותאם לתשלום",
-                details: `שולם ${columnL}₪ במקום ${columnO}₪ - פער של ${(columnL - columnO).toFixed(2)}₪`
-            });
-            categoryFound = true;
-            gapsFound++;
-        }
-        
-        // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
-       else if (result.isNewMiluim && columnP > 0 && Math.abs(columnL - columnP) > 1) {
-            categories.emergencyCompulsionNotApplied.items.push({
-                employeeId: result.employeeId,
-                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                gap: (columnL - columnP).toFixed(2),
-                columnG: columnG.toFixed(2),
-                columnL: columnL.toFixed(2),
-                columnP: columnP.toFixed(2),
-                explanation: "מילואים חדשים - שולם יותר מערך הכפייה החירום",
-                details: `שולם ${columnL}₪ במקום ${columnP}₪ - יתרת תשלום ${(columnL - columnP).toFixed(2)}₪`
-            });
-            categoryFound = true;
-            gapsFound++;
-        }
-        
-        // **שלב 2: בדיקות כשאין ערכי כפייה (O=0 ו-P=0)**
-        else if (columnO === 0 && columnP === 0 && Math.abs(columnG - columnL) > 1) {
+        periods.forEach((result, index) => {
+            if (result.startDate < analysisStartDate) {
+                return;
+            }
             
-            // בדיקה 2.1: ערך קטן משכר מינימום
-            if (checkMinimumValue(columnL, result.startDate)) {
-                const minimumDaily = getMinimumDailyForDate(result.startDate);
-                categories.minimumValueIssue.items.push({
+            const columnG = result.continuousValue || 0;
+            const columnL = result.paidAmount || 0;
+            const columnO = result.compulsionContinuous || 0;
+            const columnP = result.emergencyCompulsion4405 || 0;
+            let categoryFound = false;
+            
+            // בדיקת המשכיות עם התקופה הקודמת
+            const prevPeriod = index > 0 ? periods[index - 1] : null;
+            const isConsecutive = prevPeriod && 
+                ((result.startDate - prevPeriod.endDate) / (1000 * 60 * 60 * 24)) <= 1;
+            const hasSameGValue = prevPeriod && 
+                Math.abs(columnG - (prevPeriod.continuousValue || 0)) <= 0.01;
+            
+            // אם זה המשך תקלה קודמת
+            if (isConsecutive && hasSameGValue && lastErrorType && Math.abs(columnG - columnL) > 1) {
+                categories[lastErrorType].items.push({
                     employeeId: result.employeeId,
                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                    gap: (minimumDaily - columnL).toFixed(2),
+                    gap: (columnG - columnL).toFixed(2),
                     columnG: columnG.toFixed(2),
                     columnL: columnL.toFixed(2),
-                    explanation: "שולם ערך קטן משכר מינימום",
-                    details: `שולם ${columnL}₪ - פחות מהמינימום ${minimumDaily}₪ לתאריך השירות`
+                    explanation: `המשך ${categories[lastErrorType].name} מ-${formatDate(originalErrorDate)}`,
+                    details: `ערך G נגרר מתקלה מקורית (${columnG.toFixed(2)}₪)`
                 });
                 categoryFound = true;
                 gapsFound++;
-            }
-            
-            // בדיקה 2.2: בדיקת ברוטו מינימלי לא תקין
-            else {
-                const alternativeValue = calculateBasicFromMinimumDaily(result.employeeId, result.startDate);
-                if (Math.abs(columnL - alternativeValue) <= 1 && Math.abs(columnG - columnL) > 1) {
-                    categories.incorrectMinimumBruto.items.push({
+            } else {
+                // איפוס מעקב תקלות אם אין רצף או ערך שונה
+                if (!isConsecutive || !hasSameGValue) {
+                    lastErrorType = null;
+                    originalErrorDate = null;
+                }
+                
+                // **שלב 1: בדיקת ערכי כפייה - זה חייב להתאמה לערך משולם!**
+                
+                // בדיקה 1.1: ערך כפוי מרצף (עמודה O)
+                if (columnO > 0 && Math.abs(columnL - columnO) > 1) {
+                    categories.forceValueNotApplied.items.push({
                         employeeId: result.employeeId,
                         period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                        gap: (columnG - columnL).toFixed(2),
+                        gap: (columnL - columnO).toFixed(2),
                         columnG: columnG.toFixed(2),
                         columnL: columnL.toFixed(2),
-                        explanation: "תקלה בחוקה - ברוטו מינימלי לא תקין",
-                        details: `חושב לפי ברוטו מינימלי ${alternativeValue.toFixed(2)}₪ במקום ערך נכון ${columnG.toFixed(2)}₪`
+                        columnO: columnO.toFixed(2),
+                        explanation: "יש ערך כפוי מרצף - לא הותאם לתשלום",
+                        details: `שולם ${columnL}₪ במקום ${columnO}₪ - פער של ${(columnL - columnO).toFixed(2)}₪`
                     });
                     categoryFound = true;
                     gapsFound++;
+                    lastErrorType = 'forceValueNotApplied';
+                    originalErrorDate = result.startDate;
                 }
                 
-                // בדיקה 2.3: פונקציית אבחון מתקדמת - מילואים רגילים שלא קיבלו ערך גבוה מ-60 יום
-                else {
-                    const diagnosis = diagnoseGapWithNewMethods(result);
-                    if (diagnosis && diagnosis.issue === "60DayHigherValueNotGiven") {
-                        categories.higherValue60DayIssue.items.push({
+                // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
+                else if (result.isNewMiluim && columnP > 0 && Math.abs(columnL - columnP) > 1) {
+                    categories.emergencyCompulsionNotApplied.items.push({
+                        employeeId: result.employeeId,
+                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                        gap: (columnL - columnP).toFixed(2),
+                        columnG: columnG.toFixed(2),
+                        columnL: columnL.toFixed(2),
+                        columnP: columnP.toFixed(2),
+                        explanation: "מילואים חדשים - שולם יותר מערך הכפייה החירום",
+                        details: `שולם ${columnL}₪ במקום ${columnP}₪ - יתרת תשלום ${(columnL - columnP).toFixed(2)}₪`
+                    });
+                    categoryFound = true;
+                    gapsFound++;
+                    lastErrorType = 'emergencyCompulsionNotApplied';
+                    originalErrorDate = result.startDate;
+                }
+                
+                // **שלב 2: בדיקות כשאין ערכי כפייה (O=0 ו-P=0)**
+                else if (columnO === 0 && columnP === 0 && Math.abs(columnG - columnL) > 1) {
+                    
+                    // בדיקה 2.1: ערך קטן משכר מינימום
+                    if (checkMinimumValue(columnL, result.startDate)) {
+                        const minimumDaily = getMinimumDailyForDate(result.startDate);
+                        categories.minimumValueIssue.items.push({
                             employeeId: result.employeeId,
                             period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                            gap: (diagnosis.columnF - diagnosis.columnL).toFixed(2),
-                            columnG: diagnosis.columnG.toFixed(2),
-                            columnL: diagnosis.columnL.toFixed(2),
-                            explanation: diagnosis.explanation,
-                            details: `חישוב בסיסי (E): ${diagnosis.columnE.toFixed(2)}₪ | ערך מ-60 יום (F): ${diagnosis.columnF.toFixed(2)}₪ | שולם: ${diagnosis.columnL.toFixed(2)}₪`
+                            gap: (minimumDaily - columnL).toFixed(2),
+                            columnG: columnG.toFixed(2),
+                            columnL: columnL.toFixed(2),
+                            explanation: "שולם ערך קטן משכר מינימום",
+                            details: `שולם ${columnL}₪ - פחות מהמינימום ${minimumDaily}₪ לתאריך השירות`
                         });
                         categoryFound = true;
                         gapsFound++;
+                        lastErrorType = 'minimumValueIssue';
+                        originalErrorDate = result.startDate;
                     }
                     
-                    // בדיקה 2.4: פונקציית אבחון מתקדמת - מילואים חדשים שקיבלו ערך גבוה
+                    // בדיקה 2.2: בדיקת ברוטו מינימלי לא תקין
                     else {
-                        const newMiluimDiagnosis = diagnoseNewMiluimHigherValue(result);
-                        if (newMiluimDiagnosis && newMiluimDiagnosis.issue === "NewMiluimHigherValueGiven") {
-                            categories.newMiluimHigherValueIssue.items.push({
+                        const alternativeValue = calculateBasicFromMinimumDaily(result.employeeId, result.startDate);
+                        if (Math.abs(columnL - alternativeValue) <= 1 && Math.abs(columnG - columnL) > 1) {
+                            categories.incorrectMinimumBruto.items.push({
                                 employeeId: result.employeeId,
                                 period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                gap: (newMiluimDiagnosis.columnL - newMiluimDiagnosis.columnE).toFixed(2),
+                                gap: (columnG - columnL).toFixed(2),
                                 columnG: columnG.toFixed(2),
-                                columnL: newMiluimDiagnosis.columnL.toFixed(2),
-                                columnE: newMiluimDiagnosis.columnE.toFixed(2),
-                                explanation: newMiluimDiagnosis.explanation,
-                                details: `היה צריך לקבל ערך בסיסי ${newMiluimDiagnosis.columnE.toFixed(2)}₪ אבל קיבל ${newMiluimDiagnosis.columnL.toFixed(2)}₪`
+                                columnL: columnL.toFixed(2),
+                                explanation: "תקלה בחוקה - ברוטו מינימלי לא תקין",
+                                details: `חושב לפי ברוטו מינימלי ${alternativeValue.toFixed(2)}₪ במקום ערך נכון ${columnG.toFixed(2)}₪`
                             });
                             categoryFound = true;
                             gapsFound++;
+                            lastErrorType = 'incorrectMinimumBruto';
+                            originalErrorDate = result.startDate;
                         }
                         
-                        // בדיקה 2.5: בדיקות נוספות (מהקוד המקורי)
+                        // בדיקה 2.3: פונקציית אבחון מתקדמת - מילואים רגילים שלא קיבלו ערך גבוה מ-60 יום
                         else {
-                            const gap = Math.abs(columnG - columnL);
-                            
-                            // בדיקת כלל חודשי מתקדם
-                            const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
-                            if (monthlyCheck) {
-                                categories.monthlyRule.items.push({
+                            const diagnosis = diagnoseGapWithNewMethods(result);
+                            if (diagnosis && diagnosis.issue === "60DayHigherValueNotGiven") {
+                                categories.higherValue60DayIssue.items.push({
                                     employeeId: result.employeeId,
                                     period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                    gap: gap.toFixed(2),
-                                    columnG: columnG.toFixed(2),
-                                    columnL: columnL.toFixed(2),
-                                    explanation: monthlyCheck.explanation,
-                                    details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                                    gap: (diagnosis.columnF - diagnosis.columnL).toFixed(2),
+                                    columnG: diagnosis.columnG.toFixed(2),
+                                    columnL: diagnosis.columnL.toFixed(2),
+                                    explanation: diagnosis.explanation,
+                                    details: `חישוב בסיסי (E): ${diagnosis.columnE.toFixed(2)}₪ | ערך מ-60 יום (F): ${diagnosis.columnF.toFixed(2)}₪ | שולם: ${diagnosis.columnL.toFixed(2)}₪`
                                 });
                                 categoryFound = true;
                                 gapsFound++;
+                                lastErrorType = 'higherValue60DayIssue';
+                                originalErrorDate = result.startDate;
                             }
                             
-                            // בדיקת ערך כפוי מרצף - התאמה
+                            // בדיקה 2.4: פונקציית אבחון מתקדמת - מילואים חדשים שקיבלו ערך גבוה
                             else {
-                                const compulsionValue = result.compulsionContinuous || 0;
-                                const compulsionOriginal = result.compulsion || 0;
-                                
-                                const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
-                                const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
-                                
-                                if (matchesN || matchesO) {
-                                    categories.continuousValue.items.push({
+                                const newMiluimDiagnosis = diagnoseNewMiluimHigherValue(result);
+                                if (newMiluimDiagnosis && newMiluimDiagnosis.issue === "NewMiluimHigherValueGiven") {
+                                    categories.newMiluimHigherValueIssue.items.push({
                                         employeeId: result.employeeId,
                                         period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                        gap: gap.toFixed(2),
+                                        gap: (newMiluimDiagnosis.columnL - newMiluimDiagnosis.columnE).toFixed(2),
                                         columnG: columnG.toFixed(2),
-                                        columnL: columnL.toFixed(2),
-                                        columnN: result.compulsion || 0,
-                                        columnO: result.compulsionContinuous || 0,
-                                        explanation: "תקופה עם ערך כפוי תקין",
-                                        details: matchesN ? 
-                                            `תואם עמודה N: ${compulsionOriginal}₪` : 
-                                            `תואם עמודה O: ${compulsionValue}₪`
+                                        columnL: newMiluimDiagnosis.columnL.toFixed(2),
+                                        columnE: newMiluimDiagnosis.columnE.toFixed(2),
+                                        explanation: newMiluimDiagnosis.explanation,
+                                        details: `היה צריך לקבל ערך בסיסי ${newMiluimDiagnosis.columnE.toFixed(2)}₪ אבל קיבל ${newMiluimDiagnosis.columnL.toFixed(2)}₪`
                                     });
                                     categoryFound = true;
                                     gapsFound++;
+                                    lastErrorType = 'newMiluimHigherValueIssue';
+                                    originalErrorDate = result.startDate;
                                 }
                                 
-                                // 🔒 בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
-                                else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
-                                    categories.lockedValue.items.push({
-                                        employeeId: result.employeeId,
-                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                        gap: (columnG - columnL).toFixed(2),
-                                        columnG: columnG.toFixed(2),
-                                        columnL: columnL.toFixed(2),
-                                        explanation: "ערך G נעול למילואים חדשים - לא תקלה",
-                                        details: `ערך G ${columnG.toFixed(2)}₪ נעול ע\"י מגבלת 120% למילואים חדשים. שולם ${columnL.toFixed(2)}₪`
-                                    });
-                                    categoryFound = true;
-                                    // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
-                                }
-                                
-                                // לא מזוהה - רק אם לא נמצא שום דבר אחר
+                                // בדיקה 2.5: בדיקות נוספות
                                 else {
-                                    categories.unknown.items.push({
-                                        employeeId: result.employeeId,
-                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                        gap: gap.toFixed(2),
-                                        columnG: columnG.toFixed(2),
-                                        columnL: columnL.toFixed(2),
-                                        explanation: "סיבת הפער לא ברורה",
-                                        details: "דורש בדיקה ידנית"
-                                    });
-                                    categoryFound = true;
-                                    gapsFound++;
+                                    const gap = Math.abs(columnG - columnL);
+                                    
+                                    // בדיקת כלל חודשי מתקדם
+                                    const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
+                                    if (monthlyCheck) {
+                                        categories.monthlyRule.items.push({
+                                            employeeId: result.employeeId,
+                                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                            gap: gap.toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            explanation: monthlyCheck.explanation,
+                                            details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                                        });
+                                        categoryFound = true;
+                                        gapsFound++;
+                                        lastErrorType = 'monthlyRule';
+                                        originalErrorDate = result.startDate;
+                                    }
+                                    
+                                    // בדיקת ערך כפוי מרצף - התאמה
+                                    else {
+                                        const compulsionValue = result.compulsionContinuous || 0;
+                                        const compulsionOriginal = result.compulsion || 0;
+                                        
+                                        const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
+                                        const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
+                                        
+                                        if (matchesN || matchesO) {
+                                            categories.continuousValue.items.push({
+                                                employeeId: result.employeeId,
+                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                                gap: gap.toFixed(2),
+                                                columnG: columnG.toFixed(2),
+                                                columnL: columnL.toFixed(2),
+                                                columnN: result.compulsion || 0,
+                                                columnO: result.compulsionContinuous || 0,
+                                                explanation: "תקופה עם ערך כפוי תקין",
+                                                details: matchesN ? 
+                                                    `תואם עמודה N: ${compulsionOriginal}₪` : 
+                                                    `תואם עמודה O: ${compulsionValue}₪`
+                                            });
+                                            categoryFound = true;
+                                            gapsFound++;
+                                            lastErrorType = 'continuousValue';
+                                            originalErrorDate = result.startDate;
+                                        }
+                                        
+                                        // בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
+                                        else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
+                                            categories.lockedValue.items.push({
+                                                employeeId: result.employeeId,
+                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                                gap: (columnG - columnL).toFixed(2),
+                                                columnG: columnG.toFixed(2),
+                                                columnL: columnL.toFixed(2),
+                                                explanation: "ערך G נעול למילואים חדשים - לא תקלה",
+                                                details: `ערך G ${columnG.toFixed(2)}₪ נעול ע"י מגבלת 120% למילואים חדשים. שולם ${columnL.toFixed(2)}₪`
+                                            });
+                                            categoryFound = true;
+                                            // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
+                                            lastErrorType = 'lockedValue';
+                                            originalErrorDate = result.startDate;
+                                        }
+                                        
+                                        // לא מזוהה - רק אם לא נמצא שום דבר אחר
+                                        else {
+                                            categories.unknown.items.push({
+                                                employeeId: result.employeeId,
+                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                                gap: gap.toFixed(2),
+                                                columnG: columnG.toFixed(2),
+                                                columnL: columnL.toFixed(2),
+                                                explanation: "סיבת הפער לא ברורה",
+                                                details: "דורש בדיקה ידנית"
+                                            });
+                                            categoryFound = true;
+                                            gapsFound++;
+                                            lastErrorType = 'unknown';
+                                            originalErrorDate = result.startDate;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        
-        // אם לא נמצא פער או הפער קטן מ-1 ש"ח
-        if (!categoryFound) {
-            noGaps++;
-        }
+            
+            // אם לא נמצא פער או הפער קטן מ-1 ש"ח
+            if (!categoryFound) {
+                // איפוס מעקב תקלות
+                lastErrorType = null;
+                originalErrorDate = null;
+                noGaps++;
+            }
+        });
     });
     
     return {
