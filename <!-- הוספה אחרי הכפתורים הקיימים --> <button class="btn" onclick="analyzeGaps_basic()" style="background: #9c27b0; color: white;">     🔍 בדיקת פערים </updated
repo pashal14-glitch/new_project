@@ -2954,6 +2954,7 @@ function categorizeGaps() {
         emergencyCompulsionNotApplied: { name: "תקלת חוקה - לא הוחל כפיית ערך חירום", status: "fix", items: [], icon: "⚡" },
         minimumValueIssue: { name: "שולם ערך קטן משכר מינימום", status: "fix", items: [], icon: "💰" },
         incorrectMinimumBruto: { name: "תקלה בחוקה - ברוטו מינימלי לא תקין", status: "fix", items: [], icon: "📊" },
+        lockedValue: { name: "ערך G נעול (מילואים חדשים)", status: "info", items: [], icon: "🔒" },
         unknown: { name: "לא מזוהה", status: "check", items: [], icon: "🤔" }
     };
     
@@ -2992,7 +2993,7 @@ function categorizeGaps() {
         }
         
         // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
-       if (result.isNewMiluim && columnP > 0 && Math.abs(columnL - columnP) > 1) {
+       else if (result.isNewMiluim && columnP > 0 && Math.abs(columnL - columnP) > 1) {
             categories.emergencyCompulsionNotApplied.items.push({
                 employeeId: result.employeeId,
                 period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
@@ -3124,8 +3125,22 @@ function categorizeGaps() {
                                     gapsFound++;
                                 }
                                 
-                              
-                                // לא מזוהה
+                                // 🔒 בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
+                                else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
+                                    categories.lockedValue.items.push({
+                                        employeeId: result.employeeId,
+                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                        gap: (columnG - columnL).toFixed(2),
+                                        columnG: columnG.toFixed(2),
+                                        columnL: columnL.toFixed(2),
+                                        explanation: "ערך G נעול למילואים חדשים - לא תקלה",
+                                        details: `ערך G ${columnG.toFixed(2)}₪ נעול ע\"י מגבלת 120% למילואים חדשים. שולם ${columnL.toFixed(2)}₪`
+                                    });
+                                    categoryFound = true;
+                                    // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
+                                }
+                                
+                                // לא מזוהה - רק אם לא נמצא שום דבר אחר
                                 else {
                                     categories.unknown.items.push({
                                         employeeId: result.employeeId,
@@ -3159,7 +3174,6 @@ function categorizeGaps() {
         categories
     };
 }
-   
 function diagnoseGapWithNewMethods(result) {
     const columnG = result.continuousValue || 0;
     const columnL = result.paidAmount || 0;
