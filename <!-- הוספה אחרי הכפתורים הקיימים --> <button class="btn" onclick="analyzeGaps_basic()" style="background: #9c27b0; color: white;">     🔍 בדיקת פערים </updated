@@ -2972,16 +2972,48 @@ function categorizeGaps() {
     let noGaps = 0;
     const analysisStartDate = new Date('2023-01-01');
     
-    // קיבוץ תוצאות לפי עובד
+    // **שלב 1: זיהוי כל הכללים החודשיים מראש**
+    const monthlyRuleResults = new Set(); // סט של מפתחות תוצאות שמשתייכות לכלל חודשי
+    
+    calculationResults.forEach(result => {
+        if (result.startDate < analysisStartDate) return;
+        
+        const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
+        if (monthlyCheck) {
+            // סמן את התוצאה הזו כמשתייכת לכלל חודשי
+            const resultKey = `${result.employeeId}_${result.startDate.getTime()}`;
+            monthlyRuleResults.add(resultKey);
+            
+            // הוסף לקטגוריה מיד
+            const gap = Math.abs((result.continuousValue || 0) - (result.paidAmount || 0));
+            categories.monthlyRule.items.push({
+                employeeId: result.employeeId,
+                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                gap: gap.toFixed(2),
+                columnG: (result.continuousValue || 0).toFixed(2),
+                columnL: (result.paidAmount || 0).toFixed(2),
+                explanation: monthlyCheck.explanation,
+                details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+            });
+            gapsFound++;
+        }
+    });
+
+    // **שלב 2: קיבוץ תוצאות לפי עובד (בלי כלל חודשי)**
     const employeeGroups = {};
     calculationResults.forEach(result => {
+        const resultKey = `${result.employeeId}_${result.startDate.getTime()}`;
+        
+        // דלג על תוצאות שכבר זוהו ככלל חודשי
+        if (monthlyRuleResults.has(resultKey)) return;
+        
         if (!employeeGroups[result.employeeId]) {
             employeeGroups[result.employeeId] = [];
         }
         employeeGroups[result.employeeId].push(result);
     });
 
-    // ניתוח כל עובד בנפרד
+    // **שלב 3: ניתוח כל עובד בנפרד (בלי כלל חודשי)**
     Object.keys(employeeGroups).forEach(employeeId => {
         const periods = employeeGroups[employeeId].sort((a, b) => a.startDate - b.startDate);
         
@@ -3143,89 +3175,69 @@ function categorizeGaps() {
                                     originalErrorDate = result.startDate;
                                 }
                                 
-                                // בדיקה 2.5: בדיקות נוספות
+                                // בדיקה 2.5: בדיקות נוספות (בלי כלל חודשי!)
                                 else {
                                     const gap = Math.abs(columnG - columnL);
                                     
-                                    // בדיקת כלל חודשי מתקדם
-                                    const monthlyCheck = checkMonthlyRuleAdvanced(result, calculationResults);
-                                    if (monthlyCheck) {
-                                        categories.monthlyRule.items.push({
+                                    // בדיקת ערך כפוי מרצף - התאמה
+                                    const compulsionValue = result.compulsionContinuous || 0;
+                                    const compulsionOriginal = result.compulsion || 0;
+                                    
+                                    const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
+                                    const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
+                                    
+                                    if (matchesN || matchesO) {
+                                        categories.continuousValue.items.push({
                                             employeeId: result.employeeId,
                                             period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
                                             gap: gap.toFixed(2),
                                             columnG: columnG.toFixed(2),
                                             columnL: columnL.toFixed(2),
-                                            explanation: monthlyCheck.explanation,
-                                            details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
+                                            columnN: result.compulsion || 0,
+                                            columnO: result.compulsionContinuous || 0,
+                                            explanation: "תקופה עם ערך כפוי תקין",
+                                            details: matchesN ? 
+                                                `תואם עמודה N: ${compulsionOriginal}₪` : 
+                                                `תואם עמודה O: ${compulsionValue}₪`
                                         });
                                         categoryFound = true;
                                         gapsFound++;
-                                        lastErrorType = 'monthlyRule';
+                                        lastErrorType = 'continuousValue';
                                         originalErrorDate = result.startDate;
                                     }
                                     
-                                    // בדיקת ערך כפוי מרצף - התאמה
+                                    // בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
+                                    else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
+                                        categories.lockedValue.items.push({
+                                            employeeId: result.employeeId,
+                                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                            gap: (columnG - columnL).toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            explanation: "ערך G נעול למילואים חדשים - לא תקלה",
+                                            details: `ערך G ${columnG.toFixed(2)}₪ נעול ע"י מגבלת 120% למילואים חדשים. שולם ${columnL.toFixed(2)}₪`
+                                        });
+                                        categoryFound = true;
+                                        // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
+                                        lastErrorType = 'lockedValue';
+                                        originalErrorDate = result.startDate;
+                                    }
+                                    
+                                    // לא מזוהה - רק אם לא נמצא שום דבר אחר
                                     else {
-                                        const compulsionValue = result.compulsionContinuous || 0;
-                                        const compulsionOriginal = result.compulsion || 0;
-                                        
-                                        const matchesN = compulsionOriginal > 0 && Math.abs(columnL - compulsionOriginal) <= 1;
-                                        const matchesO = compulsionValue > 0 && Math.abs(columnL - compulsionValue) <= 1;
-                                        
-                                        if (matchesN || matchesO) {
-                                            categories.continuousValue.items.push({
-                                                employeeId: result.employeeId,
-                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                                gap: gap.toFixed(2),
-                                                columnG: columnG.toFixed(2),
-                                                columnL: columnL.toFixed(2),
-                                                columnN: result.compulsion || 0,
-                                                columnO: result.compulsionContinuous || 0,
-                                                explanation: "תקופה עם ערך כפוי תקין",
-                                                details: matchesN ? 
-                                                    `תואם עמודה N: ${compulsionOriginal}₪` : 
-                                                    `תואם עמודה O: ${compulsionValue}₪`
-                                            });
-                                            categoryFound = true;
-                                            gapsFound++;
-                                            lastErrorType = 'continuousValue';
-                                            originalErrorDate = result.startDate;
-                                        }
-                                        
-                                        // בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
-                                        else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
-                                            categories.lockedValue.items.push({
-                                                employeeId: result.employeeId,
-                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                                gap: (columnG - columnL).toFixed(2),
-                                                columnG: columnG.toFixed(2),
-                                                columnL: columnL.toFixed(2),
-                                                explanation: "ערך G נעול למילואים חדשים - לא תקלה",
-                                                details: `ערך G ${columnG.toFixed(2)}₪ נעול ע"י מגבלת 120% למילואים חדשים. שולם ${columnL.toFixed(2)}₪`
-                                            });
-                                            categoryFound = true;
-                                            // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
-                                            lastErrorType = 'lockedValue';
-                                            originalErrorDate = result.startDate;
-                                        }
-                                        
-                                        // לא מזוהה - רק אם לא נמצא שום דבר אחר
-                                        else {
-                                            categories.unknown.items.push({
-                                                employeeId: result.employeeId,
-                                                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                                                gap: gap.toFixed(2),
-                                                columnG: columnG.toFixed(2),
-                                                columnL: columnL.toFixed(2),
-                                                explanation: "סיבת הפער לא ברורה",
-                                                details: "דורש בדיקה ידנית"
-                                            });
-                                            categoryFound = true;
-                                            gapsFound++;
-                                            lastErrorType = 'unknown';
-                                            originalErrorDate = result.startDate;
-                                        }
+                                        categories.unknown.items.push({
+                                            employeeId: result.employeeId,
+                                            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                            gap: gap.toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            explanation: "סיבת הפער לא ברורה",
+                                            details: "דורש בדיקה ידנית"
+                                        });
+                                        categoryFound = true;
+                                        gapsFound++;
+                                        lastErrorType = 'unknown';
+                                        originalErrorDate = result.startDate;
                                     }
                                 }
                             }
