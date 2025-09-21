@@ -3347,13 +3347,25 @@ function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
     const totalWorkDays = workDays1 + workDays2 + workDays3;
     
     let totalBruto = 0;
+    let adjustmentNeeded = false; // בדיקה אם נדרשת התאמה
     
     if (totalWorkDays >= 60) {
         // חישוב רגיל - 3 חודשים, אבל עם ברוטו מחושב (התקלה)
         // במקום GetBrutoForMonth (שמחיל קבועים נכונים), נשתמש בברוטו המחושב השגוי
-        const bruto1 = Math.max(getBestBrutoForMonth(employeeId, month1), calculatedMinimumMonthly);
-        const bruto2 = Math.max(getBestBrutoForMonth(employeeId, month2), calculatedMinimumMonthly);
-        const bruto3 = Math.max(getBestBrutoForMonth(employeeId, month3), calculatedMinimumMonthly);
+        const rawBruto1 = getBestBrutoForMonth(employeeId, month1);
+        const rawBruto2 = getBestBrutoForMonth(employeeId, month2);
+        const rawBruto3 = getBestBrutoForMonth(employeeId, month3);
+        
+        // בדוק אם יש לפחות חודש אחד שצריך התאמה
+        if (rawBruto1 < calculatedMinimumMonthly || 
+            rawBruto2 < calculatedMinimumMonthly || 
+            rawBruto3 < calculatedMinimumMonthly) {
+            adjustmentNeeded = true;
+        }
+        
+        const bruto1 = Math.max(rawBruto1, calculatedMinimumMonthly);
+        const bruto2 = Math.max(rawBruto2, calculatedMinimumMonthly);
+        const bruto3 = Math.max(rawBruto3, calculatedMinimumMonthly);
         totalBruto = bruto1 + bruto2 + bruto3;
     } else {
         // חישוב חלופי - 3 החודשים הטובים מ-6, אבל עם ברוטו מחושב
@@ -3361,6 +3373,12 @@ function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
         for (let i = 1; i <= 6; i++) {
             const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
             const brutoBest = getBestBrutoForMonth(employeeId, month);
+            
+            // בדוק אם החודש הזה צריך התאמה
+            if (brutoBest < calculatedMinimumMonthly) {
+                adjustmentNeeded = true;
+            }
+            
             const brutoWithCalculatedMin = Math.max(brutoBest, calculatedMinimumMonthly);
             months.push({ date: month, bruto: brutoWithCalculatedMin });
         }
@@ -3368,6 +3386,11 @@ function calculateBasicFromMinimumDaily(employeeId, serviceStartDate) {
         // מיון לפי ברוטו יורד ולקיחת 3 הטובים
         months.sort((a, b) => b.bruto - a.bruto);
         totalBruto = months.slice(0, 3).reduce((sum, month) => sum + month.bruto, 0);
+    }
+    
+    // אם לא נדרשת התאמה, החזר ערך שלא יתאים לבדיקה
+    if (!adjustmentNeeded) {
+        return -1; // ערך שיגרום לכישלון התנאי Math.abs(columnL - alternativeValue) <= 1
     }
     
     const dailyValue = totalBruto / 90;
