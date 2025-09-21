@@ -1022,7 +1022,7 @@ function getServiceMonthStart(serviceStartDate) {
     return totalDays;
 }
 
-       // Core calculation functions - מתוקן לפי המפרט         
+// Core calculation functions - מתוקן לפי המפרט         
 function calculateBasicDailyValue(employeeId, serviceStartDate) {
     // 🔥 תיקון: חישוב 3 החודשים שלפני תחילת חודש השירות (לא +1)
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
@@ -1082,15 +1082,22 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
         const daysDiff = (serviceStartDate - mostRecentMiluim.endDate) / (1000 * 60 * 60 * 24);
                  
         if (daysDiff <= 1) {
-            // 🔥 תיקון: השתמש בערך הלא מוגבל מהמילואים הקודמים
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
             const minimumDaily = getMinimumDailyForDate(serviceStartDate);
             
-            // 🔥 תיקון: השתמש בערך הלא מוגבל הנוכחי או הקודם (הגבוה מביניהם)
-            const unlimitedValue = Math.max(dailyValue, prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue, minimumDaily);
+            // 🔥 תיקון חשוב: בדיקה האם הערך הקודם נחתך בגלל מקסימום
+            const prevUnlimited = prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue;
+            const prevLimited = prevBasicResult.dailyValue;
+            const wasCappedByMax = prevUnlimited > prevLimited;
             
-            // 🔥 תיקון: החל הגבלות של התאריך החדש בלבד
-            finalValue = ApplyFinalLimitsFromCSV(unlimitedValue, serviceStartDate);
+            if (wasCappedByMax) {
+                // הערך הקודם נחתך - השתמש בערך הלא מוגבל עם הגבלות חדשות
+                const unlimitedValue = Math.max(prevUnlimited, minimumDaily);
+                finalValue = ApplyFinalLimitsFromCSV(unlimitedValue, serviceStartDate);
+            } else {
+                // הערך הקודם לא נחתך - השתמש בערך הקודם כפי שהוא
+                finalValue = Math.max(prevLimited, minimumDaily);
+            }
         } else {
             // אין מילואים רציפים - החל הגבלות רגילות
             finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
@@ -1109,6 +1116,7 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
         monthsUsed
     };
 }
+
 function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                  // For new miluim (after 01.05.2025) - don't consider previous service
     if (serviceStartDate >= NEW_MILUIM_START) {
