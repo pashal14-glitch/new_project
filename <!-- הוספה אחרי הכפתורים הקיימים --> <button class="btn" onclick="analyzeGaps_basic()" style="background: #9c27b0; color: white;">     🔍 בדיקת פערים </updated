@@ -1022,78 +1022,93 @@ function getServiceMonthStart(serviceStartDate) {
     return totalDays;
 }
 
-        // Core calculation functions - מתוקן לפי המפרט
-        function calculateBasicDailyValue(employeeId, serviceStartDate) {
-            // 🔥 תיקון: חישוב 3 החודשים שלפני תחילת חודש השירות (לא +1)
-            const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
-            
-            const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
-            const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
-            const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
-            
-            // בדיקת ימי עבודה ב-3 חודשים
-            const workDays1 = GetWorkDaysForMonth(employeeId, month1, serviceStartDate);
-            const workDays2 = GetWorkDaysForMonth(employeeId, month2, serviceStartDate);
-            const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
-            const totalWorkDays = workDays1 + workDays2 + workDays3;
-            
-            let totalBruto = 0;
-            let calculation = 'רגיל';
-            let monthsUsed = [month1, month2, month3];
-            
-            if (totalWorkDays >= 60) {
-                // חישוב רגיל - 3 חודשים לפני השירות
-                totalBruto = GetBrutoForMonth(employeeId, month1) +
-                           GetBrutoForMonth(employeeId, month2) +
-                           GetBrutoForMonth(employeeId, month3);
-            } else {
-                // חישוב חלופי - 3 החודשים הטובים מ-6 חודשים לפני
-                calculation = 'חלופי';
-                const months = [];
-                for (let i = 1; i <= 6; i++) {
-                    const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
-                    months.push({
-                        date: month,
-                        bruto: GetBrutoForMonth(employeeId, month)
-                    });
-                }
-                
-                // מיון לפי ברוטו יורד ולקיחת 3 הטובים
-                months.sort((a, b) => b.bruto - a.bruto);
-                monthsUsed = months.slice(0, 3).map(m => m.date);
-                totalBruto = months.slice(0, 3).reduce((sum, month) => sum + month.bruto, 0);
-            }
-            
-            const dailyValue = totalBruto / 90;
-           let finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
-    
+       // Core calculation functions - מתוקן לפי המפרט         
+function calculateBasicDailyValue(employeeId, serviceStartDate) {
+    // 🔥 תיקון: חישוב 3 החודשים שלפני תחילת חודש השירות (לא +1)
+    const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
+                     
+    const month1 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 1, 1);
+    const month2 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 2, 1);
+    const month3 = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - 3, 1);
+                     
+    // בדיקת ימי עבודה ב-3 חודשים
+    const workDays1 = GetWorkDaysForMonth(employeeId, month1, serviceStartDate);
+    const workDays2 = GetWorkDaysForMonth(employeeId, month2, serviceStartDate);
+    const workDays3 = GetWorkDaysForMonth(employeeId, month3, serviceStartDate);
+    const totalWorkDays = workDays1 + workDays2 + workDays3;
+                     
+    let totalBruto = 0;
+    let calculation = 'רגיל';
+    let monthsUsed = [month1, month2, month3];
+                     
+    if (totalWorkDays >= 60) {
+        // חישוב רגיל - 3 חודשים לפני השירות
+        totalBruto = GetBrutoForMonth(employeeId, month1) +
+                   GetBrutoForMonth(employeeId, month2) +
+                   GetBrutoForMonth(employeeId, month3);
+    } else {
+        // חישוב חלופי - 3 החודשים הטובים מ-6 חודשים לפני
+        calculation = 'חלופי';
+        const months = [];
+        for (let i = 1; i <= 6; i++) {
+            const month = new Date(serviceMonth.getFullYear(), serviceMonth.getMonth() - i, 1);
+            months.push({
+                date: month,
+                bruto: GetBrutoForMonth(employeeId, month)
+            });
+        }
+                         
+        // מיון לפי ברוטו יורד ולקיחת 3 הטובים
+        months.sort((a, b) => b.bruto - a.bruto);
+        monthsUsed = months.slice(0, 3).map(m => m.date);
+        totalBruto = months.slice(0, 3).reduce((sum, month) => sum + month.bruto, 0);
+    }
+                     
+    const dailyValue = totalBruto / 90;
 
+    // 🔥 תיקון: הוסרה החלת הגבלות כאן - תעבור לסוף הפונקציה
+    // let finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
+     
     const employeeMiluim = miluimData
         .filter(m => m.employeeId == employeeId)
         .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
         .filter(m => m.startDate && m.endDate && m.endDate < serviceStartDate)
         .sort((a, b) => b.endDate - a.endDate);
-    
+
+    let finalValue; // 🔥 תיקון: הכרזה ללא ערך התחלתי
+
     if (employeeMiluim.length > 0) {
         const mostRecentMiluim = employeeMiluim[0];
         const daysDiff = (serviceStartDate - mostRecentMiluim.endDate) / (1000 * 60 * 60 * 24);
-        
+                 
         if (daysDiff <= 1) {
-            
+            // 🔥 תיקון: השתמש בערך הלא מוגבל מהמילואים הקודמים
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
             const minimumDaily = getMinimumDailyForDate(serviceStartDate);
-            finalValue = Math.max(prevBasicResult.dailyValue,minimumDaily);
+            
+            // 🔥 תיקון: השתמש בערך הלא מוגבל הנוכחי או הקודם (הגבוה מביניהם)
+            const unlimitedValue = Math.max(dailyValue, prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue, minimumDaily);
+            
+            // 🔥 תיקון: החל הגבלות של התאריך החדש בלבד
+            finalValue = ApplyFinalLimitsFromCSV(unlimitedValue, serviceStartDate);
+        } else {
+            // אין מילואים רציפים - החל הגבלות רגילות
+            finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
         }
+    } else {
+        // אין מילואים קודמים - החל הגבלות רגילות
+        finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
     }
-                          
-            return {
-                dailyValue: finalValue,
-                totalBruto,
-                calculationType: calculation,
-                workDays: totalWorkDays,
-                monthsUsed
-            };
-        }
+                                   
+    return {
+        dailyValue: finalValue,
+        dailyValueBeforeLimits: dailyValue, // 🔥 תיקון: שמירת הערך לפני הגבלות לשימוש עתידי
+        totalBruto,
+        calculationType: calculation,
+        workDays: totalWorkDays,
+        monthsUsed
+    };
+}
 function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                  // For new miluim (after 01.05.2025) - don't consider previous service
     if (serviceStartDate >= NEW_MILUIM_START) {
