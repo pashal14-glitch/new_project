@@ -618,8 +618,9 @@
         style="background: linear-gradient(45deg, #FF6B6B, #FF5722);">
     🧮 חישוב תוספת 40%
 </button>
-<button onclick="showMiluimTable()" class="action-btn" style="background: #2196F3; margin-top: 10px;">
-    הצג טבלת כל העובדים
+<!-- אחרי הכפתור הקיים "חשב תוספת לתקופה זו" -->
+<button onclick="showAllEmployeesWithSupplement()" class="action-btn" style="background: #2196F3; margin-top: 10px;">
+    הצג כל העובדים עם תוספת 40%
 </button>
 <div id="miluimTable" style="margin-top: 20px;"></div>
  <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
@@ -4427,6 +4428,59 @@ function showMiluimTable() {
     
     html += '</table>';
     document.getElementById('miluimTable').innerHTML = html;
+}
+function showAllEmployeesWithSupplement() {
+    if (!window.opener || !window.opener.calculationResults) {
+        alert('לא נמצאו נתונים מהמחשבון הראשי');
+        return;
+    }
+    
+    let html = `
+        <h3 style="color: #2c3e50; margin: 20px 0;">📊 כל העובדים עם תוספת 40%</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+                <tr style="background: #34495e; color: white;">
+                    <th style="padding: 8px;">עובד</th>
+                    <th style="padding: 8px;">תקופה</th>
+                    <th style="padding: 8px;">ערך יומי</th>
+                    <th style="padding: 8px;">תשלום רגיל</th>
+                    <th style="padding: 8px;">תוספת בימים</th>
+                    <th style="padding: 8px;">תוספת ₪</th>
+                    <th style="padding: 8px; background: #27ae60;">סה"כ כולל 40%</th>
+                </tr>
+            </thead>
+            <tbody>`;
+    
+    window.opener.calculationResults.forEach((result, index) => {
+        const employeeId = result.employeeId;
+        const startDate = result.startDate;
+        const endDate = result.endDate;
+        const continuousValue = result.continuousValue || 0;
+        const miluimDays = result.miluimDays || 0;
+        
+        const regularPayment = continuousValue * miluimDays;
+        const supplementResult = calculateSupplement40(miluimDays);
+        const supplementAmount = supplementResult.supplementDays * continuousValue;
+        const totalWithSupplement = regularPayment + supplementAmount;
+        
+        const bgColor = index % 2 === 0 ? '#f8f9fa' : 'white';
+        
+        html += `
+            <tr style="background: ${bgColor};">
+                <td style="padding: 8px; text-align: center;">${employeeId}</td>
+                <td style="padding: 8px; text-align: center;">${window.opener.formatDate(startDate)} - ${window.opener.formatDate(endDate)}</td>
+                <td style="padding: 8px; text-align: center;">${continuousValue.toFixed(0)} ₪</td>
+                <td style="padding: 8px; text-align: center;">${regularPayment.toFixed(0)} ₪</td>
+                <td style="padding: 8px; text-align: center; color: #e74c3c; font-weight: bold;">${supplementResult.supplementDays}</td>
+                <td style="padding: 8px; text-align: center; color: #e74c3c; font-weight: bold;">${supplementAmount.toFixed(0)} ₪</td>
+                <td style="padding: 8px; text-align: center; background: #d5f4e6; font-weight: bold;">${totalWithSupplement.toFixed(0)} ₪</td>
+            </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    
+    document.getElementById('supplementResults').innerHTML = html;
+    document.getElementById('supplementResults').style.display = 'block';
 }
 </script>
 </body>
