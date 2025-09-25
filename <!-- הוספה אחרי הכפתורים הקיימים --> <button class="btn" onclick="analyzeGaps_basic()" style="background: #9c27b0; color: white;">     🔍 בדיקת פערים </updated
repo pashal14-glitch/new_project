@@ -2483,7 +2483,28 @@ function showDetails(index) {
     document.getElementById('detailsContent').innerHTML = html;
     document.getElementById('detailsModal').style.display = 'block';
 }
-
+function calculateSupplement40(days) {
+    const quotient = Math.floor(days / 7);
+    const remainder = days % 7;
+    
+    let supplementDays = 0;
+    switch(remainder) {
+        case 0: supplementDays = 0; break;
+        case 1: supplementDays = 0.4; break;
+        case 2: supplementDays = 0.8; break;
+        case 3: supplementDays = 1.2; break;
+        case 4: supplementDays = 1.6; break;
+        case 5: supplementDays = 2; break;
+        case 6: supplementDays = 1; break;
+    }
+    
+    return {
+        quotient,
+        remainder,
+        supplementDays,
+        totalPaymentDays: days + supplementDays
+    };
+}
 
 
       // Export functionality - מעודכן עם ערך כפייה רצוף
