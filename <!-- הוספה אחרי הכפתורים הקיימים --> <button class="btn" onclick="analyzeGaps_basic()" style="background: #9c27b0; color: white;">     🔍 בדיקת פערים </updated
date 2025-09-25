@@ -614,7 +614,15 @@
 <button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;">
     🔍 בדיקת פערים
 </button>
-                <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
+<button class="btn" onclick="openSupplementCalculatorWindow()" 
+        style="background: linear-gradient(45deg, #FF6B6B, #FF5722);">
+    🧮 חישוב תוספת 40%
+</button>
+<button onclick="showMiluimTable()" class="action-btn" style="background: #2196F3; margin-top: 10px;">
+    הצג טבלת כל העובדים
+</button>
+<div id="miluimTable" style="margin-top: 20px;"></div>
+ <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
     👤 חישוב לעובד בודד
 </button>
 <!-- הקלדת מספר עובד -->
@@ -2465,6 +2473,9 @@ function showDetails(index) {
     document.getElementById('detailsContent').innerHTML = html;
     document.getElementById('detailsModal').style.display = 'block';
 }
+
+
+
       // Export functionality - מעודכן עם ערך כפייה רצוף
 function exportToExcel() {
     // יצירת הנתונים המסוננים בזמן הייצוא
@@ -3823,5 +3834,600 @@ function closeAnalysis() {
         </div>
     </div>
 </div>
+<script>
+function openSupplementCalculatorWindow() {
+    const supplementWindow = window.open('', 'SupplementCalculator', 
+        'width=900,height=700,scrollbars=yes,resizable=yes,left=100,top=100');
+    
+    supplementWindow.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 מחשבון תוספת 40%</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF5722 100%);
+            padding: 20px;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, #FF6B6B, #FF5722);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .body-content {
+            padding: 30px;
+        }
+        .calculation-type-selector {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            cursor: pointer;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .radio-option:hover {
+            border-color: #FF6B6B;
+            background: #fff5f5;
+        }
+        .radio-option input[type="radio"] { display: none; }
+        .radio-option input[type="radio"]:checked + .radio-custom {
+            border-color: #FF6B6B;
+        }
+        .radio-option input[type="radio"]:checked + .radio-custom::after {
+            content: '';
+            width: 10px; height: 10px;
+            background: #FF6B6B;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px; right: 3px;
+        }
+        .radio-custom {
+            width: 20px; height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            margin-left: 10px; margin-top: 2px;
+            position: relative;
+        }
+        .radio-text { flex: 1; }
+        .radio-text small {
+            display: block;
+            color: #666;
+            margin-top: 5px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .input-group input:focus {
+            border-color: #FF6B6B;
+            outline: none;
+        }
+        .action-btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF5722);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,107,107,0.4);
+        }
+        .period-input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        .period-input-row input { flex: 1; }
+        .add-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .period-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-right: 4px solid #FF6B6B;
+        }
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .result-card {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .result-card .label {
+            font-weight: bold;
+        }
+        .result-card .value {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .result-card.highlight {
+            background: #e8f5e8;
+            border-right: 4px solid #4CAF50;
+        }
+        .result-card.total {
+            background: #e3f2fd;
+            border-right: 4px solid #2196F3;
+            grid-column: 1 / -1;
+            font-size: 1.2em;
+        }
+        .continuous-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .clear-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .total-days {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .no-periods {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        .periods-breakdown {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .period-summary {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .period-summary:last-child {
+            border-bottom: none;
+        }
+        .calculation-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button onclick="window.close()" class="close-btn" title="סגור חלון">✖</button>
+            <h1>🧮 מחשבון תוספת 40%</h1>
+            <p>חישוב מדויק של תוספת המילואים לפי התקנות הישראליות</p>
+        </div>
+        
+        <div class="body-content">
+            <div class="calculation-type-selector">
+                <h3>בחר סוג חישוב:</h3>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="calculationType" value="individual" checked>
+                        <span class="radio-custom"></span>
+                        <div class="radio-text">
+                            <strong>חישוב 1: לכל תקופה בנפרד</strong>
+                            <small>חישוב תוספת לכל תקופת שירות בנפרד</small>
+                        </div>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="calculationType" value="continuous">
+                        <span class="radio-custom"></span>
+                        <div class="radio-text">
+                            <strong>חישוב 2: ברמת רצף</strong>
+                            <small>חישוב תוספת על סמך סה"כ ימי רצף</small>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="individualCalculation" class="calculation-section">
+                <div class="input-group">
+                    <label>ימי שירות מילואים בפועל:</label>
+                    <input type="number" id="individualDays" min="1" placeholder="הכנס מספר ימים">
+                </div>
+                <button onclick="calculateIndividualSupplement()" class="action-btn" style="width: 100%; margin: 20px 0;">
+                    חשב תוספת לתקופה זו
+                </button>
+            </div>
+            
+            <div id="continuousCalculation" class="calculation-section" style="display: none;">
+                <div class="periods-input">
+                    <h4>הוסף תקופות רצף:</h4>
+                    <div class="period-input-row">
+                        <input type="date" id="periodStart" placeholder="תאריך התחלה">
+                        <input type="date" id="periodEnd" placeholder="תאריך סיום">
+                        <input type="number" id="periodDays" min="1" placeholder="מספר ימים" readonly>
+                        <button onclick="addPeriod()" class="add-btn">➕ הוסף</button>
+                    </div>
+                    <div id="periodsList">
+                        <p class="no-periods">לא נוספו תקופות</p>
+                    </div>
+                    <div class="continuous-actions">
+                        <button onclick="calculateContinuousSupplement()" class="action-btn" style="width: 48%;">
+                            חשב תוספת רצף
+                        </button>
+                        <button onclick="clearPeriods()" class="clear-btn" style="width: 48%;">
+                            נקה רשימה
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="supplementResults" class="results-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let periods = [];
+
+        function updateCalculationType() {
+            const type = document.querySelector('input[name="calculationType"]:checked').value;
+            const individual = document.getElementById('individualCalculation');
+            const continuous = document.getElementById('continuousCalculation');
+            
+            if (type === 'individual') {
+                individual.style.display = 'block';
+                continuous.style.display = 'none';
+            } else {
+                individual.style.display = 'none';
+                continuous.style.display = 'block';
+            }
+        }
+
+        function calculateIndividualSupplement() {
+            const days = parseInt(document.getElementById('individualDays').value);
+            if (!days || days < 1) {
+                alert('יש להכניס מספר ימים חוקי');
+                return;
+            }
+            
+            const result = calculateSupplement40(days);
+            displayIndividualResult(days, result);
+        }
+
+        function calculateSupplement40(days) {
+            const quotient = Math.floor(days / 7);
+            const remainder = days % 7;
+            
+            let supplementDays = 0;
+            switch(remainder) {
+                case 0: supplementDays = 0; break;
+                case 1: supplementDays = 0.4; break;
+                case 2: supplementDays = 0.8; break;
+                case 3: supplementDays = 1.2; break;
+                case 4: supplementDays = 1.6; break;
+                case 5: supplementDays = 2; break;
+                case 6: supplementDays = 1; break;
+            }
+            
+            return {
+                quotient,
+                remainder,
+                supplementDays,
+                totalPaymentDays: days + supplementDays
+            };
+        }
+
+        function displayIndividualResult(inputDays, result) {
+            const html = \`
+                <h4 style="margin-bottom: 20px; color: #2c3e50;">🔍 תוצאות חישוב אינדיבידואלי</h4>
+                <div class="result-grid">
+                    <div class="result-card">
+                        <span class="label">ימי השירות בפועל:</span>
+                        <span class="value">\${inputDays}</span>
+                    </div>
+                    <div class="result-card">
+                        <span class="label">חישוב (\${inputDays} ÷ 7):</span>
+                        <span class="value">\${result.quotient} + שארית \${result.remainder}</span>
+                    </div>
+                    <div class="result-card highlight">
+                        <span class="label">תוספת בימים:</span>
+                        <span class="value">\${result.supplementDays}</span>
+                    </div>
+                    <div class="result-card total">
+                        <span class="label">סה"כ ימים לתשלום:</span>
+                        <span class="value">\${result.totalPaymentDays}</span>
+                    </div>
+                </div>
+            \`;
+            
+            document.getElementById('supplementResults').innerHTML = html;
+            document.getElementById('supplementResults').style.display = 'block';
+          
+            }
+        function addPeriod() {
+            const start = document.getElementById('periodStart').value;
+            const end = document.getElementById('periodEnd').value;
+            const days = parseInt(document.getElementById('periodDays').value);
+            
+            if (!start || !end || !days) {
+                alert('יש למלא את כל השדות');
+                return;
+            }
+            
+            periods.push({
+                start: start,
+                end: end,
+                days: days,
+                id: Date.now()
+            });
+            
+            updatePeriodsList();
+            clearPeriodInputs();
+            
+        }
+
+        function updatePeriodsList() {
+            const container = document.getElementById('periodsList');
+            if (periods.length === 0) {
+                container.innerHTML = '<p class="no-periods">לא נוספו תקופות</p>';
+                return;
+            }
+            
+            let html = '<div style="margin-bottom: 15px; font-weight: bold; color: #2c3e50;">תקופות שנוספו:</div>';
+            periods.forEach((period, index) => {
+                html += \`
+                    <div class="period-item">
+                        <span class="period-info">
+                            <strong>תקופה \${index + 1}:</strong> \${period.start} עד \${period.end} = \${period.days} ימים
+                        </span>
+                        <button onclick="removePeriod(\${period.id})" class="remove-btn" title="הסר תקופה">🗑️</button>
+                    </div>
+                \`;
+            });
+            
+            const totalDays = periods.reduce((sum, p) => sum + p.days, 0);
+            html += \`<div class="total-days">סה"כ ימי רצף: <strong>\${totalDays} ימים</strong></div>\`;
+            
+            container.innerHTML = html;
+        }
+
+        function removePeriod(id) {
+            periods = periods.filter(p => p.id !== id);
+            updatePeriodsList();
+        }
+
+        function clearPeriods() {
+            periods = [];
+            updatePeriodsList();
+            document.getElementById('supplementResults').style.display = 'none';
+        }
+
+        function clearPeriodInputs() {
+            document.getElementById('periodStart').value = '';
+            document.getElementById('periodEnd').value = '';
+            document.getElementById('periodDays').value = '';
+        }
+
+        function calculateContinuousSupplement() {
+            if (periods.length === 0) {
+                alert('יש להוסיף לפחות תקופה אחת');
+                return;
+            }
+            
+            const totalDays = periods.reduce((sum, p) => sum + p.days, 0);
+            const result = calculateSupplement40(totalDays);
+            
+            displayContinuousResult(periods, totalDays, result);
+        }
+
+        function displayContinuousResult(periodsList, totalDays, result) {
+            let periodsHtml = '';
+            periodsList.forEach((period, index) => {
+                periodsHtml += \`
+                    <div class="period-summary">
+                        <strong>תקופה \${index + 1}:</strong> \${period.start} עד \${period.end} = \${period.days} ימים
+                    </div>
+                \`;
+            });
+            
+            const html = \`
+                <h4 style="margin-bottom: 20px; color: #2c3e50;">🔗 תוצאות חישוב רצף תקופות</h4>
+                <div class="continuous-summary">
+                    <div class="periods-breakdown">
+                        <h5 style="margin-bottom: 10px;">פירוט התקופות:</h5>
+                        \${periodsHtml}
+                    </div>
+                    <div class="calculation-breakdown">
+                        <div class="result-card">
+                            <span class="label">סה"כ ימי רצף:</span>
+                            <span class="value">\${totalDays}</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="label">חישוב (\${totalDays} ÷ 7):</span>
+                            <span class="value">\${result.quotient} + שארית \${result.remainder}</span>
+                        </div>
+                        <div class="result-card highlight">
+                            <span class="label">תוספת בימים:</span>
+                            <span class="value">\${result.supplementDays}</span>
+                        </div>
+                        <div class="result-card total">
+                            <span class="label">סה"כ ימים לתשלום:</span>
+                            <span class="value">\${result.totalPaymentDays}</span>
+                        </div>
+                    </div>
+                </div>
+            \`;
+            
+            document.getElementById('supplementResults').innerHTML = html;
+            document.getElementById('supplementResults').style.display = 'block';
+            // הוסף טבלת כל העובדים
+        }
+
+        function calculateDaysFromDates() {
+            const start = document.getElementById('periodStart').value;
+            const end = document.getElementById('periodEnd').value;
+            
+            if (start && end) {
+                const startDate = new Date(start);
+                const endDate = new Date(end);
+                
+                if (endDate >= startDate) {
+                    const diffTime = Math.abs(endDate - startDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    document.getElementById('periodDays').value = diffDays;
+                } else {
+                    document.getElementById('periodDays').value = '';
+                    alert('תאריך הסיום חייב להיות אחרי תאריך ההתחלה');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('input[name="calculationType"]').forEach(radio => {
+                radio.addEventListener('change', updateCalculationType);
+            });
+
+            document.getElementById('periodStart').addEventListener('change', calculateDaysFromDates);
+            document.getElementById('periodEnd').addEventListener('change', calculateDaysFromDates);
+        });
+    <\/script>
+</body>
+</html>`);
+    
+    supplementWindow.document.close();
+    supplementWindow.focus();
+}
+function showMiluimTable() {
+    if (!window.opener || !window.opener.calculationResults) {
+        document.getElementById('miluimTable').innerHTML = '<p>לא נמצאו נתונים</p>';
+        return;
+    }
+    
+    let html = `
+        <h3>טבלת תוספת 40% לכל העובדים</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background: #34495e; color: white;">
+                <th>עובד</th><th>מ-</th><th>עד</th><th>ערך יומי</th><th>תשלום רגיל</th><th>ימי תוספת</th><th>תוספת ₪</th><th>סה"כ חדש</th>
+            </tr>`;
+    
+    window.opener.calculationResults.forEach(result => {
+        const dailyValue = result.continuousValue || 0;
+        const serviceDays = result.miluimDays || 0;
+        const regularPayment = dailyValue * serviceDays;
+        const supplementResult = calculateSupplement40(serviceDays);
+        const supplementAmount = supplementResult.supplementDays * dailyValue;
+        const total = regularPayment + supplementAmount;
+        
+        html += `<tr>
+            <td>${result.employeeId}</td>
+            <td>${new Date(result.startDate).toLocaleDateString('he-IL')}</td>
+            <td>${new Date(result.endDate).toLocaleDateString('he-IL')}</td>
+            <td>${dailyValue.toFixed(2)}</td>
+            <td>${regularPayment.toFixed(0)}</td>
+            <td>${supplementResult.supplementDays}</td>
+            <td>${supplementAmount.toFixed(0)}</td>
+            <td style="background: #d5f4e6; font-weight: bold;">${total.toFixed(0)}</td>
+        </tr>`;
+    });
+    
+    html += '</table>';
+    document.getElementById('miluimTable').innerHTML = html;
+}
+</script>
 </body>
 </html>
