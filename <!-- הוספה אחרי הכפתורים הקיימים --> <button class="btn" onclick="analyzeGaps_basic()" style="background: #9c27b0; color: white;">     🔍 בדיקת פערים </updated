@@ -2194,19 +2194,19 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>E - ערך בסיסי</th>
                         <th>F - ערך מומלץ</th>
                         <th>G - ערך רציף</th>
-                        <th>סך תשלום</th>
-                        <th>ימי תוספת 40%</th>
-                        <th>תוספת ₪</th>
-                        <th>סה"כ כולל תוספת</th>
                         <th>I - חירום 90</th>
                         <th>J - מקס 120%</th>
                         <th>K - תחילת אשכול</th>
+                        <th>סך תשלום</th>
                         <th>פירוט</th>
                         <th>L-ערך בשכר</th>
                         <th>M-פער</th>
                         <th>N-ערך כפייה<th>
                         <th>O -כפייה רציפה <th>
                         <th>P - כפייה חירום 4405</th>
+                        <th>ימי תוספת 40%</th>
+                        <th>תוספת ₪</th>
+                        <th>סה"כ כולל תוספת</th>
 
                     </tr>
                 </thead>
