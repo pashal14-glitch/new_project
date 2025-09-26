@@ -677,10 +677,22 @@
 <div class="filter-group">
     <label>הסתר עמודות:</label>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button onclick="toggleColumn(8)" class="btn" style="background: #95a5a6; padding: 5px 10px; font-size: 0.8em;">חירום</button>
-        <button onclick="toggleColumn(15)" class="btn" style="background: #95a5a6; padding: 5px 10px; font-size: 0.8em;">N-כפייה</button>
-        <button onclick="toggleColumn(16)" class="btn" style="background: #95a5a6; padding: 5px 10px; font-size: 0.8em;">O-כפייה רציפה</button>
-        <button onclick="toggleColumn(17)" class="btn" style="background: #95a5a6; padding: 5px 10px; font-size: 0.8em;">P-כפייה חירום</button>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn8" onchange="toggleColumnWithCheckbox(8, this)">
+            <span style="margin-right: 5px;">חירום</span>
+        </label>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn9" onchange="toggleColumnWithCheckbox(15, this)">
+            <span style="margin-right: 5px;">N-כפייה</span>
+        </label>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn10" onchange="toggleColumnWithCheckbox(16, this)">
+            <span style="margin-right: 5px;">O-כפייה רציפה</span>
+        </label>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn12" onchange="toggleColumnWithCheckbox(17, this)">
+            <span style="margin-right: 5px;">P-כפייה חירום</span>
+        </label>
     </div>
 </div>
 
@@ -2984,16 +2996,18 @@ function calculateSupplement40(days) {
         totalPaymentDays: days + supplementDays
     };
 }
-function toggleColumn(columnIndex) {
+function toggleColumnWithCheckbox(columnIndex, checkbox) {
     const headers = document.querySelectorAll(`th:nth-child(${columnIndex})`);
     const cells = document.querySelectorAll(`td:nth-child(${columnIndex})`);
     
+    const shouldHide = checkbox.checked;
+    
     headers.forEach(header => {
-        header.style.display = header.style.display === 'none' ? '' : 'none';
+        header.style.display = shouldHide ? 'none' : '';
     });
     
     cells.forEach(cell => {
-        cell.style.display = cell.style.display === 'none' ? '' : 'none';
+        cell.style.display = shouldHide ? 'none' : '';
     });
 }
 
