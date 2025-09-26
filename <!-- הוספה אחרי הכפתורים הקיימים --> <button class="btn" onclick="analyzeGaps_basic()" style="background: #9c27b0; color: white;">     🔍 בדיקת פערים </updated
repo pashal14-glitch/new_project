@@ -2510,9 +2510,7 @@ function exportToExcel() {
     const employeeFilter = document.getElementById('employeeFilter').value.trim();
     const yearFilter = document.getElementById('yearFilter').value;
     const miluimTypeFilter = document.getElementById('miluimTypeFilter').value;
-    const supplementResult = calculateSupplement40(result.miluimDays);
-    const supplementAmount = supplementResult.supplementDays * result.continuousValue;
-    const totalWithSupplement = (result.continuousValue * result.miluimDays) + supplementAmount;
+   
     
     // אותה לוגיקת סינון כמו ב-applyFilters
     if (employeeFilter) {
@@ -2567,6 +2565,9 @@ const processedData = dataToExport;
     ];    
    
    for (let result of processedData) {
+     const supplementResult = calculateSupplement40(result.miluimDays);
+    const supplementAmount = supplementResult.supplementDays * result.continuousValue;
+    const totalWithSupplement = (result.continuousValue * result.miluimDays) + supplementAmount;
         wsData.push([
             result.employeeId,
             result.startDate,                       
