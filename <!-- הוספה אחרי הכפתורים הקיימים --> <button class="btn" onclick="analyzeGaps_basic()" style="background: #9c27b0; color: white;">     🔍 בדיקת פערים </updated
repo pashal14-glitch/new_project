@@ -2269,7 +2269,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${result.emergencyCompulsion4405 || 0}</td> 
                 <td>${supplementResult.supplementDays}</td>
                 <td>${supplementAmount.toFixed(0)} ₪</td>
-                <td>${totalWithSupplement.toFixed(0)} ₪</td>
+                <td>${totalWithSupplement.toFixed(2)} ₪</td>
             </tr>
         `;
     });
