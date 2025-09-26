@@ -2201,8 +2201,8 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>פירוט</th>
                         <th>L-ערך בשכר</th>
                         <th>M-פער</th>
-                        <th>N-ערך כפייה<th>
-                        <th>O -כפייה רציפה <th>
+                        <th>N-ערך כפייה</th>
+                        <th>O -כפייה רציפה </th>
                         <th>P - כפייה חירום 4405</th>
                         <th>ימי תוספת 40%</th>
                         <th>תוספת ₪</th>
