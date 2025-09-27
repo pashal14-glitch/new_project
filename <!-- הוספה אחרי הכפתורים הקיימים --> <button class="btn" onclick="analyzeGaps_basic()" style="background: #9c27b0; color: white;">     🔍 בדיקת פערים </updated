@@ -4624,42 +4624,182 @@ function applyContinuousSupplementToResults() {
 }
 
 /**
- * זיהוי אשכולות רצופים כולל התחשבות באינדיקציות חירום
+ * זיהוי אשכולות רצופים - אלגוריתם חכם לזיהוי תקופות רצופות
+ * כאשר רק תקופה אחת מסומנת באינדיקציה, המערכת מוצאת את כל התקופות הרצופות אליה
  */
 function identifyContinuousClustersWithEmergency(periods) {
     if (!periods || periods.length === 0) return [];
     
     const clusters = [];
-    let currentCluster = [periods[0]];
+    const processedPeriods = new Set(); // למעקב על תקופות שכבר עובדו
     
-    for (let i = 1; i < periods.length; i++) {
-        const prevPeriod = periods[i - 1];
+    for (let i = 0; i < periods.length; i++) {
+        if (processedPeriods.has(i)) continue; // כבר עובד
+        
         const currentPeriod = periods[i];
+        let cluster = [currentPeriod];
+        processedPeriods.add(i);
         
-        // בדיקת רצף (יום אחרי יום)
-        const prevEnd = new Date(prevPeriod.endDate);
-        const currentStart = new Date(currentPeriod.startDate);
-        const daysDiff = Math.ceil((currentStart - prevEnd) / (1000 * 60 * 60 * 24));
+        // בדיקה האם התקופה הנוכחת מסומנת כחירום/רצף
+        const hasEmergencyIndication = currentPeriod.emergencyIndication;
         
-        // רצף נחשב אם:
-        // 1. יום אחרי יום (daysDiff <= 1)
-        // 2. או אם יש אינדיקציית חירום באחת מהתקופות - אז כל התקופות הרצופות נחשבות יחד
-        const isContinuous = daysDiff <= 1;
-        const hasEmergencyIndication = prevPeriod.emergencyIndication || currentPeriod.emergencyIndication;
-        
-        if (isContinuous || (hasEmergencyIndication && daysDiff <= 7)) { // מרווח של עד שבוע לחירום
-            currentCluster.push(currentPeriod);
-        } else {
-            clusters.push(currentCluster);
-            currentCluster = [currentPeriod];
+        if (hasEmergencyIndication) {
+            console.log(`🚨 נמצאה אינדיקציית רצף לעובד ${currentPeriod.employeeId} בתאריך ${currentPeriod.startDate}`);
+            
+            // חיפוש תקופות רצופות לפני ואחרי התקופה המסומנת
+            cluster = findContinuousClusterAroundPeriod(periods, i, processedPeriods);
         }
-    }
-    
-    if (currentCluster.length > 0) {
-        clusters.push(currentCluster);
+        
+        clusters.push(cluster);
     }
     
     return clusters;
+}
+
+/**
+ * מציאת כל התקופות הרצופות סביב תקופה מסוימת (לפני ואחרי)
+ * @param {Array} periods - כל התקופות של העובד (ממוינות)
+ * @param {number} centerIndex - האינדקס של התקופה המסומנת
+ * @param {Set} processedPeriods - תקופות שכבר עובדו
+ * @returns {Array} - אשכול של תקופות רצופות
+ */
+function findContinuousClusterAroundPeriod(periods, centerIndex, processedPeriods) {
+    const cluster = [periods[centerIndex]];
+    processedPeriods.add(centerIndex);
+    
+    // חיפוש תקופות רצופות לפני התקופה המסומנת
+    for (let i = centerIndex - 1; i >= 0; i--) {
+        if (processedPeriods.has(i)) break;
+        
+        const currentPeriod = periods[i];
+        const nextPeriod = periods[i + 1];
+        
+        if (isPeriodsConsecutive(currentPeriod, nextPeriod)) {
+            cluster.unshift(currentPeriod); // הוסף בתחילת המערך
+            processedPeriods.add(i);
+            console.log(`⬅️ נמצאה תקופה רצופה לפני: ${currentPeriod.startDate} - ${currentPeriod.endDate}`);
+        } else {
+            break; // אין רצף, עצור
+        }
+    }
+    
+    // חיפוש תקופות רצופות אחרי התקופה המסומנת
+    for (let i = centerIndex + 1; i < periods.length; i++) {
+        if (processedPeriods.has(i)) break;
+        
+        const prevPeriod = periods[i - 1];
+        const currentPeriod = periods[i];
+        
+        if (isPeriodsConsecutive(prevPeriod, currentPeriod)) {
+            cluster.push(currentPeriod); // הוסף בסוף המערך
+            processedPeriods.add(i);
+            console.log(`➡️ נמצאה תקופה רצופה אחרי: ${currentPeriod.startDate} - ${currentPeriod.endDate}`);
+        } else {
+            break; // אין רצף, עצור
+        }
+    }
+    
+    console.log(`🔗 נמצא אשכול רצוף של ${cluster.length} תקופות, סה"כ ${cluster.reduce((sum, p) => sum + (p.miluimDays || 0), 0)} ימים`);
+    
+    return cluster;
+}
+
+/**
+ * בדיקה האם שתי תקופות רצופות (יום אחרי יום או חופפות)
+ * @param {Object} period1 - תקופה ראשונה
+ * @param {Object} period2 - תקופה שנייה  
+ * @returns {boolean} - האם התקופות רצופות
+ */
+function isPeriodsConsecutive(period1, period2) {
+    const end1 = new Date(period1.endDate);
+    const start2 = new Date(period2.startDate);
+    
+    // חישוב ההפרש בימים
+    const daysDiff = Math.ceil((start2 - end1) / (1000 * 60 * 60 * 24));
+    
+    // רצופות אם:
+    // daysDiff <= 1 (יום אחרי יום או חופפות)
+    // או אם ההפרש קטן מ-3 ימים (מרווח קצר שעדיין נחשב רצוף)
+    return daysDiff <= 2; // מאפשר מרווח של עד יומיים
+}
+
+/**
+ * פונקציה משולבת מעודכנת - חישוב תוספת רצופה חכם
+ */
+function applyContinuousSupplementToResults() {
+    if (!calculationResults || calculationResults.length === 0) {
+        alert("לא נמצאו תוצאות חישוב במערכת");
+        return;
+    }
+    
+    console.log("🔍 מתחיל זיהוי חכם של תקופות רצופות...");
+    
+    // עדכון אינדיקציות חירום מעמודה 15
+    updateResultsWithEmergencyIndications();
+    
+    // קיבוץ תוצאות לפי עובד
+    const employeeGroups = {};
+    calculationResults.forEach(result => {
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = [];
+        }
+        employeeGroups[result.employeeId].push(result);
+    });
+    
+    console.log(`👥 מעבד ${Object.keys(employeeGroups).length} עובדים`);
+    
+    // עיבוד כל עובד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const employeePeriods = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה
+        employeePeriods.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        
+        // זיהוי אשכולות רצופים עם האלגוריתם החכם
+        const clusters = identifyContinuousClustersWithEmergency(employeePeriods);
+        
+        console.log(`👤 עובד ${employeeId}: ${employeePeriods.length} תקופות → ${clusters.length} אשכולות`);
+        
+        // חישוב תוספת רצופה לכל אשכול
+        clusters.forEach((cluster, clusterIndex) => {
+            const totalDays = cluster.reduce((sum, period) => sum + (period.miluimDays || 0), 0);
+            const supplementResult = calculateSupplement40(totalDays);
+            const hasEmergencyInCluster = cluster.some(p => p.emergencyIndication);
+            const isMultiPeriodCluster = cluster.length > 1;
+            
+            // הודעה מפורטת לקונסול
+            if (isMultiPeriodCluster && hasEmergencyInCluster) {
+                console.log(`🎯 אשכול רצוף #${clusterIndex + 1}: ${cluster.length} תקופות, ${totalDays} ימים → ${supplementResult.supplementDays} ימי תוספת`);
+            }
+            
+            // עדכון התוצאות המקוריות
+            cluster.forEach((period, periodIndex) => {
+                const ratio = (period.miluimDays || 0) / totalDays;
+                period.continuousSupplementDays = parseFloat((supplementResult.supplementDays * ratio).toFixed(2));
+                period.continuousTotalPaymentDays = (period.miluimDays || 0) + period.continuousSupplementDays;
+                period.continuousClusterTotalDays = totalDays;
+                period.isContinuousCluster = isMultiPeriodCluster;
+                period.clusterHasEmergency = hasEmergencyInCluster;
+                period.clusterIndex = clusterIndex;
+                period.periodInCluster = periodIndex + 1;
+                
+                // הסבר מפורט לחישוב
+                if (isMultiPeriodCluster) {
+                    period.continuousCalculationExplanation = 
+                        `אשכול רצוף #${clusterIndex + 1}: ${totalDays} ימים (${cluster.length} תקופות) → ${totalDays}÷7 = ${supplementResult.quotient} + שארית ${supplementResult.remainder} = ${supplementResult.supplementDays} ימי תוספת`;
+                } else {
+                    period.continuousCalculationExplanation = 
+                        `תקופה בודדת: ${totalDays} ימים → ${supplementResult.supplementDays} ימי תוספת`;
+                }
+            });
+        });
+    });
+    
+    console.log("✅ זיהוי חכם של תקופות רצופות הושלם!");
+    
+    // עדכון התצוגה
+    displayResultsWithContinuousSupplement();
+    showContinuousSupplementSummary();
 }
 
 /**
