@@ -4955,13 +4955,15 @@ function addContinuousSupplementColumns() {
 // ==============================================
 
 function addContinuousSupplementButton() {
-    const controlPanel = document.querySelector('.control-panel');
+    const controlPanel = document.querySelector('.controls'); // ✅ החלפתי ל-.controls
     if (controlPanel && !document.getElementById('continuousSupplementBtn')) {
         const button = document.createElement('button');
         button.id = 'continuousSupplementBtn';
         button.className = 'btn';
         button.innerHTML = '🔗 חישוב תוספת רצופה';
-        button.onclick = applyContinuousSupplementToResults;
+        button.onclick = function() { 
+            alert("הכפתור עובד! עכשיו צריך להוסיף את שאר הקוד"); 
+        };
         button.style.cssText = `
             background: linear-gradient(45deg, #9C27B0, #E91E63);
             color: white;
@@ -4972,46 +4974,16 @@ function addContinuousSupplementButton() {
             cursor: pointer;
             margin: 10px;
             font-size: 14px;
-            box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
-            transition: all 0.3s ease;
         `;
-        
-        button.onmouseenter = () => {
-            button.style.transform = 'translateY(-2px)';
-            button.style.boxShadow = '0 6px 20px rgba(156, 39, 176, 0.4)';
-        };
-        
-        button.onmouseleave = () => {
-            button.style.transform = 'translateY(0)';
-            button.style.boxShadow = '0 4px 15px rgba(156, 39, 176, 0.3)';
-        };
-        
         controlPanel.appendChild(button);
+        console.log("✅ כפתור נוסף בהצלחה");
+    } else {
+        console.log("❌ לא נמצא controls או שהכפתור כבר קיים");
     }
 }
 
 // הפעלה אוטומטית
 document.addEventListener('DOMContentLoaded', addContinuousSupplementButton);
-
-// ==============================================
-// דוגמת שימוש
-// ==============================================
-/*
-בדוגמה שלך:
-- תקופה 1: 01.01.2025-02.01.2025 (2 ימים) - תוספת רגילה: 2÷7 = 0 + שארית 2 = 0.8 ימי תוספת
-- תקופה 2: 03.01.2025-07.01.2025 (5 ימים) - תוספת רגילה: 5÷7 = 0 + שארית 5 = 2 ימי תוספת
-- סה"כ תוספת רגילה: 0.8 + 2 = 2.8 ימי תוספת
-
-עם התוספת הרצופה (אם יש אינדיקציה בעמודה 15):
-- סה"כ ימים רצופים: 2 + 5 = 7 ימים
-- תוספת רצופה: 7÷7 = 1 + שארית 0 = 0 ימי תוספת
-- חיסכון: 2.8 - 0 = 2.8 ימי תוספת פחות
-
-לשימוש:
-1. טען את קובץ האקסל עם גיליון 90291 שמכיל את האינדיקציה בעמודה 15
-2. הפעל חישוב רגיל במחשבון 
-3. לחץ על כפתור "חישוב תוספת רצופה"
-4. צפה בהשוואה בין התוספת הרגילה לרצופה
 */// פונקציה לחישוב תוספת 40% עבור תקופות רצופות
 // בהתאם לאפיון: תקופות רצופות נחשבות כתקופה אחת לצורך חישוב התוספת
 function calculateContinuousSupplement40(employeeData, emergencyIndicatorColumn = 15) {
