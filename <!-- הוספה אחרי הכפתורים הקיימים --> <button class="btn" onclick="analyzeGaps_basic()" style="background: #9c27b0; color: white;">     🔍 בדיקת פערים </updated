@@ -4501,6 +4501,750 @@ function showMiluimTable() {
     html += '</table>';
     document.getElementById('miluimTable').innerHTML = html;
 }
+// ==============================================
+// פונקציה לקריאת אינדיקציה מעמודה 15 בגיליון 90291
+// ==============================================
+
+/**
+ * קריאת אינדיקציית חירום מעמודה 15 בגיליון 90291
+ * @param {string} employeeId - מספר עובד
+ * @param {Date} startDate - תאריך התחלת השירות
+ * @returns {boolean} - האם יש אינדיקציה לחירום
+ */
+function getEmergencyIndicationFromSheet(employeeId, startDate) {
+    // גישה לנתוני גיליון 90291 (משתמש במשתנה הגלובלי מהמחשבון)
+    if (!data90291 || !data90291.length) {
+        console.warn("⚠️ לא נמצא גיליון 90291");
+        return false;
+    }
+    
+    // חיפוש השורה המתאימה לעובד ולתאריך
+    const matchingRow = data90291.find(row => {
+        const rowEmployeeId = row[0]; // עמודה A
+        const rowStartDate = parseExcelDate(row[1]); // עמודה B
+        
+        return rowEmployeeId == employeeId && 
+               rowStartDate && 
+               Math.abs(rowStartDate - startDate) < 86400000; // פחות מיום אחד הפרש
+    });
+    
+    if (matchingRow && matchingRow.length > 14) {
+        // עמודה 15 = אינדקס 14 (מתחיל מ-0)
+        const emergencyFlag = matchingRow[14];
+        return emergencyFlag === 1 || emergencyFlag === true || 
+               emergencyFlag === "כן" || emergencyFlag === "Y";
+    }
+    
+    return false;
+}
+
+/**
+ * עדכון תוצאות חישוב עם אינדיקציות חירום מגיליון 90291
+ */
+function updateResultsWithEmergencyIndications() {
+    if (!calculationResults || !data90291) {
+        console.warn("⚠️ לא ניתן לעדכן אינדיקציות חירום - חסרים נתונים");
+        return;
+    }
+    
+    calculationResults.forEach(result => {
+        const emergencyIndication = getEmergencyIndicationFromSheet(
+            result.employeeId, 
+            new Date(result.startDate)
+        );
+        
+        result.emergencyIndication = emergencyIndication;
+        
+        if (emergencyIndication) {
+            console.log(`🚨 נמצאה אינדיקציית חירום לעובד ${result.employeeId} בתאריך ${result.startDate}`);
+        }
+    });
+}
+
+/**
+ * פונקציה משולבת עם המחשבון הקיים - מחשבת תוספת רצופה כולל אינדיקציות חירום
+ */
+function applyContinuousSupplementToResults() {
+    if (!calculationResults || calculationResults.length === 0) {
+        alert("לא נמצאו תוצאות חישוב במערכת");
+        return;
+    }
+    
+    // עדכון אינדיקציות חירום מעמודה 15
+    updateResultsWithEmergencyIndications();
+    
+    // קיבוץ תוצאות לפי עובד
+    const employeeGroups = {};
+    calculationResults.forEach(result => {
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = [];
+        }
+        employeeGroups[result.employeeId].push(result);
+    });
+    
+    console.log(`🔍 מעבד ${Object.keys(employeeGroups).length} עובדים לחישוב תוספת רצופה`);
+    
+    // עיבוד כל עובד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const employeePeriods = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה 
+        employeePeriods.sort((a, b) => a.startDate - b.startDate);
+        
+        // זיהוי אשכולות רצופים (כולל תקופות עם אינדיקציית חירום)
+        const clusters = identifyContinuousClustersWithEmergency(employeePeriods);
+        
+        // חישוב תוספת רצופה לכל אשכול
+        clusters.forEach(cluster => {
+            const totalDays = cluster.reduce((sum, period) => sum + (period.miluimDays || 0), 0);
+            const supplementResult = calculateSupplement40(totalDays);
+            const hasEmergencyInCluster = cluster.some(p => p.emergencyIndication);
+            
+            // עדכון התוצאות המקוריות
+            cluster.forEach(period => {
+                const ratio = (period.miluimDays || 0) / totalDays;
+                period.continuousSupplementDays = parseFloat((supplementResult.supplementDays * ratio).toFixed(2));
+                period.continuousTotalPaymentDays = (period.miluimDays || 0) + period.continuousSupplementDays;
+                period.continuousClusterTotalDays = totalDays;
+                period.isContinuousCluster = cluster.length > 1;
+                period.clusterHasEmergency = hasEmergencyInCluster;
+                
+                // הוספת הסבר לחישוב
+                period.continuousCalculationExplanation = 
+                    `אשכול רצוף של ${totalDays} ימים: ${totalDays}÷7 = ${supplementResult.quotient} + שארית ${supplementResult.remainder} = ${supplementResult.supplementDays} ימי תוספת`;
+            });
+        });
+    });
+    
+    console.log("✅ חישוב תוספת רצופה הושלם בהצלחה");
+    
+    // עדכון התצוגה
+    displayResultsWithContinuousSupplement();
+    showContinuousSupplementSummary();
+}
+
+/**
+ * זיהוי אשכולות רצופים כולל התחשבות באינדיקציות חירום
+ */
+function identifyContinuousClustersWithEmergency(periods) {
+    if (!periods || periods.length === 0) return [];
+    
+    const clusters = [];
+    let currentCluster = [periods[0]];
+    
+    for (let i = 1; i < periods.length; i++) {
+        const prevPeriod = periods[i - 1];
+        const currentPeriod = periods[i];
+        
+        // בדיקת רצף (יום אחרי יום)
+        const prevEnd = new Date(prevPeriod.endDate);
+        const currentStart = new Date(currentPeriod.startDate);
+        const daysDiff = Math.ceil((currentStart - prevEnd) / (1000 * 60 * 60 * 24));
+        
+        // רצף נחשב אם:
+        // 1. יום אחרי יום (daysDiff <= 1)
+        // 2. או אם יש אינדיקציית חירום באחת מהתקופות - אז כל התקופות הרצופות נחשבות יחד
+        const isContinuous = daysDiff <= 1;
+        const hasEmergencyIndication = prevPeriod.emergencyIndication || currentPeriod.emergencyIndication;
+        
+        if (isContinuous || (hasEmergencyIndication && daysDiff <= 7)) { // מרווח של עד שבוע לחירום
+            currentCluster.push(currentPeriod);
+        } else {
+            clusters.push(currentCluster);
+            currentCluster = [currentPeriod];
+        }
+    }
+    
+    if (currentCluster.length > 0) {
+        clusters.push(currentCluster);
+    }
+    
+    return clusters;
+}
+
+/**
+ * הצגת סיכום תוספת רצופה
+ */
+function showContinuousSupplementSummary() {
+    const employeeGroups = {};
+    calculationResults.forEach(result => {
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = {
+                periods: [],
+                totalRegularSupplement: 0,
+                totalContinuousSupplement: 0
+            };
+        }
+        
+        const group = employeeGroups[result.employeeId];
+        group.periods.push(result);
+        
+        // חישוב תוספת רגילה (לכל תקופה בנפרד)
+        const regularSupplement = calculateSupplement40(result.miluimDays || 0);
+        group.totalRegularSupplement += regularSupplement.supplementDays;
+        
+        // תוספת רצופה
+        group.totalContinuousSupplement += result.continuousSupplementDays || 0;
+    });
+    
+    let summaryHtml = `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin: 20px 0;">
+            <h3 style="margin: 0 0 15px 0;">📊 סיכום השוואת תוספת רגילה מול רצופה</h3>
+            <table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden;">
+                <thead>
+                    <tr style="background: rgba(255,255,255,0.2);">
+                        <th style="padding: 12px; text-align: right;">עובד</th>
+                        <th style="padding: 12px; text-align: center;">תקופות</th>
+                        <th style="padding: 12px; text-align: center;">תוספת רגילה</th>
+                        <th style="padding: 12px; text-align: center;">תוספת רצופה</th>
+                        <th style="padding: 12px; text-align: center;">הפרש</th>
+                        <th style="padding: 12px; text-align: center;">סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const group = employeeGroups[employeeId];
+        const difference = group.totalContinuousSupplement - group.totalRegularSupplement;
+        const hasEmergency = group.periods.some(p => p.emergencyIndication);
+        
+        summaryHtml += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <td style="padding: 10px; font-weight: bold;">${employeeId}</td>
+                <td style="padding: 10px; text-align: center;">${group.periods.length}</td>
+                <td style="padding: 10px; text-align: center;">${group.totalRegularSupplement.toFixed(1)}</td>
+                <td style="padding: 10px; text-align: center;">${group.totalContinuousSupplement.toFixed(1)}</td>
+                <td style="padding: 10px; text-align: center; color: ${difference >= 0 ? '#4CAF50' : '#FF6B6B'};">
+                    ${difference >= 0 ? '+' : ''}${difference.toFixed(1)}
+                </td>
+                <td style="padding: 10px; text-align: center;">
+                    ${hasEmergency ? '🚨 חירום' : '📅 רגיל'}
+                </td>
+            </tr>
+        `;
+    });
+    
+    summaryHtml += `
+                </tbody>
+            </table>
+            <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.9;">
+                💡 <strong>הסבר:</strong> תוספת רצופה מחשבת את התוספת על סה"כ ימי האשכול הרצוף במקום על כל תקופה בנפרד
+            </div>
+        </div>
+    `;
+    
+    // הוספה לדף או החלפת תוכן קיים
+    let summaryContainer = document.getElementById('continuousSupplementSummary');
+    if (!summaryContainer) {
+        summaryContainer = document.createElement('div');
+        summaryContainer.id = 'continuousSupplementSummary';
+        const resultsContainer = document.querySelector('.results-container') || document.body;
+        resultsContainer.insertBefore(summaryContainer, resultsContainer.firstChild);
+    }
+    summaryContainer.innerHTML = summaryHtml;
+}
+
+/**
+ * הצגת תוצאות עם התוספת הרצופה - עדכון הטבלה הקיימת
+ */
+function displayResultsWithContinuousSupplement() {
+    // עדכון פונקציית displayResults הקיימת כדי להוסיף עמודות חדשות
+    const originalDisplayResults = window.displayResults;
+    
+    if (originalDisplayResults) {
+        window.displayResults = function(data, options = {}) {
+            // קריאה לפונקציה המקורית
+            const result = originalDisplayResults.call(this, data, options);
+            
+            // הוספת עמודות התוספת הרצופה
+            addContinuousSupplementColumns();
+            
+            return result;
+        };
+        
+        // רענון התצוגה
+        displayResults(calculationResults);
+    }
+}
+
+/**
+ * הוספת עמודות התוספת הרצופה לטבלה
+ */
+function addContinuousSupplementColumns() {
+    const table = document.getElementById('resultsTable');
+    if (!table) return;
+    
+    // הוספת כותרות
+    const headerRow = table.querySelector('thead tr');
+    if (headerRow && !headerRow.querySelector('.continuous-supplement-header')) {
+        headerRow.innerHTML += `
+            <th class="continuous-supplement-header" style="background: #9C27B0; color: white;">ימי תוספת רצופה</th>
+            <th class="continuous-supplement-header" style="background: #9C27B0; color: white;">סה"כ ימים (רצוף)</th>
+            <th class="continuous-supplement-header" style="background: #9C27B0; color: white;">אשכול</th>
+            <th class="continuous-supplement-header" style="background: #9C27B0; color: white;">חירום</th>
+        `;
+    }
+    
+    // הוספת נתונים לשורות
+    const bodyRows = table.querySelectorAll('tbody tr');
+    bodyRows.forEach((row, index) => {
+        if (index < calculationResults.length && !row.querySelector('.continuous-supplement-data')) {
+            const result = calculationResults[index];
+            
+            row.innerHTML += `
+                <td class="continuous-supplement-data">${result.continuousSupplementDays?.toFixed(1) || '0.0'}</td>
+                <td class="continuous-supplement-data">${result.continuousTotalPaymentDays?.toFixed(1) || result.miluimDays || 0}</td>
+                <td class="continuous-supplement-data">
+                    ${result.isContinuousCluster ? 
+                        `🔗 ${result.continuousClusterTotalDays} ימים` : 
+                        '📅 יחיד'
+                    }
+                </td>
+                <td class="continuous-supplement-data">
+                    ${result.emergencyIndication ? '🚨' : '📅'}
+                    ${result.clusterHasEmergency ? ' (אשכול חירום)' : ''}
+                </td>
+            `;
+        }
+    });
+}
+
+// ==============================================
+// הוספת כפתור למחשבון הקיים
+// ==============================================
+
+function addContinuousSupplementButton() {
+    const controlPanel = document.querySelector('.control-panel');
+    if (controlPanel && !document.getElementById('continuousSupplementBtn')) {
+        const button = document.createElement('button');
+        button.id = 'continuousSupplementBtn';
+        button.className = 'btn';
+        button.innerHTML = '🔗 חישוב תוספת רצופה';
+        button.onclick = applyContinuousSupplementToResults;
+        button.style.cssText = `
+            background: linear-gradient(45deg, #9C27B0, #E91E63);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+            transition: all 0.3s ease;
+        `;
+        
+        button.onmouseenter = () => {
+            button.style.transform = 'translateY(-2px)';
+            button.style.boxShadow = '0 6px 20px rgba(156, 39, 176, 0.4)';
+        };
+        
+        button.onmouseleave = () => {
+            button.style.transform = 'translateY(0)';
+            button.style.boxShadow = '0 4px 15px rgba(156, 39, 176, 0.3)';
+        };
+        
+        controlPanel.appendChild(button);
+    }
+}
+
+// הפעלה אוטומטית
+document.addEventListener('DOMContentLoaded', addContinuousSupplementButton);
+
+// ==============================================
+// דוגמת שימוש
+// ==============================================
+/*
+בדוגמה שלך:
+- תקופה 1: 01.01.2025-02.01.2025 (2 ימים) - תוספת רגילה: 2÷7 = 0 + שארית 2 = 0.8 ימי תוספת
+- תקופה 2: 03.01.2025-07.01.2025 (5 ימים) - תוספת רגילה: 5÷7 = 0 + שארית 5 = 2 ימי תוספת
+- סה"כ תוספת רגילה: 0.8 + 2 = 2.8 ימי תוספת
+
+עם התוספת הרצופה (אם יש אינדיקציה בעמודה 15):
+- סה"כ ימים רצופים: 2 + 5 = 7 ימים
+- תוספת רצופה: 7÷7 = 1 + שארית 0 = 0 ימי תוספת
+- חיסכון: 2.8 - 0 = 2.8 ימי תוספת פחות
+
+לשימוש:
+1. טען את קובץ האקסל עם גיליון 90291 שמכיל את האינדיקציה בעמודה 15
+2. הפעל חישוב רגיל במחשבון 
+3. לחץ על כפתור "חישוב תוספת רצופה"
+4. צפה בהשוואה בין התוספת הרגילה לרצופה
+*/// פונקציה לחישוב תוספת 40% עבור תקופות רצופות
+// בהתאם לאפיון: תקופות רצופות נחשבות כתקופה אחת לצורך חישוב התוספת
+function calculateContinuousSupplement40(employeeData, emergencyIndicatorColumn = 15) {
+    /**
+     * עבודה עם הפונקציה המקורית calculateSupplement40 מהמחשבון
+     * @param {number} days - מספר ימי השירות 
+     * @returns {object} - אובייקט עם פרטי החישוב
+     */
+    function calculateSupplement40(days) {
+        const quotient = Math.floor(days / 7);
+        const remainder = days % 7;
+        
+        let supplementDays = 0;
+        switch(remainder) {
+            case 0: supplementDays = 0; break;
+            case 1: supplementDays = 0.4; break;
+            case 2: supplementDays = 0.8; break;
+            case 3: supplementDays = 1.2; break;
+            case 4: supplementDays = 1.6; break;
+            case 5: supplementDays = 2; break;
+            case 6: supplementDays = 1; break;
+        }
+        
+        return {
+            quotient,
+            remainder,
+            supplementDays,
+            totalPaymentDays: days + supplementDays
+        };
+    }
+
+    /**
+     * בדיקת רצף בין תאריכים (יום אחרי יום)
+     * @param {Date} endDate1 - תאריך סיום תקופה ראשונה
+     * @param {Date} startDate2 - תאריך התחלת תקופה שנייה
+     * @returns {boolean} - האם התקופות רצופות
+     */
+    function isContinuous(endDate1, startDate2) {
+        const timeDiff = Math.abs(startDate2 - endDate1);
+        const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        return daysDiff <= 1; // יום אחרי יום או אותו יום
+    }
+
+    /**
+     * זיהוי אשכולות של תקופות רצופות עבור עובד
+     * @param {Array} periods - מערך תקופות של עובד (ממוין לפי תאריך)
+     * @returns {Array} - מערך של אשכולות רצופים
+     */
+    function identifyContinuousClusters(periods) {
+        if (!periods || periods.length === 0) return [];
+        
+        const clusters = [];
+        let currentCluster = [periods[0]];
+        
+        for (let i = 1; i < periods.length; i++) {
+            const prevPeriod = periods[i - 1];
+            const currentPeriod = periods[i];
+            
+            if (isContinuous(prevPeriod.endDate, currentPeriod.startDate)) {
+                currentCluster.push(currentPeriod);
+            } else {
+                clusters.push(currentCluster);
+                currentCluster = [currentPeriod];
+            }
+        }
+        
+        // הוסף את האשכול האחרון
+        if (currentCluster.length > 0) {
+            clusters.push(currentCluster);
+        }
+        
+        return clusters;
+    }
+
+    /**
+     * חישוב תוספת לאשכול רצוף
+     * @param {Array} cluster - אשכול של תקופות רצופות
+     * @returns {object} - פרטי חישוב התוספת
+     */
+    function calculateClusterSupplement(cluster) {
+        // בדיקה האם יש אינדיקציה של חירום (עמודה 15) באחת מהתקופות
+        const hasEmergencyIndication = cluster.some(period => 
+            period.emergencyIndication === true || period.emergencyIndication === 1
+        );
+        
+        // סכימת כל ימי האשכול הרצוף
+        const totalDays = cluster.reduce((sum, period) => sum + period.days, 0);
+        
+        // חישוב התוספת על סה"כ הימים הרצופים
+        const supplementResult = calculateSupplement40(totalDays);
+        
+        // חלוקת התוספת בין התקופות לפי יחס הימים
+        const periodsWithSupplement = cluster.map(period => {
+            const ratio = period.days / totalDays;
+            const periodSupplement = supplementResult.supplementDays * ratio;
+            
+            return {
+                ...period,
+                supplementDays: parseFloat(periodSupplement.toFixed(2)),
+                totalPaymentDays: period.days + periodSupplement,
+                clusterTotalDays: totalDays,
+                clusterSupplementDays: supplementResult.supplementDays,
+                hasEmergencyIndication
+            };
+        });
+        
+        return {
+            cluster: periodsWithSupplement,
+            totalDays,
+            totalSupplementDays: supplementResult.supplementDays,
+            calculationDetails: supplementResult,
+            hasEmergencyIndication
+        };
+    }
+
+    // עיבוד הנתונים
+    const results = {};
+    
+    // קיבוץ לפי עובד
+    const employeeGroups = {};
+    employeeData.forEach(record => {
+        if (!employeeGroups[record.employeeId]) {
+            employeeGroups[record.employeeId] = [];
+        }
+        
+        employeeGroups[record.employeeId].push({
+            employeeId: record.employeeId,
+            startDate: new Date(record.startDate),
+            endDate: new Date(record.endDate),
+            days: record.days || record.miluimDays || 0,
+            dailyValue: record.dailyValue || record.continuousValue || 0,
+            emergencyIndication: record.emergencyIndication || false, // עמודה 15 מהגיליון 90291
+            originalRecord: record
+        });
+    });
+    
+    // עיבוד כל עובד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const employeePeriods = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה
+        employeePeriods.sort((a, b) => a.startDate - b.startDate);
+        
+        // זיהוי אשכולות רצופים
+        const clusters = identifyContinuousClusters(employeePeriods);
+        
+        // חישוב תוספת לכל אשכול
+        const processedClusters = clusters.map(cluster => calculateClusterSupplement(cluster));
+        
+        results[employeeId] = {
+            employeeId,
+            totalPeriods: employeePeriods.length,
+            totalClusters: processedClusters.length,
+            clusters: processedClusters,
+            summary: {
+                totalDays: employeePeriods.reduce((sum, p) => sum + p.days, 0),
+                totalSupplementDays: processedClusters.reduce((sum, c) => sum + c.totalSupplementDays, 0),
+                hasEmergencyPeriods: processedClusters.some(c => c.hasEmergencyIndication)
+            }
+        };
+    });
+    
+    return results;
+}
+
+// פונקציה נוספת: חישוב התוספת עבור רשימת תקופות יחידה (לדוגמה בממשק המשתמש)
+function calculateSingleContinuousSequence(periods) {
+    /**
+     * מקבלת רשימה של תקופות ומחשבת תוספת כאילו הן רצף אחד
+     * @param {Array} periods - מערך של אובייקטים: {startDate, endDate, days}
+     */
+    if (!periods || periods.length === 0) {
+        return {
+            totalDays: 0,
+            supplementDays: 0,
+            totalPaymentDays: 0,
+            calculation: null
+        };
+    }
+    
+    // סכימת כל הימים
+    const totalDays = periods.reduce((sum, period) => sum + (period.days || 0), 0);
+    
+    // חישוב התוספת על סה"כ הימים כאילו זו תקופה אחת
+    function calculateSupplement40(days) {
+        const quotient = Math.floor(days / 7);
+        const remainder = days % 7;
+        
+        let supplementDays = 0;
+        switch(remainder) {
+            case 0: supplementDays = 0; break;
+            case 1: supplementDays = 0.4; break;
+            case 2: supplementDays = 0.8; break;
+            case 3: supplementDays = 1.2; break;
+            case 4: supplementDays = 1.6; break;
+            case 5: supplementDays = 2; break;
+            case 6: supplementDays = 1; break;
+        }
+        
+        return {
+            quotient,
+            remainder,
+            supplementDays,
+            totalPaymentDays: days + supplementDays
+        };
+    }
+    
+    const calculation = calculateSupplement40(totalDays);
+    
+    return {
+        periods,
+        totalDays,
+        supplementDays: calculation.supplementDays,
+        totalPaymentDays: calculation.totalPaymentDays,
+        calculation: {
+            quotient: calculation.quotient,
+            remainder: calculation.remainder,
+            formula: `${totalDays} ÷ 7 = ${calculation.quotient} + שארית ${calculation.remainder}`
+        }
+    };
+}
+
+// ==============================================
+// פונקציה משולבת עם המחשבון הקיים שלך
+// ==============================================
+
+/**
+ * פונקציה ראשית לחישוב תוספת רצופה עבור כל העובדים במערכת
+ * משתמשת במשתנים המקוריים מהמחשבון שלך: calculationResults
+ */
+function applyContinuousSupplementToResults() {
+    if (!calculationResults || calculationResults.length === 0) {
+        alert("לא נמצאו תוצאות חישוב במערכת");
+        return;
+    }
+    
+    // קיבוץ תוצאות לפי עובד
+    const employeeGroups = {};
+    calculationResults.forEach(result => {
+        if (!employeeGroups[result.employeeId]) {
+            employeeGroups[result.employeeId] = [];
+        }
+        employeeGroups[result.employeeId].push(result);
+    });
+    
+    console.log(`🔍 מעבד ${Object.keys(employeeGroups).length} עובדים לחישוב תוספת רצופה`);
+    
+    // עיבוד כל עובד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const employeePeriods = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה (משתמש במשתני המחשבון הקיימים)
+        employeePeriods.sort((a, b) => a.startDate - b.startDate);
+        
+        // זיהוי אשכולות רצופים
+        const clusters = identifyContinuousClustersFromResults(employeePeriods);
+        
+        // חישוב תוספת רצופה לכל אשכול
+        clusters.forEach(cluster => {
+            const totalDays = cluster.reduce((sum, period) => sum + (period.miluimDays || 0), 0);
+            const supplementResult = calculateSupplement40(totalDays);
+            
+            // עדכון התוצאות המקוריות עם התוספת הרצופה
+            cluster.forEach(period => {
+                const ratio = (period.miluimDays || 0) / totalDays;
+                period.continuousSupplementDays = parseFloat((supplementResult.supplementDays * ratio).toFixed(2));
+                period.continuousTotalPaymentDays = (period.miluimDays || 0) + period.continuousSupplementDays;
+                period.continuousClusterTotalDays = totalDays;
+                period.isContinuousCluster = cluster.length > 1;
+            });
+        });
+    });
+    
+    console.log("✅ חישוב תוספת רצופה הושלם בהצלחה");
+    
+    // עדכון התצוגה
+    displayResultsWithContinuousSupplement();
+}
+
+/**
+ * זיהוי אשכולות רצופים מתוצאות המחשבון הקיימות
+ * @param {Array} periods - תקופות של עובד ממוינות לפי תאריך
+ */
+function identifyContinuousClustersFromResults(periods) {
+    if (!periods || periods.length === 0) return [];
+    
+    const clusters = [];
+    let currentCluster = [periods[0]];
+    
+    for (let i = 1; i < periods.length; i++) {
+        const prevPeriod = periods[i - 1];
+        const currentPeriod = periods[i];
+        
+        // בדיקת רצף (יום אחרי יום)
+        const prevEnd = new Date(prevPeriod.endDate);
+        const currentStart = new Date(currentPeriod.startDate);
+        const daysDiff = Math.ceil((currentStart - prevEnd) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff <= 1) {
+            currentCluster.push(currentPeriod);
+        } else {
+            clusters.push(currentCluster);
+            currentCluster = [currentPeriod];
+        }
+    }
+    
+    if (currentCluster.length > 0) {
+        clusters.push(currentCluster);
+    }
+    
+    return clusters;
+}
+
+/**
+ * הצגת תוצאות עם התוספת הרצופה
+ */
+function displayResultsWithContinuousSupplement() {
+    // הוספת עמודות חדשות לטבלה
+    const table = document.getElementById('resultsTable');
+    if (table) {
+        // הוספת כותרות עמודות חדשות
+        const headerRow = table.querySelector('thead tr');
+        if (headerRow && !headerRow.querySelector('.continuous-supplement-header')) {
+            headerRow.innerHTML += `
+                <th class="continuous-supplement-header">ימי תוספת רצופה</th>
+                <th class="continuous-supplement-header">סה"כ ימים לתשלום (רצוף)</th>
+                <th class="continuous-supplement-header">אשכול רצוף</th>
+            `;
+        }
+        
+        // עדכון שורות הנתונים
+        displayResults(calculationResults);
+    }
+}
+
+// ==============================================
+// דוגמה לשימוש במחשבון הקיים
+// ==============================================
+
+// הוספת כפתור למחשבון הקיים
+function addContinuousSupplementButton() {
+    const controlPanel = document.querySelector('.control-panel');
+    if (controlPanel && !document.getElementById('continuousSupplementBtn')) {
+        const button = document.createElement('button');
+        button.id = 'continuousSupplementBtn';
+        button.className = 'btn';
+        button.innerHTML = '🔗 חישוב תוספת רצופה';
+        button.onclick = applyContinuousSupplementToResults;
+        button.style.cssText = `
+            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 14px;
+        `;
+        controlPanel.appendChild(button);
+    }
+}
+
+// הפעלה אוטומטית של הכפתור כאשר הדף נטען
+document.addEventListener('DOMContentLoaded', addContinuousSupplementButton);
+
+// דוגמה לשימוש פשוט:
+/*
+// לאחר טעינת נתונים במחשבון, הפעל:
+applyContinuousSupplementToResults();
+
+// או השתמש בכפתור שנוסף אוטומטיט לממשק
+*/
 
 </script>
 </body>
