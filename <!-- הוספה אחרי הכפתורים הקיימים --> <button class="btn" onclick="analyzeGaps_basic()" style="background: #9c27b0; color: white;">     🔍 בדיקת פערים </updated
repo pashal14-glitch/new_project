@@ -1747,118 +1747,257 @@ async function calculateMiluim(config = {}) {
 function loadExcelFile(files) {
     if (!files || files.length === 0) return;
     
+    console.log(`נבחרו ${files.length} קבצים לעיבוד`);
+    
     // איפוס נתונים
     miluimData = [];
     salaryData = [];
     attendanceData = [];
     
-    // אם יש קובץ אחד - עבוד כמו תמיד
-    if (files.length === 1) {
-        const file = files[0];
+    // משתנים למעקב
+    let processedFiles = 0;
+    let mainFileProcessed = false;
+    let paymentData = []; // מערך לאחסון נתוני תשלומים
+    
+    // עבור על כל הקבצים
+    for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+        const file = files[fileIndex];
         
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                const workbook = XLSX.read(data, {type: 'array'});
                 
-                console.log('Available sheets:', workbook.SheetNames);
+                // זיהוי סוג הקובץ
+                const isMainFile = file.name.toLowerCase().includes('main') || workbook.SheetNames.length >= 3;
                 
-                let sheetsLoaded = 0;
-                
-                // Try to load each sheet - flexible sheet naming
-                for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
-                    const sheetName = workbook.SheetNames[i];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    if (jsonData.length > 1) { // Has data beyond header
-                        if (i === 0) {
-                            // First sheet - Miluim data
-                            parseData(jsonData, 'miluim');
-                            updateSheetStatus('sheet1Status', true, `📊 גליון מילואים: ✅ (${miluimData.length} רשומות)`);
-                            sheetsLoaded++;
-                        } else if (i === 1) {
-                            // Second sheet - Salary data
-                            parseData(jsonData, 'salary');
-                            updateSheetStatus('sheet2Status', true, `💰 גליון שכר: ✅ (${salaryData.length} רשומות)`);
-                            sheetsLoaded++;
-                        } else if (i === 2) {
-                            // Third sheet - Attendance data
-                            parseData(jsonData, 'attendance');
-                            updateSheetStatus('sheet3Status', true, `📅 גליון נוכחות: ✅ (${attendanceData.length} רשומות)`);
-                            sheetsLoaded++;
-                        }
-                    }
-                }
-                
-                document.getElementById('sheetsStatus').style.display = 'block';
-                
-                if (sheetsLoaded === 3) {
-                    updateUploadStatus(true);
-                    showSuccessMessage(`הקובץ נטען בהצלחה! ${miluimData.length} תקופות מילואים, ${salaryData.length} רשומות שכר, ${attendanceData.length} רשומות נוכחות`);
+                if (isMainFile) {
+                    // עיבוד הקובץ הראשי (3 גליונות)
+                    console.log(`מעבד קובץ ראשי: ${file.name}`);
+                    processMainFile(workbook);
+                    mainFileProcessed = true;
                 } else {
-                    showErrorMessage(`נטענו רק ${sheetsLoaded} מתוך 3 גליונות. אנא ודא שהקובץ מכיל 3 גליונות עם נתונים.`);
+                    // עיבוד קובץ תשלומים (BTL)
+                    console.log(`מעבד קובץ תשלומים: ${file.name}`);
+                    processPaymentFile(workbook, file.name, paymentData);
                 }
                 
-                checkCalculateButton();
+                processedFiles++;
+                
+                // אם סיימנו לעבד את כל הקבצים
+                if (processedFiles === files.length) {
+                    finishProcessing(mainFileProcessed, paymentData);
+                }
+                
             } catch (error) {
-                console.error('Error loading file:', error);
-                showErrorMessage('שגיאה בטעינת הקובץ: ' + error.message);
+                console.error(`שגיאה בעיבוד קובץ ${file.name}:`, error);
+                processedFiles++;
+                
+                if (processedFiles === files.length) {
+                    finishProcessing(mainFileProcessed, paymentData);
+                }
             }
         };
         reader.readAsArrayBuffer(file);
+    }
+}
+
+// עיבוד הקובץ הראשי (3 גליונות)
+function processMainFile(workbook) {
+    let sheetsLoaded = 0;
+    
+    for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
+        const sheetName = workbook.SheetNames[i];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-    } else {
-        // טיפול בקבצים מרובים
-        console.log(`נבחרו ${files.length} קבצים לעיבוד`);
-        
-        let processedFiles = 0;
-        let totalSheets = 0;
-        
-        // עבור על כל הקבצים
-        for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
-            const file = files[fileIndex];
-            console.log(`מעבד קובץ ${fileIndex + 1}: ${file.name}`);
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    
-                    // עבור על כל הגליונות בקובץ
-                    for (let sheetName of workbook.SheetNames) {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        
-                        if (jsonData.length > 1) {
-                            // נסה לזהות סוג הנתונים לפי שם הגליון או תוכן
-                            parseData(jsonData, 'miluim'); // זמנית - נכניס הכל כמילואים
-                            totalSheets++;
-                        }
-                    }
-                    
-                    processedFiles++;
-                    
-                    // אם סיימנו לעבד את כל הקבצים
-                    if (processedFiles === files.length) {
-                        updateSheetStatus('sheet1Status', true, `📊 מילואים: ✅ (${miluimData.length} רשומות)`);
-                        updateSheetStatus('sheet2Status', false, `💰 שכר: ⌛ (יתמזג בשלב הבא)`);
-                        updateSheetStatus('sheet3Status', false, `📅 נוכחות: ⌛ (יתמזג בשלב הבא)`);
-                        
-                        document.getElementById('sheetsStatus').style.display = 'block';
-                        showSuccessMessage(`עובד ${files.length} קבצים עם ${totalSheets} גליונות!`);
-                        checkCalculateButton();
-                    }
-                    
-                } catch (error) {
-                    console.error(`שגיאה בעיבוד קובץ ${file.name}:`, error);
-                }
-            };
-            reader.readAsArrayBuffer(file);
+        if (jsonData.length > 1) {
+            if (i === 0) {
+                parseData(jsonData, 'miluim');
+                sheetsLoaded++;
+            } else if (i === 1) {
+                parseData(jsonData, 'salary');
+                sheetsLoaded++;
+            } else if (i === 2) {
+                parseData(jsonData, 'attendance');
+                sheetsLoaded++;
+            }
         }
     }
+    
+    console.log(`קובץ ראשי: נטענו ${sheetsLoaded} גליונות`);
+}
+
+// עיבוד קובץ תשלומים (לפי הסקריפט BTL שלך)
+function processPaymentFile(workbook, fileName, paymentData) {
+    // קח את הגליון הראשון
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    
+    // דלג על השורה הראשונה (כותרות) ועבד את הנתונים
+    for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        
+        // בחר עמודות לפי מיקום כמו בסקריפט שלך
+        const idNum = row[0];      // Column1
+        const startDt = row[5];    // Column6  
+        const endDt = row[6];      // Column7
+        const amt = row[8];        // Column9
+        
+        // סינון נתונים כמו בסקריפט
+        if (idNum && idNum !== "" && idNum !== "idNum" && 
+            !String(idNum).includes("idNum") && 
+            !isNaN(Number(idNum)) && Number(idNum) >= 0) {
+            
+            // יצירת מפתח
+            const key = `${idNum}|${startDt}|${endDt}`;
+            
+            // חפש אם המפתח כבר קיים ברשימה
+            const existingIndex = paymentData.findIndex(item => item.key === key);
+            
+            if (existingIndex >= 0) {
+                // צבור את הסכום
+                paymentData[existingIndex].totalAmount += (Number(amt) || 0);
+            } else {
+                // הוסף רשומה חדשה
+                paymentData.push({
+                    key: key,
+                    idNum: idNum,
+                    startDt: startDt,
+                    endDt: endDt,
+                    totalAmount: Number(amt) || 0,
+                    fileName: fileName
+                });
+            }
+        }
+    }
+    
+    console.log(`קובץ ${fileName}: נמצאו ${paymentData.length} רשומות תשלומים`);
+}
+
+// סיום עיבוד כל הקבצים
+function finishProcessing(mainFileProcessed, paymentData) {
+    console.log('סיום עיבוד כל הקבצים');
+    console.log(`קובץ ראשי: ${mainFileProcessed ? 'עובד' : 'לא נמצא'}`);
+    console.log(`נתוני תשלומים: ${paymentData.length} רשומות`);
+    
+    // עדכון סטטוס בממשק
+    if (mainFileProcessed) {
+        updateSheetStatus('sheet1Status', true, `📊 מילואים: ✅ (${miluimData.length} רשומות)`);
+        updateSheetStatus('sheet2Status', true, `💰 שכר: ✅ (${salaryData.length} רשומות)`);
+        updateSheetStatus('sheet3Status', true, `📅 נוכחות: ✅ (${attendanceData.length} רשומות)`);
+        
+        // שמור נתוני תשלומים גלובלית
+        window.paymentData = paymentData;
+        
+        updateUploadStatus(true);
+        showSuccessMessage(`עובדו בהצלחה: קובץ ראשי + ${paymentData.length} רשומות תשלומים מ-BTL`);
+        checkCalculateButton();
+    } else {
+        showErrorMessage('לא נמצא קובץ ראשי (MAIN או עם 3 גליונות)');
+    }
+    
+    document.getElementById('sheetsStatus').style.display = 'block';
+}
+// עיבוד הקובץ הראשי (3 גליונות)
+function processMainFile(workbook) {
+    let sheetsLoaded = 0;
+    
+    for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
+        const sheetName = workbook.SheetNames[i];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (jsonData.length > 1) {
+            if (i === 0) {
+                parseData(jsonData, 'miluim');
+                sheetsLoaded++;
+            } else if (i === 1) {
+                parseData(jsonData, 'salary');
+                sheetsLoaded++;
+            } else if (i === 2) {
+                parseData(jsonData, 'attendance');
+                sheetsLoaded++;
+            }
+        }
+    }
+    
+    console.log(`קובץ ראשי: נטענו ${sheetsLoaded} גליונות`);
+}
+
+// עיבוד קובץ תשלומים (לפי הסקריפט BTL שלך)
+function processPaymentFile(workbook, fileName, paymentData) {
+    // קח את הגליון הראשון
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    
+    // דלג על השורה הראשונה (כותרות) ועבד את הנתונים
+    for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        
+        // בחר עמודות לפי מיקום כמו בסקריפט שלך
+        const idNum = row[0];      // Column1
+        const startDt = row[5];    // Column6  
+        const endDt = row[6];      // Column7
+        const amt = row[8];        // Column9
+        
+        // סינון נתונים כמו בסקריפט
+        if (idNum && idNum !== "" && idNum !== "idNum" && 
+            !String(idNum).includes("idNum") && 
+            !isNaN(Number(idNum)) && Number(idNum) >= 0) {
+            
+            // יצירת מפתח
+            const key = `${idNum}|${startDt}|${endDt}`;
+            
+            // חפש אם המפתח כבר קיים ברשימה
+            const existingIndex = paymentData.findIndex(item => item.key === key);
+            
+            if (existingIndex >= 0) {
+                // צבור את הסכום
+                paymentData[existingIndex].totalAmount += (Number(amt) || 0);
+            } else {
+                // הוסף רשומה חדשה
+                paymentData.push({
+                    key: key,
+                    idNum: idNum,
+                    startDt: startDt,
+                    endDt: endDt,
+                    totalAmount: Number(amt) || 0,
+                    fileName: fileName
+                });
+            }
+        }
+    }
+    
+    console.log(`קובץ ${fileName}: נמצאו ${paymentData.length} רשומות תשלומים`);
+}
+
+// סיום עיבוד כל הקבצים
+function finishProcessing(mainFileProcessed, paymentData) {
+    console.log('סיום עיבוד כל הקבצים');
+    console.log(`קובץ ראשי: ${mainFileProcessed ? 'עובד' : 'לא נמצא'}`);
+    console.log(`נתוני תשלומים: ${paymentData.length} רשומות`);
+    
+    // עדכון סטטוס בממשק
+    if (mainFileProcessed) {
+        updateSheetStatus('sheet1Status', true, `📊 מילואים: ✅ (${miluimData.length} רשומות)`);
+        updateSheetStatus('sheet2Status', true, `💰 שכר: ✅ (${salaryData.length} רשומות)`);
+        updateSheetStatus('sheet3Status', true, `📅 נוכחות: ✅ (${attendanceData.length} רשומות)`);
+        
+        // שמור נתוני תשלומים גלובלית
+        window.paymentData = paymentData;
+        
+        updateUploadStatus(true);
+        showSuccessMessage(`עובדו בהצלחה: קובץ ראשי + ${paymentData.length} רשומות תשלומים מ-BTL`);
+        checkCalculateButton();
+    } else {
+        showErrorMessage('לא נמצא קובץ ראשי (MAIN או עם 3 גליונות)');
+    }
+    
+    document.getElementById('sheetsStatus').style.display = 'block';
 }
         function updateSheetStatus(elementId, success, text) {
             const element = document.getElementById(elementId);
