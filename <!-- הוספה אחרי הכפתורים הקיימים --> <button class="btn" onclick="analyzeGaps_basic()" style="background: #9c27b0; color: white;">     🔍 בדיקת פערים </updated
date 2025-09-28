@@ -1853,7 +1853,8 @@ async function calculateMiluim(config = {}) {
                         paidAmount: parseFloat(row[11]),
                         compulsion: parseFloat(row[12]),
                         crossMonth:row[13],
-                        emergencyCompulsion4405: parseFloat(row[14])
+                        emergencyCompulsion4405: parseFloat(row[14]),
+                        emergency40percentage:row[15]
 
                     })).filter(item => item.employeeId);
                     break;
@@ -2143,6 +2144,8 @@ function displayResults(data = calculationResults, options = {}) {
     currentDisplayOptions = options;
     
     const container = document.getElementById('resultsContainer');
+    const emergencySupplements = calculateEmergency40Supplement(data);
+    console.log('📋 תוספות חירום חושבו:', emergencySupplements);
     
     if (!data || data.length === 0) {
         let emptyMessage = 'לא נמצאו תוצאות';
@@ -2224,6 +2227,9 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>ימי תוספת 40%</th>
                         <th>תוספת ₪</th>
                         <th>סה"כ כולל תוספת</th>
+                        <th>ימי תוספת חירום 40%</th>
+                        <th>תוספת חירום ₪</th>
+                        <th>סה"כ כולל תוספת חירום</th>
 
                     </tr>
                 </thead>
@@ -2247,6 +2253,10 @@ function displayResults(data = calculationResults, options = {}) {
         const supplementResult = calculateSupplement40(result.miluimDays);
         const supplementAmount = supplementResult.supplementDays * (result.continuousValue || 0);
         const totalWithSupplement = ((result.continuousValue || 0) * (result.miluimDays || 0)) + supplementAmount;
+        const emergencySupplementData = emergencySupplements[correctIndex] || null;
+        const emergencySupplementDays = emergencySupplementData ? emergencySupplementData.supplementDays : 0;
+        const emergencySupplementAmount = emergencySupplementData ? emergencySupplementData.supplementAmount : 0;
+        const totalWithEmergencySupplement = totalWithSupplement + emergencySupplementAmount;
         
         html += `
             <tr class="${rowClass}">
@@ -2270,6 +2280,16 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${supplementResult.supplementDays}</td>
                 <td>${supplementAmount.toFixed(0)} ₪</td>
                 <td>${totalWithSupplement.toFixed(2)} ₪</td>
+                <td class="${emergencySupplementDays > 0 ? 'emergency-supplement' : ''}" 
+                ${emergencySupplementData ? `title="בלוק חירום: ${emergencySupplementData.blockStartDate} - ${emergencySupplementData.blockEndDate}"` : ''}>
+                ${emergencySupplementDays > 0 ? emergencySupplementDays : '-'}
+                 </td>
+               <td class="${emergencySupplementAmount > 0 ? 'emergency-supplement' : ''}">
+                ${emergencySupplementAmount > 0 ? emergencySupplementAmount.toFixed(0) + ' ₪' : '-'}
+               </td>
+               <td class="total-with-emergency" style="background: #e8f5e8; font-weight: bold;">
+                ${totalWithEmergencySupplement.toFixed(2)} ₪
+               </td>
             </tr>
         `;
     });
@@ -4501,7 +4521,148 @@ function showMiluimTable() {
     html += '</table>';
     document.getElementById('miluimTable').innerHTML = html;
 }
+function calculateEmergency40Supplement(calculationResults) {
+    console.log('🔥 מתחיל חישוב תוספת 40% לשירות חירום...');
+    
+    // קיבוץ תוצאות לפי עובד
+    const employeeGroups = {};
+    calculationResults.forEach((result, index) => {
+        const employeeId = result.employeeId;
+        if (!employeeGroups[employeeId]) {
+            employeeGroups[employeeId] = [];
+        }
+        employeeGroups[employeeId].push({
+            ...result,
+            originalIndex: index
+        });
+    });
+    
+    const supplementResults = {};
+    
+    // עיבוד כל עובד בנפרד
+    Object.keys(employeeGroups).forEach(employeeId => {
+        const periods = employeeGroups[employeeId];
+        
+        // מיון לפי תאריך התחלה
+        periods.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        
+        let currentBlock = [];
+        let isInEmergencyBlock = false;
+        
+        for (let i = 0; i < periods.length; i++) {
+            const currentPeriod = periods[i];
+            const isEmergencyService = currentPeriod.emergency40percentage === 1;
+            
+            // בדיקה אם התקופה הנוכחית רצופה לקודמת
+            const isConsecutive = i === 0 || isPeriodsConsecutive(periods[i-1], currentPeriod);
+            
+            // אם זה שירות חירום או המשך של בלוק קיים
+            if (isEmergencyService || (isInEmergencyBlock && isConsecutive)) {
+                
+                // אם זה לא רצוף ויש בלוק קיים, סיום הבלוק הקודם
+                if (!isConsecutive && currentBlock.length > 0) {
+                    processEmergencyBlock(currentBlock, supplementResults);
+                    currentBlock = [];
+                }
+                
+                // התחלת בלוק חדש או המשך קיים
+                currentBlock.push(currentPeriod);
+                isInEmergencyBlock = true;
+                
+            } else {
+                // תקופה לא רצופה או לא חירום - סיום בלוק אם קיים
+                if (currentBlock.length > 0) {
+                    processEmergencyBlock(currentBlock, supplementResults);
+                    currentBlock = [];
+                }
+                isInEmergencyBlock = false;
+            }
+        }
+        
+        // עיבוד בלוק אחרון אם קיים
+        if (currentBlock.length > 0) {
+            processEmergencyBlock(currentBlock, supplementResults);
+        }
+    });
+    
+    console.log('✅ חישוב תוספת חירום הושלם:', supplementResults);
+    return supplementResults;
+}
 
+function isPeriodsConsecutive(period1, period2) {
+    // המרת תאריכים
+    const endDate1 = new Date(period1.endDate);
+    const startDate2 = new Date(period2.startDate);
+    
+    // חישוב הפרש ימים
+    const diffTime = startDate2.getTime() - endDate1.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // תקופות נחשבות רצופות אם הפער הוא עד יום אחד
+    return diffDays <= 1;
+}
+
+function processEmergencyBlock(blockPeriods, supplementResults) {
+    if (blockPeriods.length === 0) return;
+    
+    console.log(`📊 מעבד בלוק חירום עם ${blockPeriods.length} תקופות עבור עובד ${blockPeriods[0].employeeId}`);
+    
+    // חישוב סך הימים בכל הבלוק
+    const totalBlockDays = blockPeriods.reduce((sum, period) => {
+        return sum + (period.miluimDays || 0);
+    }, 0);
+    
+    console.log(`📅 סך ימי הבלוק: ${totalBlockDays}`);
+    
+    // חישוב תוספת 40% על סך הימים
+    const supplementResult = calculateSupplement40(totalBlockDays);
+    
+    console.log(`🧮 תוצאת חישוב תוספת:`, supplementResult);
+    
+    // יחוס התוספת לתקופה האחרונה בבלוק
+    const lastPeriod = blockPeriods[blockPeriods.length - 1];
+    const lastPeriodIndex = lastPeriod.originalIndex;
+    
+    supplementResults[lastPeriodIndex] = {
+        employeeId: lastPeriod.employeeId,
+        blockStartDate: blockPeriods[0].startDate,
+        blockEndDate: lastPeriod.endDate,
+        totalBlockDays: totalBlockDays,
+        supplementDays: supplementResult.supplementDays,
+        supplementAmount: supplementResult.supplementDays * (lastPeriod.continuousValue || 0),
+        appliedToPeriod: {
+            startDate: lastPeriod.startDate,
+            endDate: lastPeriod.endDate,
+            periodDays: lastPeriod.miluimDays
+        },
+        blockPeriods: blockPeriods.map(p => ({
+            startDate: p.startDate,
+            endDate: p.endDate,
+            days: p.miluimDays,
+            isEmergency: p.emergency40percentage === 1
+        }))
+    };
+    
+    console.log(`✅ תוספת של ${supplementResult.supplementDays} ימים יוחסה לתקופה ${lastPeriod.startDate} - ${lastPeriod.endDate}`);
+}
+
+// פונקציה עזר להדפסת דוח מפורט
+function printEmergencySupplementReport(supplementResults) {
+    console.log('\n📋 דוח תוספות חירום 40%:');
+    console.log('================================');
+    
+    Object.values(supplementResults).forEach(result => {
+        console.log(`\n🔸 עובד: ${result.employeeId}`);
+        console.log(`📅 בלוק: ${result.blockStartDate} עד ${result.blockEndDate}`);
+        console.log(`📊 סך ימי בלוק: ${result.totalBlockDays}`);
+        console.log(`💰 תוספת: ${result.supplementDays} ימים (${result.supplementAmount.toFixed(2)} ₪)`);
+        console.log(`🎯 יוחס לתקופה: ${result.appliedToPeriod.startDate} - ${result.appliedToPeriod.endDate}`);
+        console.log(`📝 תקופות בבלוק:`);
+        result.blockPeriods.forEach(period => {
+            console.log(`   - ${period.startDate} עד ${period.endDate}: ${period.days} ימים ${period.isEmergency ? '(חירום)' : '(רגיל)'}`);
+        });
+    });
+}
 </script>
 </body>
 </html>
