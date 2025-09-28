@@ -594,9 +594,9 @@
             <div class="upload-grid">
                 <div class="upload-card" onclick="document.getElementById('excelFile').click()" style="grid-column: 1 / -1;">
                     <h3>📊 קובץ אקסל עם 3 גליונות</h3>
-                    <p>גליון 1: מילואים (90291) | גליון 2: שכר (94010) | גליון 3: נוכחות (1857)</p>
+                 <p>קובץ ראשי עם 3 גליונות + קבצים נוספים לעיבוד</p>
                     <button class="upload-btn" id="excelBtn">בחר קובץ אקסל</button>
-                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls">
+                    <input type="file" id="mainExcelFile" class="file-input" accept=".xlsx,.xls" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
                         <div class="sheet-status">
                             <span id="sheet1Status">📊 גליון מילואים: ❌</span>
