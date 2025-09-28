@@ -596,7 +596,7 @@
                     <h3>📊 קובץ אקסל עם 3 גליונות</h3>
                  <p>קובץ ראשי עם 3 גליונות + קבצים נוספים לעיבוד</p>
                     <button class="upload-btn" id="excelBtn">בחר קובץ אקסל</button>
-                    <input type="file" id="mainExcelFile" class="file-input" accept=".xlsx,.xls" multiple>
+                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
                         <div class="sheet-status">
                             <span id="sheet1Status">📊 גליון מילואים: ❌</span>
@@ -1515,7 +1515,7 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
 }
         // File upload handlers
         function setupFileUpload() {
-            document.getElementById('excelFile').addEventListener('change', function(e) {
+        document.getElementById('mainExcelFile').addEventListener('change', function(e) {
                 loadExcelFile(e.target.files[0]);
             });
         }
