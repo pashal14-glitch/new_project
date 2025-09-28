@@ -1744,72 +1744,73 @@ async function calculateMiluim(config = {}) {
 
 // 5. החזרת תוצאות ללא הצגה
 // const results = await calculateMiluim({ returnResults: true });
-        function loadExcelFile(files) {
+ function loadExcelFile(files) {
     if (!files || files.length === 0) return;
     
     // אם יש קובץ אחד - עבוד כמו תמיד
     if (files.length === 1) {
         const file = files[0];
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                console.log('Available sheets:', workbook.SheetNames);
+                
+                // Reset data
+                miluimData = [];
+                salaryData = [];
+                attendanceData = [];
+                
+                let sheetsLoaded = 0;
+                
+                // Try to load each sheet - flexible sheet naming
+                for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
+                    const sheetName = workbook.SheetNames[i];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    console.log('Available sheets:', workbook.SheetNames);
-                    
-                    // Reset data
-                    miluimData = [];
-                    salaryData = [];
-                    attendanceData = [];
-                    
-                    let sheetsLoaded = 0;
-                    
-                    // Try to load each sheet - flexible sheet naming
-                    for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
-                        const sheetName = workbook.SheetNames[i];
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        
-                        if (jsonData.length > 1) { // Has data beyond header
-                            if (i === 0) {
-                                // First sheet - Miluim data
-                                parseData(jsonData, 'miluim');
-                                updateSheetStatus('sheet1Status', true, `📊 גליון מילואים: ✅ (${miluimData.length} רשומות)`);
-                                sheetsLoaded++;
-                            } else if (i === 1) {
-                                // Second sheet - Salary data
-                                parseData(jsonData, 'salary');
-                                updateSheetStatus('sheet2Status', true, `💰 גליון שכר: ✅ (${salaryData.length} רשומות)`);
-                                sheetsLoaded++;
-                            } else if (i === 2) {
-                                // Third sheet - Attendance data
-                                parseData(jsonData, 'attendance');
-                                updateSheetStatus('sheet3Status', true, `📅 גליון נוכחות: ✅ (${attendanceData.length} רשומות)`);
-                                sheetsLoaded++;
-                            }
+                    if (jsonData.length > 1) { // Has data beyond header
+                        if (i === 0) {
+                            // First sheet - Miluim data
+                            parseData(jsonData, 'miluim');
+                            updateSheetStatus('sheet1Status', true, `📊 גליון מילואים: ✅ (${miluimData.length} רשומות)`);
+                            sheetsLoaded++;
+                        } else if (i === 1) {
+                            // Second sheet - Salary data
+                            parseData(jsonData, 'salary');
+                            updateSheetStatus('sheet2Status', true, `💰 גליון שכר: ✅ (${salaryData.length} רשומות)`);
+                            sheetsLoaded++;
+                        } else if (i === 2) {
+                            // Third sheet - Attendance data
+                            parseData(jsonData, 'attendance');
+                            updateSheetStatus('sheet3Status', true, `📅 גליון נוכחות: ✅ (${attendanceData.length} רשומות)`);
+                            sheetsLoaded++;
                         }
                     }
-                    
-                    document.getElementById('sheetsStatus').style.display = 'block';
-                    
-                    if (sheetsLoaded === 3) {
-                        updateUploadStatus(true);
-                        showSuccessMessage(`הקובץ נטען בהצלחה! ${miluimData.length} תקופות מילואים, ${salaryData.length} רשומות שכר, ${attendanceData.length} רשומות נוכחות`);
-                    } else {
-                        showErrorMessage(`נטענו רק ${sheetsLoaded} מתוך 3 גליונות. אנא ודא שהקובץ מכיל 3 גליונות עם נתונים.`);
-                    }
-                    
-                    checkCalculateButton();
-                } catch (error) {
-                    console.error('Error loading file:', error);
-                    showErrorMessage('שגיאה בטעינת הקובץ: ' + error.message);
                 }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
+                
+                document.getElementById('sheetsStatus').style.display = 'block';
+                
+                if (sheetsLoaded === 3) {
+                    updateUploadStatus(true);
+                    showSuccessMessage(`הקובץ נטען בהצלחה! ${miluimData.length} תקופות מילואים, ${salaryData.length} רשומות שכר, ${attendanceData.length} רשומות נוכחות`);
+                } else {
+                    showErrorMessage(`נטענו רק ${sheetsLoaded} מתוך 3 גליונות. אנא ודא שהקובץ מכיל 3 גליונות עם נתונים.`);
+                }
+                
+                checkCalculateButton();
+            } catch (error) {
+                console.error('Error loading file:', error);
+                showErrorMessage('שגיאה בטעינת הקובץ: ' + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    // כאן נוסיף בעתיד טיפול בקבצים מרובים
+}
         function updateSheetStatus(elementId, success, text) {
             const element = document.getElementById(elementId);
             element.textContent = text;
