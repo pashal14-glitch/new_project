@@ -1809,7 +1809,61 @@ async function calculateMiluim(config = {}) {
         };
         reader.readAsArrayBuffer(file);
     }
-    // כאן נוסיף בעתיד טיפול בקבצים מרובים
+// טיפול בקבצים מרובים
+    } else {
+        console.log(`נבחרו ${files.length} קבצים לעיבוד`);
+        
+        // איפוס נתונים
+        miluimData = [];
+        salaryData = [];
+        attendanceData = [];
+        
+        let processedFiles = 0;
+        let totalSheets = 0;
+        
+        // עבור על כל הקבצים
+        for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+            const file = files[fileIndex];
+            console.log(`מעבד קובץ ${fileIndex + 1}: ${file.name}`);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    // עבור על כל הגליונות בקובץ
+                    for (let sheetName of workbook.SheetNames) {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        if (jsonData.length > 1) {
+                            // נסה לזהות סוג הנתונים לפי שם הגליון או תוכן
+                            parseData(jsonData, 'miluim'); // זמנית - נכניס הכל כמילואים
+                            totalSheets++;
+                        }
+                    }
+                    
+                    processedFiles++;
+                    
+                    // אם סיימנו לעבד את כל הקבצים
+                    if (processedFiles === files.length) {
+                        updateSheetStatus('sheet1Status', true, `📊 מילואים: ✅ (${miluimData.length} רשומות)`);
+                        updateSheetStatus('sheet2Status', false, `💰 שכר: ⌛ (יתמזג בשלב הבא)`);
+                        updateSheetStatus('sheet3Status', false, `📅 נוכחות: ⌛ (יתמזג בשלב הבא)`);
+                        
+                        document.getElementById('sheetsStatus').style.display = 'block';
+                        showSuccessMessage(`עובד ${files.length} קבצים עם ${totalSheets} גליונות!`);
+                        checkCalculateButton();
+                    }
+                    
+                } catch (error) {
+                    console.error(`שגיאה בעיבוד קובץ ${file.name}:`, error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
 }
         function updateSheetStatus(elementId, success, text) {
             const element = document.getElementById(elementId);
