@@ -1515,7 +1515,7 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
 }
         // File upload handlers
         function setupFileUpload() {
-        document.getElementById('mainExcelFile').addEventListener('change', function(e) {
+      document.getElementById('excelFile').addEventListener('change', function(e) {
                 loadExcelFile(e.target.files[0]);
             });
         }
