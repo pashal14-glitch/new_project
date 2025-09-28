@@ -1,4 +1,4 @@
-    
+        
 
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -2572,6 +2572,9 @@ function exportToExcel() {
         alert('אין נתונים לייצוא.');
         return;
     }
+ // *** הוסיפי כאן - חישוב תוספות חירום לנתוני הייצוא ***
+    const emergencySupplements = calculateEmergency40Supplement(dataToExport);
+    console.log('📋 תוספות חירום לייצוא חושבו:', emergencySupplements);
     
 // השתמש בנתונים הקיימים עם הכפייה הרציפה שכבר חושבה
 const processedData = dataToExport;
@@ -2581,13 +2584,22 @@ const processedData = dataToExport;
 'p-כפייה 4405', 
 'ימי תוספת 40%',
 '40% תוספת ₪',
-'סה"כ כולל תוספת']
+'סה"כ כולל תוספת',
+'ימי תוספת חירום 40%',
+'תוספת חירום ₪',
+'סה"כ כולל תוספת חירום'
+]
     ];    
    
    for (let result of processedData) {
      const supplementResult = calculateSupplement40(result.miluimDays);
     const supplementAmount = supplementResult.supplementDays * result.continuousValue;
     const totalWithSupplement = (result.continuousValue * result.miluimDays) + supplementAmount;
+    const emergencySupplementData = emergencySupplements[i] || null;
+    const emergencySupplementDays = emergencySupplementData ? emergencySupplementData.supplementDays : 0;
+    const emergencySupplementAmount = emergencySupplementData ? emergencySupplementData.supplementAmount : 0;
+    const totalWithEmergencySupplement = totalWithSupplement + emergencySupplementAmount;
+        
         wsData.push([
             result.employeeId,
             result.startDate,                       
@@ -2610,7 +2622,10 @@ const processedData = dataToExport;
             parseFloat(result.emergencyCompulsion4405 || 0),
             supplementResult.supplementDays,  // ימי תוספת 40%
           parseFloat(supplementAmount.toFixed(2)),  // תוספת 40% ₪
-          parseFloat(totalWithSupplement.toFixed(2))  // סה״כ כולל תוספת
+          parseFloat(totalWithSupplement.toFixed(2)), // סה״כ כולל תוספת
+            emergencySupplementDays,  // ימי תוספת חירום 40%
+            emergencySupplementAmount > 0 ? parseFloat(emergencySupplementAmount.toFixed(2)) : '', // תוספת חירום ₪
+            parseFloat(totalWithEmergencySupplement.toFixed(2))  // סה"כ כולל תוספת חירום
 
         ]);
     }
