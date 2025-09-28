@@ -1516,7 +1516,7 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
         // File upload handlers
         function setupFileUpload() {
       document.getElementById('excelFile').addEventListener('change', function(e) {
-                loadExcelFile(e.target.files[0]);
+                loadExcelFile(e.target.files);
             });
         }
         
@@ -1744,8 +1744,12 @@ async function calculateMiluim(config = {}) {
 
 // 5. החזרת תוצאות ללא הצגה
 // const results = await calculateMiluim({ returnResults: true });
-        function loadExcelFile(file) {
-            if (!file) return;
+        function loadExcelFile(files) {
+    if (!files || files.length === 0) return;
+    
+    // אם יש קובץ אחד - עבוד כמו תמיד
+    if (files.length === 1) {
+        const file = files[0];
             
             const reader = new FileReader();
             reader.onload = function(e) {
