@@ -1747,6 +1747,11 @@ async function calculateMiluim(config = {}) {
  function loadExcelFile(files) {
     if (!files || files.length === 0) return;
     
+    // איפוס נתונים
+    miluimData = [];
+    salaryData = [];
+    attendanceData = [];
+    
     // אם יש קובץ אחד - עבוד כמו תמיד
     if (files.length === 1) {
         const file = files[0];
@@ -1758,11 +1763,6 @@ async function calculateMiluim(config = {}) {
                 const workbook = XLSX.read(data, { type: 'array' });
                 
                 console.log('Available sheets:', workbook.SheetNames);
-                
-                // Reset data
-                miluimData = [];
-                salaryData = [];
-                attendanceData = [];
                 
                 let sheetsLoaded = 0;
                 
@@ -1808,15 +1808,10 @@ async function calculateMiluim(config = {}) {
             }
         };
         reader.readAsArrayBuffer(file);
-    }
-// טיפול בקבצים מרובים
-    } else {
-        console.log(`נבחרו ${files.length} קבצים לעיבוד`);
         
-        // איפוס נתונים
-        miluimData = [];
-        salaryData = [];
-        attendanceData = [];
+    } else {
+        // טיפול בקבצים מרובים
+        console.log(`נבחרו ${files.length} קבצים לעיבוד`);
         
         let processedFiles = 0;
         let totalSheets = 0;
