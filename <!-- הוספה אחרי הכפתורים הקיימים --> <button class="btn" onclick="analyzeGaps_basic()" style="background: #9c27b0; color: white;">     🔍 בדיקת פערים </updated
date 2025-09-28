@@ -838,7 +838,8 @@ class MiluimCalculatorCache {
         isNewMiluim: isNewMiluim,
         compulsion: originalMiluim ? originalMiluim.compulsion || 0 : 0,
         compulsionContinuous: 0 ,
-        emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 
+        emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 ,
+        emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined
     };
 }
     getStats() {
