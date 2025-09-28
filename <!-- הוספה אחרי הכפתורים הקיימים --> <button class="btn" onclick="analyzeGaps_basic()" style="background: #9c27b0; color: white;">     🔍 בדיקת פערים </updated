@@ -1744,7 +1744,7 @@ async function calculateMiluim(config = {}) {
 
 // 5. החזרת תוצאות ללא הצגה
 // const results = await calculateMiluim({ returnResults: true });
- function loadExcelFile(files) {
+function loadExcelFile(files) {
     if (!files || files.length === 0) return;
     
     // איפוס נתונים
