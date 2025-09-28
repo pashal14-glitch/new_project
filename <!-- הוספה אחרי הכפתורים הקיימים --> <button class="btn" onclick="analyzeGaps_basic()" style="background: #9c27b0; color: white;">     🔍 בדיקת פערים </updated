@@ -2520,8 +2520,7 @@ function showDetails(index) {
     document.getElementById('detailsContent').innerHTML = html;
     document.getElementById('detailsModal').style.display = 'block';
 }
-
-      // Export functionality - מעודכן עם ערך כפייה רצוף
+// Export functionality - מעודכן עם ערך כפייה רצוף
 function exportToExcel() {
     // יצירת הנתונים המסוננים בזמן הייצוא
     let dataToExport = [...calculationResults];
@@ -2572,12 +2571,13 @@ function exportToExcel() {
         alert('אין נתונים לייצוא.');
         return;
     }
- // *** הוסיפי כאן - חישוב תוספות חירום לנתוני הייצוא ***
+    
+    // *** הוסיפי כאן - חישוב תוספות חירום לנתוני הייצוא ***
     const emergencySupplements = calculateEmergency40Supplement(dataToExport);
     console.log('📋 תוספות חירום לייצוא חושבו:', emergencySupplements);
     
-// השתמש בנתונים הקיימים עם הכפייה הרציפה שכבר חושבה
-const processedData = dataToExport;
+    // השתמש בנתונים הקיימים עם הכפייה הרציפה שכבר חושבה
+    const processedData = dataToExport;
     
     const wsData = [
         ['מספר עובד', 'תאריך התחלה', 'תאריך סיום', 'ימי מילואים', 'E - ערך בסיסי', 'F - ערך מומלץ', 'G - ערך רציף', 'I - חירום 90', 'J - מקסימום 120%', 'K - תחילת אשכול', 'סה״כ תשלום', 'סוג חישוב', 'מילואים חדשים', 'אשכול חירום', 'L - ערך בשכר', 'M - פער','N-ערך כפייה','O - כפייה רציפה',
@@ -2587,18 +2587,21 @@ const processedData = dataToExport;
 'סה"כ כולל תוספת',
 'ימי תוספת חירום 40%',
 'תוספת חירום ₪',
-'סה"כ כולל תוספת חירום'
-]
+'סה"כ כולל תוספת חירום']
     ];    
    
-   for (let result of processedData) {
-     const supplementResult = calculateSupplement40(result.miluimDays);
-    const supplementAmount = supplementResult.supplementDays * result.continuousValue;
-    const totalWithSupplement = (result.continuousValue * result.miluimDays) + supplementAmount;
-    const emergencySupplementData = emergencySupplements[i] || null;
-    const emergencySupplementDays = emergencySupplementData ? emergencySupplementData.supplementDays : 0;
-    const emergencySupplementAmount = emergencySupplementData ? emergencySupplementData.supplementAmount : 0;
-    const totalWithEmergencySupplement = totalWithSupplement + emergencySupplementAmount;
+    // *** תיקון: השתמש באינדקס במקום for-of ***
+    for (let i = 0; i < processedData.length; i++) {
+        const result = processedData[i];
+        const supplementResult = calculateSupplement40(result.miluimDays);
+        const supplementAmount = supplementResult.supplementDays * result.continuousValue;
+        const totalWithSupplement = (result.continuousValue * result.miluimDays) + supplementAmount;
+        
+        // *** תיקון: השתמש באינדקס הנכון ***
+        const emergencySupplementData = emergencySupplements[i] || null;
+        const emergencySupplementDays = emergencySupplementData ? emergencySupplementData.supplementDays : 0;
+        const emergencySupplementAmount = emergencySupplementData ? emergencySupplementData.supplementAmount : 0;
+        const totalWithEmergencySupplement = totalWithSupplement + emergencySupplementAmount;
         
         wsData.push([
             result.employeeId,
@@ -2621,13 +2624,12 @@ const processedData = dataToExport;
             parseFloat(result.compulsionContinuous || 0),
             parseFloat(result.emergencyCompulsion4405 || 0),
             supplementResult.supplementDays,  // ימי תוספת 40%
-          parseFloat(supplementAmount.toFixed(2)),  // תוספת 40% ₪
-          parseFloat(totalWithSupplement.toFixed(2)), // סה״כ כולל תוספת
+            parseFloat(supplementAmount.toFixed(2)),  // תוספת 40% ₪
+            parseFloat(totalWithSupplement.toFixed(2)), // סה״כ כולל תוספת
             emergencySupplementDays,  // ימי תוספת חירום 40%
             emergencySupplementAmount > 0 ? parseFloat(emergencySupplementAmount.toFixed(2)) : '', // תוספת חירום ₪
             parseFloat(totalWithEmergencySupplement.toFixed(2))  // סה"כ כולל תוספת חירום
-
-        ]);
+        ]); // *** תיקון: סגירת הסוגריים ***
     }
     
     const wb = XLSX.utils.book_new();
@@ -2653,8 +2655,8 @@ const processedData = dataToExport;
             ws[dCellAddress].t = 'n';
         }
         
-         // סכומי כסף (עמודות E, F, G, H, I, K, O, Q)
-        ['E', 'F', 'G', 'H', 'I', 'K', 'O', 'Q'].forEach(col => {
+        // סכומי כסף (כל העמודות הרלוונטיות)
+        ['E', 'F', 'G', 'H', 'I', 'K', 'O', 'Q', 'U', 'V', 'W', 'X', 'Y', 'Z'].forEach(col => {
             const cellAddress = col + (R + 1);
             if (ws[cellAddress] && typeof ws[cellAddress].v === 'number') {
                 ws[cellAddress].z = '#,##0.00"₪"';
@@ -2672,7 +2674,6 @@ const processedData = dataToExport;
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }
-
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
