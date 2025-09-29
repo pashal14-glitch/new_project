@@ -1901,6 +1901,25 @@ function finishProcessing(mainFileProcessed, paymentData) {
     
     document.getElementById('sheetsStatus').style.display = 'block';
 }
+// פונקציה לחיבור נתוני תשלומים לפי מפתח
+function getPaymentAmount(result, type) {
+    if (!window.paymentData || window.paymentData.length === 0) {
+        return '-';
+    }
+    
+    // יצירת מפתח לחיפוש
+    const key = `${result.employeeId}|${result.startDate}|${result.endDate}`;
+    
+    // חיפוש ברשימת התשלומים
+    const payment = window.paymentData.find(p => p.key === key);
+    
+    if (payment) {
+        // כרגע יש רק סכום מאושר - בעתיד נוסיף גם נדרש
+        return formatCurrency(payment.totalAmount);
+    }
+    
+    return '-';
+}
 // עיבוד הקובץ הראשי (3 גליונות)
 function processMainFile(workbook) {
     let sheetsLoaded = 0;
@@ -1932,47 +1951,57 @@ function processPaymentFile(workbook, fileName, paymentData) {
     // קח את הגליון הראשון
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+    
+    console.log(`מעבד ${fileName}: ${jsonData.length} שורות`);
     
     // דלג על השורה הראשונה (כותרות) ועבד את הנתונים
     for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
         
         // בחר עמודות לפי מיקום כמו בסקריפט שלך
-        const idNum = row[0];      // Column1
-        const startDt = row[5];    // Column6  
-        const endDt = row[6];      // Column7
-        const amt = row[8];        // Column9
+        const idNum = String(row[0] || "").trim();      // Column1
+        const startDt = row[5];                          // Column6  
+        const endDt = row[6];                            // Column7
+        const amt = Number(row[8]) || 0;                 // Column9
         
-        // סינון נתונים כמו בסקריפט
-        if (idNum && idNum !== "" && idNum !== "idNum" && 
-            !String(idNum).includes("idNum") && 
-            !isNaN(Number(idNum)) && Number(idNum) >= 0) {
-            
-            // יצירת מפתח
-            const key = `${idNum}|${startDt}|${endDt}`;
-            
-            // חפש אם המפתח כבר קיים ברשימה
-            const existingIndex = paymentData.findIndex(item => item.key === key);
-            
-            if (existingIndex >= 0) {
-                // צבור את הסכום
-                paymentData[existingIndex].totalAmount += (Number(amt) || 0);
-            } else {
-                // הוסף רשומה חדשה
-                paymentData.push({
-                    key: key,
-                    idNum: idNum,
-                    startDt: startDt,
-                    endDt: endDt,
-                    totalAmount: Number(amt) || 0,
-                    fileName: fileName
-                });
-            }
+        // סינון נתונים כמו בסקריפט - בדיוק אותם תנאים
+        if (!idNum || idNum === "" || idNum === "idNum" || 
+            idNum.includes("idNum") || idNum === "ABS idNum") {
+            continue; // דלג על השורה
+        }
+        
+        // ודא שidNum הוא מספר
+        const idNumAsNumber = Number(idNum);
+        if (isNaN(idNumAsNumber) || idNumAsNumber < 0) {
+            continue; // דלג על השורה
+        }
+        
+        // יצירת מפתח - בדיוק כמו ב-Power BI
+        const key = `${idNum}|${startDt}|${endDt}`;
+        
+        // חפש אם המפתח כבר קיים ברשימה (צבירה!)
+        const existingIndex = paymentData.findIndex(item => item.key === key);
+        
+        if (existingIndex >= 0) {
+            // צבור את הסכום - בדיוק כמו ב-Power BI
+            paymentData[existingIndex].totalAmount += amt;
+            console.log(`צבירה: ${key} -> ${paymentData[existingIndex].totalAmount}`);
+        } else {
+            // הוסף רשומה חדשה
+            paymentData.push({
+                key: key,
+                idNum: idNum,
+                startDt: startDt,
+                endDt: endDt,
+                totalAmount: amt,
+                fileName: fileName
+            });
+            console.log(`חדש: ${key} -> ${amt}`);
         }
     }
     
-    console.log(`קובץ ${fileName}: נמצאו ${paymentData.length} רשומות תשלומים`);
+    console.log(`קובץ ${fileName}: סה"כ ${paymentData.length} מפתחות ייחודיים`);
 }
 
 // סיום עיבוד כל הקבצים
@@ -2424,6 +2453,8 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>ימי תוספת חירום 40%</th>
                         <th>תוספת חירום ₪</th>
                         <th>סה"כ כולל תוספת חירום</th>
+                        <th>נדרש מבי"ל</th>
+                        <th>אושר מבי"ל</th>
 
                     </tr>
                 </thead>
@@ -2484,6 +2515,9 @@ function displayResults(data = calculationResults, options = {}) {
                <td class="total-with-emergency" style="background: #e8f5e8; font-weight: bold;">
                 ${totalWithEmergencySupplement.toFixed(2)} ₪
                </td>
+                <td>${getPaymentAmount(result, 'requested')}</td>
+                <td>${getPaymentAmount(result, 'approved')}</td>
+
             </tr>
         `;
     });
