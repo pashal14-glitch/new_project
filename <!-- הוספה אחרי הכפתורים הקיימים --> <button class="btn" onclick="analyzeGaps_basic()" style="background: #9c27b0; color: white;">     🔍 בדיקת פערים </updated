@@ -1932,18 +1932,38 @@ function getPaymentAmount(result, type) {
         return '-';
     }
     
+    // המרת התאריכים למספרי Excel לצורך השוואה
+    const startExcel = dateToExcelNumber(result.startDate);
+    const endExcel = dateToExcelNumber(result.endDate);
+    
     // יצירת מפתח לחיפוש
-    const key = `${result.employeeId}|${result.startDate}|${result.endDate}`;
+    const key = `${result.employeeId}|${startExcel}|${endExcel}`;
+    
+    console.log('מחפש מפתח:', key);
     
     // חיפוש ברשימת התשלומים
     const payment = window.paymentData.find(p => p.key === key);
     
     if (payment) {
-        // כרגע יש רק סכום מאושר - בעתיד נוסיף גם נדרש
+        console.log('נמצא תשלום:', payment);
         return formatCurrency(payment.totalAmount);
     }
     
     return '-';
+}
+
+// פונקציה להמרת Date למספר Excel
+function dateToExcelNumber(date) {
+    if (!date) return null;
+    
+    // Excel מתחיל מ-1/1/1900
+    const excelEpoch = new Date(1900, 0, 1);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    
+    // חישוב ההפרש בימים
+    const days = Math.floor((date - excelEpoch) / msPerDay) + 1;
+    
+    return days;
 }
 // עיבוד הקובץ הראשי (3 גליונות)
 function processMainFile(workbook) {
