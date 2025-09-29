@@ -500,7 +500,12 @@
 .close-btn:hover {
     background: rgba(255,255,255,0.2);
 }
-
+.spec-button:hover {
+    background: #229954 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+    transition: all 0.3s ease;
+}
 .analysis-header h2 {
     margin: 0;
     font-size: 1.5em;
@@ -584,10 +589,10 @@
     </style>
 </head>
 <body>
-    <div class="container">
 <button onclick="showSpecification()" class="spec-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000; background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        📋 אפיון החישוב
-    </button>
+    📋 אפיון החישוב
+</button>
+    <div class="container">
         <!-- Header -->
         <div class="header">
             <h1>🎖️ מחשבון מילואים מתקדם</h1>
