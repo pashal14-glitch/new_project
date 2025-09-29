@@ -1950,9 +1950,15 @@ function getPaymentAmount(result, type) {
     const payment = window.paymentData.find(p => p.key === key);
     
     if (payment) {
-        console.log('נמצא תשלום:', payment);
-        return formatCurrency(payment.totalAmount);
+    console.log('נמצא תשלום:', payment);
+    
+    // החזר את הסכום הנכון לפי הסוג
+    if (type === 'approved') {
+        return formatCurrency(payment.totalAmount);   // סכום מאושר
+    } else if (type === 'requested') {
+        return formatCurrency(payment.totalAmount2);  // תגמול נדרש
     }
+}
     
     return '-';
 }
