@@ -694,7 +694,7 @@
             <span style="margin-right: 5px;">תוספת ימים 40%</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn14" onchange="toggleColumnWithCheckbox(19, this">
+            <input type="checkbox" id="hideColumn14" onchange="toggleColumnWithCheckbox(19, this)">
             <span style="margin-right: 5px;">תוספת שקלים 40%</span>
         </label>
       <label style="display: flex; align-items: center;">
@@ -1854,26 +1854,29 @@ function processMainFile(workbook) {
     console.log(`קובץ ראשי: נטענו ${sheetsLoaded} גליונות`);
 }
 
-// עיבוד קובץ תשלומים (לפי הסקריפט BTL שלך)
+// עיבוד קובץ תשלומים (לפי הסקריפט BTL המעודכן)
 function processPaymentFile(workbook, fileName, paymentData) {
     // קח את הגליון הראשון
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     
-    // דלג על 8 שורות ראשונות במקום 1
+    // דלג על 8 שורות ראשונות (1 כותרת + 7 שורות נוספות)
     for (let i = 8; i < jsonData.length; i++) {
         const row = jsonData[i];
         
-        // בחר עמודות לפי מיקום חדש
-        const idNum = row[2];      // Column3 במקום Column1
-        const startDt = row[3];    // Column4 במקום Column6  
-        const endDt = row[4];      // Column5 במקום Column7
-        const amt = row[16];       // Column17 במקום Column9
+        // בחר עמודות לפי מיקום כמו בסקריפט המעודכן
+        const idNum = row[2];      // Column3
+        const startDt = row[3];    // Column4  
+        const endDt = row[4];      // Column5
+        const amt = row[16];       // Column17
+        const amt2 = row[17];      // Column18
         
-        // סינון נתונים כמו בסקריפט
-        if (idNum && idNum !== "" && idNum !== "idNum" && 
-            !String(idNum).includes("idNum") && 
+        // סינון נתונים - ודא שיש נתונים מלאים ו-idNum הוא מספר
+        if (idNum !== null && idNum !== undefined && idNum !== "" &&
+            startDt !== null && startDt !== undefined &&
+            endDt !== null && endDt !== undefined &&
+            amt !== null && amt !== undefined &&
             !isNaN(Number(idNum)) && Number(idNum) >= 0) {
             
             // יצירת מפתח
@@ -1883,8 +1886,9 @@ function processPaymentFile(workbook, fileName, paymentData) {
             const existingIndex = paymentData.findIndex(item => item.key === key);
             
             if (existingIndex >= 0) {
-                // צבור את הסכום
+                // צבור את הסכומים
                 paymentData[existingIndex].totalAmount += (Number(amt) || 0);
+                paymentData[existingIndex].totalAmount2 += (Number(amt2) || 0);
             } else {
                 // הוסף רשומה חדשה
                 paymentData.push({
@@ -1893,6 +1897,7 @@ function processPaymentFile(workbook, fileName, paymentData) {
                     startDt: startDt,
                     endDt: endDt,
                     totalAmount: Number(amt) || 0,
+                    totalAmount2: Number(amt2) || 0,
                     fileName: fileName
                 });
             }
