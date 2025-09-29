@@ -585,6 +585,9 @@
 </head>
 <body>
     <div class="container">
+<button onclick="showSpecification()" class="spec-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000; background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        📋 אפיון החישוב
+    </button>
         <!-- Header -->
         <div class="header">
             <h1>🎖️ מחשבון מילואים מתקדם</h1>
@@ -4382,9 +4385,6 @@ function openSupplementCalculatorWindow() {
 </head>
 <body>
     <div class="container">
-<button onclick="showSpecification()" class="spec-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000; background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    📋 אפיון החישוב
-</button>
         <div class="header">
             <button onclick="window.close()" class="close-btn" title="סגור חלון">✖</button>
             <h1>🧮 מחשבון תוספת 40%</h1>
