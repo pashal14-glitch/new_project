@@ -596,7 +596,7 @@
                     <h3>📊 קובץ אקסל עם 3 גליונות</h3>
                  <p>קובץ ראשי עם 3 גליונות + קבצים נוספים לעיבוד</p>
                     <button class="upload-btn" id="excelBtn">בחר קובץ אקסל</button>
-                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls" multiple>
+                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls,.xla" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
                         <div class="sheet-status">
                             <span id="sheet1Status">📊 גליון מילואים: ❌</span>
@@ -1861,15 +1861,15 @@ function processPaymentFile(workbook, fileName, paymentData) {
     const worksheet = workbook.Sheets[firstSheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     
-    // דלג על השורה הראשונה (כותרות) ועבד את הנתונים
-    for (let i = 1; i < jsonData.length; i++) {
+    // דלג על 8 שורות ראשונות במקום 1
+    for (let i = 8; i < jsonData.length; i++) {
         const row = jsonData[i];
         
-        // בחר עמודות לפי מיקום כמו בסקריפט שלך
-        const idNum = row[0];      // Column1
-        const startDt = row[5];    // Column6  
-        const endDt = row[6];      // Column7
-        const amt = row[8];        // Column9
+        // בחר עמודות לפי מיקום חדש
+        const idNum = row[2];      // Column3 במקום Column1
+        const startDt = row[3];    // Column4 במקום Column6  
+        const endDt = row[4];      // Column5 במקום Column7
+        const amt = row[16];       // Column17 במקום Column9
         
         // סינון נתונים כמו בסקריפט
         if (idNum && idNum !== "" && idNum !== "idNum" && 
