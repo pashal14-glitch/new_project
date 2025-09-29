@@ -689,6 +689,19 @@
             <input type="checkbox" id="hideColumn12" onchange="toggleColumnWithCheckbox(17, this)">
             <span style="margin-right: 5px;">P-כפייה חירום</span>
         </label>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn13" onchange="toggleColumnWithCheckbox(18, this)">
+            <span style="margin-right: 5px;">תוספת ימים 40%</span>
+        </label>
+        <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn14" onchange="toggleColumnWithCheckbox(19, this)">
+            <span style="margin-right: 5px;">תוספת שקלים 40%</span>
+        </label>
+      <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="hideColumn15" onchange="toggleColumnWithCheckbox(20, this)">
+            <span style="margin-right: 5px;">סה"כ תוספת</span>
+        </label>
+
     </div>
 </div>
 
