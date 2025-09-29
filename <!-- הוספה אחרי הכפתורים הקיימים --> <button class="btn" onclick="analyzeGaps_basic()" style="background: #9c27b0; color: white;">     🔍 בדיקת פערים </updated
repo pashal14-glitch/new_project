@@ -4382,6 +4382,9 @@ function openSupplementCalculatorWindow() {
 </head>
 <body>
     <div class="container">
+<button onclick="showSpecification()" class="spec-button" style="position: fixed; top: 20px; left: 20px; z-index: 1000; background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    📋 אפיון החישוב
+</button>
         <div class="header">
             <button onclick="window.close()" class="close-btn" title="סגור חלון">✖</button>
             <h1>🧮 מחשבון תוספת 40%</h1>
@@ -4856,6 +4859,96 @@ function printEmergencySupplementReport(supplementResults) {
             console.log(`   - ${period.startDate} עד ${period.endDate}: ${period.days} ימים ${period.isEmergency ? '(חירום)' : '(רגיל)'}`);
         });
     });
+}
+function showSpecification() {
+    const specModal = document.createElement('div');
+    specModal.className = 'modal';
+    specModal.style.display = 'block';
+    
+    specModal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close" onclick="this.parentElement.parentElement.remove()">×</span>
+            
+            <h2 style="color: #27ae60; text-align: center; margin-bottom: 30px;">📋 אפיון מחשבון מילואים</h2>
+            
+            <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #2c3e50;">🎯 מטרת המחשבון</h3>
+                <p>מחשבון לחישוב תשלומי מילואים על פי תקנות השירות (מילואים) והכללים הבאים:</p>
+            </div>
+            
+            <div class="calculation-step">
+                <div class="step-title">📊 שדות קלט עיקריים</div>
+                <div class="step-detail">
+                    <strong>• מספר עובד:</strong> מזהה ייחודי<br>
+                    <strong>• תאריך תחילת שירות:</strong> יום ראשון של תקופת המילואים<br>
+                    <strong>• תאריך סיום שירות:</strong> יום אחרון של תקופת המילואים<br>
+                    <strong>• מספר ימי שירות בפועל:</strong> הזנה ידנית של ימים בפועל<br>
+                    <strong>• סכום ששולם:</strong> לצורך השוואה עם החישוב
+                </div>
+            </div>
+            
+            <div class="calculation-step" style="background: #fff3e0; border-right-color: #ff9800;">
+                <div class="step-title">🔢 שיטות חישוב ערך יומי</div>
+                <div class="step-detail">
+                    <strong>1. חישוב רגיל (60+ ימי עבודה):</strong><br>
+                    • 3 החודשים האחרונים לפני חודש השירות<br>
+                    • סכום ברוטו מחושב (עם התאמות במידת הצורך) חלקי 90 ימים<br><br>
+                    
+                    <strong>2. חישוב מיטבי (פחות מ-60 ימי עבודה):</strong><br>
+                    • 3 החודשים הגבוהים ביותר מתוך 6 החודשים האחרונים<br>
+                    • חלוקה ב-90 ימים<br><br>
+                    
+                    <strong>3. שירות חירום (מתאריך 7.10.2023):</strong><br>
+                    • חישוב לפי ערך יומי של 90 ימים רצופים לפני השירות<br>
+                    • ערך מקסימלי מוגבל ל-4,405 ₪ ליום
+                </div>
+            </div>
+            
+            <div class="calculation-step" style="background: #e8f5e8; border-right-color: #4caf50;">
+                <div class="step-title">➕ תוספת 40%</div>
+                <div class="step-detail">
+                    <strong>חישוב תוספת לפי הנוסחה:</strong><br>
+                    • חלוקת ימי שירות ב-7<br>
+                    • שארית 1 = 0.4 ימים | שארית 2 = 0.8 ימים<br>
+                    • שארית 3 = 1.2 ימים | שארית 4 = 1.6 ימים<br>
+                    • שארית 5 = 2 ימים | שארית 6 = 1 יום<br>
+                    • שארית 0 = אין תוספת
+                </div>
+            </div>
+            
+            <div class="calculation-step" style="background: #ffe6e6; border-right-color: #e74c3c;">
+                <div class="step-title">🚨 תוספת 40% למקבצי חירום</div>
+                <div class="step-detail">
+                    <strong>תנאים למקבץ חירום:</strong><br>
+                    • לפחות 2 תקופות שירות חירום רצופות (ללא הפסקה של יותר מ-30 יום)<br>
+                    • סה"כ 30+ ימי שירות חירום במקבץ<br>
+                    • התוספת מחושבת רק על ימי החירום במקבץ<br>
+                    • התוספת לא חלה על תקופות מילואים רגילות
+                </div>
+            </div>
+            
+            <div class="calculation-step">
+                <div class="step-title">📈 עמודות תוצאות</div>
+                <div class="step-detail">
+                    <strong>• ערך בסיסי:</strong> חישוב 3 חודשים אחרונים תמיד<br>
+                    <strong>• ערך מומלץ:</strong> החישוב המיטבי (3 מתוך 6)<br>
+                    <strong>• ערך רציף סופי:</strong> הערך שנבחר לתשלום<br>
+                    <strong>• ערך חירום 90:</strong> ערך לשירות חירום<br>
+                    <strong>• תוספת ימים/סכום:</strong> תוספת 40% רגילה<br>
+                    <strong>• תוספת חירום ימים/סכום:</strong> תוספת 40% למקבצי חירום
+                </div>
+            </div>
+            
+            <div style="background: #fff9c4; padding: 15px; border-radius: 8px; margin-top: 20px; border-right: 4px solid #ffc107;">
+                <strong>💡 הערות חשובות:</strong><br>
+                • המערכת מזהה אוטומטית מקבצי חירום<br>
+                • ניתן לצפות בפירוט מלא של כל חישוב בלחיצה על כפתור "פירוט"<br>
+                • סכומים מוצגים בשקלים עם עיגול לאגורות
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(specModal);
 }
 </script>
 </body>
