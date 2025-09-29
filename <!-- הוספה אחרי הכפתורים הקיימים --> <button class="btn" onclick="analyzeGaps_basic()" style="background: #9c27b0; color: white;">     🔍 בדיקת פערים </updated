@@ -674,43 +674,43 @@
     <label>הסתר עמודות:</label>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn8" onchange="toggleColumnWithCheckbox(8, this)"checked>
+            <input type="checkbox" id="hideColumn8" onchange="toggleColumnWithCheckbox(8, this)">
             <span style="margin-right: 5px;">חירום</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn9" onchange="toggleColumnWithCheckbox(15, this)"checked>
+            <input type="checkbox" id="hideColumn9" onchange="toggleColumnWithCheckbox(15, this)">
             <span style="margin-right: 5px;">N-כפייה</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn10" onchange="toggleColumnWithCheckbox(16, this)"checked>
+            <input type="checkbox" id="hideColumn10" onchange="toggleColumnWithCheckbox(16, this)">
             <span style="margin-right: 5px;">O-כפייה רציפה</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn12" onchange="toggleColumnWithCheckbox(17, this)"checked>
+            <input type="checkbox" id="hideColumn12" onchange="toggleColumnWithCheckbox(17, this)">
             <span style="margin-right: 5px;">P-כפייה חירום</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn13" onchange="toggleColumnWithCheckbox(18, this)"checked>
+            <input type="checkbox" id="hideColumn13" onchange="toggleColumnWithCheckbox(18, this)">
             <span style="margin-right: 5px;">תוספת ימים 40%</span>
         </label>
         <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn14" onchange="toggleColumnWithCheckbox(19, this"checked>
+            <input type="checkbox" id="hideColumn14" onchange="toggleColumnWithCheckbox(19, this">
             <span style="margin-right: 5px;">תוספת שקלים 40%</span>
         </label>
       <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn15" onchange="toggleColumnWithCheckbox(20, this)"checked>
+            <input type="checkbox" id="hideColumn15" onchange="toggleColumnWithCheckbox(20, this)">
             <span style="margin-right: 5px;">סה"כ תוספת</span>
         </label>
  <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn16" onchange="toggleColumnWithCheckbox(21, this)"checked>
+            <input type="checkbox" id="hideColumn16" onchange="toggleColumnWithCheckbox(21, this)">
             <span style="margin-right: 5px;">תוספת ימים חירום 40%</span>
         </label>
 <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn17" onchange="toggleColumnWithCheckbox(22, this)"checked>
+            <input type="checkbox" id="hideColumn17" onchange="toggleColumnWithCheckbox(22, this)">
             <span style="margin-right: 5px;">תוספת שקלים חירום 40%</span>
         </label>
 <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="hideColumn17" onchange="toggleColumnWithCheckbox(22, this)"checked>
+            <input type="checkbox" id="hideColumn17" onchange="toggleColumnWithCheckbox(23, this)">
             <span style="margin-right: 5px;">סה"כ תוספת כולל חירום 40%</span>
         </label>
 
@@ -3326,14 +3326,7 @@ function toggleColumnWithCheckbox(columnIndex, checkbox) {
         cell.style.display = shouldHide ? 'none' : '';
     });
 }
-// הפעלה אוטומטית בטעינת הדף
-window.addEventListener('DOMContentLoaded', function() {
-    // הסתר את כל העמודות בברירת מחדל
-    toggleColumnWithCheckbox(8, document.getElementById('hideColumn8'));
-    toggleColumnWithCheckbox(15, document.getElementById('hideColumn9'));
-    toggleColumnWithCheckbox(16, document.getElementById('hideColumn10'));
-    toggleColumnWithCheckbox(17, document.getElementById('hideColumn12'));
-});
+
 
 // ========================
 // שלב ב' - אנליזה מתקדמת
