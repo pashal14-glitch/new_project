@@ -602,8 +602,7 @@
         </div>
         <!-- Upload Section -->
         <div class="upload-section">
-            <div class="upload-grid">
-        <div class="upload-card" onclick="document.getElementById('excelFile').click()" style="grid-column: 1 / -1;">
+            <div class="upload-grid">             
                     <button class="upload-btn" id="excelBtn">טעינת קבצים</button>
                     <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls,.xla" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
