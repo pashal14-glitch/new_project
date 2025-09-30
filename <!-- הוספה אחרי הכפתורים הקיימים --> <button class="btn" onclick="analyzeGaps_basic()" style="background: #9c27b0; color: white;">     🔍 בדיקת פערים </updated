@@ -950,9 +950,24 @@
         }
 // ==================== פונקציות ניהול סטטוס פערים - START ====================
         
-        // יצירת מפתח ייחודי לפער
         function createGapKey(employeeId, startDate) {
-            return `${employeeId}_${new Date(startDate).toISOString()}`;
+            // טיפול בתאריך - יכול להיות Date או string
+            let dateStr;
+            if (startDate instanceof Date) {
+                dateStr = startDate.toISOString();
+            } else if (typeof startDate === 'string') {
+                // אם זה כבר string של תאריך, נשתמש בו ישירות
+                const tempDate = new Date(startDate);
+                if (!isNaN(tempDate.getTime())) {
+                    dateStr = tempDate.toISOString();
+                } else {
+                    // אם זה לא תאריך תקין, נשתמש ב-string המקורי
+                    dateStr = startDate;
+                }
+            } else {
+                dateStr = String(startDate);
+            }
+            return `${employeeId}_${dateStr}`;
         }
         
         // קבלת סטטוס פער
