@@ -4325,6 +4325,18 @@ function exportGapsToExcel() {
     alert(`✅ הקובץ נוצר בהצלחה!\n📁 ${filename}`);
 }
 
+// פונקציית עזר לקבלת טקסט סטטוס לייצוא
+function getStatusTextForExport(employeeId, period) {
+    const key = `${employeeId}_${period}`;
+    const status = gapStatuses[key] || 'unchecked';
+    
+    switch(status) {
+        case 'unchecked': return '⚪ לא נבדק';
+        case 'reviewing': return '🟡 בבדיקה';
+        case 'completed': return '🟢 טופל';
+        default: return status;
+    }
+}
 // פונקציה ליצירת גליון סיכום
 function createSummarySheet(wb, analysis) {
     const summaryData = [
@@ -4418,7 +4430,7 @@ function createCategorySheet(wb, categoryKey, category) {
 function createAllGapsSheet(wb, analysis) {
     const data = [
         ['כל הפערים המזוהים', '', '', '', '', '', ''],
-        ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'קטגוריה', 'הסבר'],
+     ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'קטגוריה', 'הסבר', 'סטטוס'],
         []
     ];
     
@@ -4432,7 +4444,8 @@ function createAllGapsSheet(wb, analysis) {
                 item.columnG,
                 item.columnL,
                 category.name,
-                item.explanation + (item.details ? ` | ${item.details}` : '')
+                item.explanation + (item.details ? ` | ${item.details}` : ''),
+                getStatusTextForExport(item.employeeId, item.period)  // 🆕 סטטוס
             ]);
         });
     });
@@ -4448,6 +4461,22 @@ function createAllGapsSheet(wb, analysis) {
     
     const ws = XLSX.utils.aoa_to_sheet(data);
     
+    // 🆕 צביעת תאים לפי סטטוס
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 1; R <= range.e.r; ++R) { // מתחיל מ-1 לדלג על כותרת
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: 7 }); // עמודה 7 = סטטוס
+        const cell = ws[cellAddress];
+        if (cell && cell.v) {
+            if (cell.v.includes('🟢')) {
+                cell.s = { fill: { fgColor: { rgb: "C6EFCE" } } }; // ירוק בהיר
+            } else if (cell.v.includes('🟡')) {
+                cell.s = { fill: { fgColor: { rgb: "FFEB9C" } } }; // צהוב בהיר
+            } else if (cell.v.includes('⚪')) {
+                cell.s = { fill: { fgColor: { rgb: "F2F2F2" } } }; // אפור בהיר
+            }
+        }
+    }
+    
     // עיצוב עמודות
     ws['!cols'] = [
         { wch: 12 }, // עובד
@@ -4456,7 +4485,8 @@ function createAllGapsSheet(wb, analysis) {
         { wch: 12 }, // עמודה G
         { wch: 12 }, // עמודה L
         { wch: 20 }, // קטגוריה
-        { wch: 50 }  // הסבר
+        { wch: 50 },  // הסבר
+        { wch: 15 }  // 🆕 סטטוס
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, 'כל הפערים');
