@@ -785,10 +785,162 @@
         let showCrossMonthOnly =[] ; 
         let currentDisplayData = [];
         let currentDisplayOptions = {};
+
+        // ==================== IndexedDB System - START ====================
+        const DB_NAME = 'MiluimCalculatorDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'calculationResults';
+
+        // פונקציה 1: פתיחת מאגר נתונים
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                };
+            });
+        }
+
+        // פונקציה 2: שמירת נתונים
+        async function saveToIndexedDB(data) {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                
+                // מחיקת נתונים ישנים
+                await store.clear();
+                
+                // שמירת הנתונים החדשים
+                const saveData = {
+                    timestamp: new Date().toISOString(),
+                    results: data,
+                    totalRecords: data.length
+                };
+                
+                await store.add(saveData);
+                
+                console.log('✅ נתונים נשמרו ב-IndexedDB:', data.length, 'רשומות');
+                return true;
+            } catch (error) {
+                console.error('❌ שגיאה בשמירה ל-IndexedDB:', error);
+                return false;
+            }
+        }
+
+        // פונקציה 3: טעינת נתונים
+        async function loadFromIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        const data = request.result;
+                        if (data && data.length > 0) {
+                            const savedData = data[0];
+                            console.log('✅ נטען מ-IndexedDB:', savedData.totalRecords, 'רשומות');
+                            console.log('📅 תאריך שמירה:', savedData.timestamp);
+                            resolve(savedData);
+                        } else {
+                            console.log('ℹ️ אין נתונים שמורים');
+                            resolve(null);
+                        }
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('❌ שגיאה בטעינה:', error);
+                return null;
+            }
+        }
+
+        // פונקציה 4: מחיקת נתונים
+        async function clearIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                await store.clear();
+                console.log('🗑️ נתונים נמחקו');
+                return true;
+            } catch (error) {
+                console.error('❌ שגיאה במחיקה:', error);
+                return false;
+            }
+        }
+        // ==================== IndexedDB System - END ====================
        
 
         // Constants
         const EMERGENCY_START = new Date('2023-10-07');
+        
+        // ==================== טעינה אוטומטית - START ====================
+        // ניסיון לטעון נתונים שמורים בעת פתיחת העמוד
+        (async function autoLoadData() {
+            try {
+                console.log('🔍 מחפש נתונים שמורים...');
+                const savedData = await loadFromIndexedDB();
+                
+                if (savedData && savedData.results && savedData.results.length > 0) {
+                    // יש נתונים שמורים!
+                    const loadTime = new Date(savedData.timestamp).toLocaleString('he-IL');
+                    
+                    // שאלה למשתמש
+                    const userWantsToLoad = confirm(
+                        `🎯 נמצאו נתונים שמורים!\n\n` +
+                        `📊 ${savedData.totalRecords} תוצאות\n` +
+                        `📅 עדכון אחרון: ${loadTime}\n\n` +
+                        `האם לטעון את הנתונים השמורים?`
+                    );
+                    
+                    if (userWantsToLoad) {
+                        console.log('⏳ טוען נתונים שמורים...');
+                        
+                        // המרת תאריכים חזרה לאובייקטי Date
+                        calculationResults = savedData.results.map(r => ({
+                            ...r,
+                            startDate: new Date(r.startDate),
+                            endDate: new Date(r.endDate)
+                        }));
+                        
+                        console.log('✅ נתונים נטענו:', calculationResults.length);
+                        
+                        // הצגת התוצאות
+                        displayResults(calculationResults, { 
+                            itemsPerPage: calculationResults.length > 100 ? 50 : null 
+                        });
+                        updateSummaryStats();
+                        
+                        // הצגת כפתור ייצוא
+                        const exportSection = document.getElementById('exportSection');
+                        if (exportSection) {
+                            exportSection.style.display = 'block';
+                        }
+                        
+                        alert(`✅ נטענו ${calculationResults.length} תוצאות מהזיכרון!`);
+                    } else {
+                        console.log('ℹ️ המשתמש בחר לא לטעון נתונים');
+                    }
+                } else {
+                    console.log('ℹ️ אין נתונים שמורים - זו כנראה הפעם הראשונה');
+                }
+            } catch (error) {
+                console.error('❌ שגיאה בטעינה אוטומטית:', error);
+            }
+        })();
+        // ==================== טעינה אוטומטית - END ====================
+       
         //מערכת CACHE
 class MiluimCalculatorCache {
     constructor() {
