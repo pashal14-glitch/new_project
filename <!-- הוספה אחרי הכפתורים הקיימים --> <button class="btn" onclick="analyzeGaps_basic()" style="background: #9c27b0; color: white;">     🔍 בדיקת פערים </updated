@@ -4384,7 +4384,7 @@ function createSummarySheet(wb, analysis) {
 function createCategorySheet(wb, categoryKey, category) {
     const data = [
         [`${category.icon} ${category.name}`, '', '', '', '', ''],
-        ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'הסבר'],
+         ['עובד', 'תקופה', 'פער (ש"ח)', 'עמודה G', 'עמודה L', 'הסבר', 'סטטוס'],
         []
     ];
     
@@ -4396,7 +4396,8 @@ function createCategorySheet(wb, categoryKey, category) {
             item.gap,
             item.columnG,
             item.columnL,
-            item.explanation + (item.details ? ` | ${item.details}` : '')
+            item.explanation + (item.details ? ` | ${item.details}` : ''),
+            getStatusTextForExport(item.employeeId, item.period)  // 🆕 סטטוס
         ]);
     });
     
@@ -4406,6 +4407,21 @@ function createCategorySheet(wb, categoryKey, category) {
     data.push(['סיכום:', '', totalGap.toFixed(2), '', '', `${category.items.length} מקרים`]);
     
     const ws = XLSX.utils.aoa_to_sheet(data);
+// 🎨 צביעת תאי סטטוס
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 2; R <= range.e.r; ++R) { // מתחיל מ-2 לדלג על כותרת ושורה ראשונה
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: 6 }); // עמודה 6 = סטטוס (0-indexed)
+        const cell = ws[cellAddress];
+        if (cell && cell.v) {
+            if (cell.v.includes('🟢')) {
+                cell.s = { fill: { fgColor: { rgb: "C6EFCE" } } }; // ירוק בהיר
+            } else if (cell.v.includes('🟡')) {
+                cell.s = { fill: { fgColor: { rgb: "FFEB9C" } } }; // צהוב בהיר
+            } else if (cell.v.includes('⚪')) {
+                cell.s = { fill: { fgColor: { rgb: "F2F2F2" } } }; // אפור בהיר
+            }
+        }
+    }
     
     // עיצוב עמודות
     ws['!cols'] = [
@@ -4414,7 +4430,8 @@ function createCategorySheet(wb, categoryKey, category) {
         { wch: 12 }, // פער
         { wch: 12 }, // עמודה G
         { wch: 12 }, // עמודה L
-        { wch: 40 }  // הסבר
+        { wch: 40 } , // הסבר
+        { wch: 15 }  // 🆕 סטטוס
     ];
     
     // שם הגליון (מקוצר למקסימום 31 תווים)
@@ -4460,11 +4477,10 @@ function createAllGapsSheet(wb, analysis) {
     data.push(['סה"כ:', '', totalGapAmount.toFixed(2), '', '', `${totalItems} מקרים`, '']);
     
     const ws = XLSX.utils.aoa_to_sheet(data);
-    
-    // 🆕 צביעת תאים לפי סטטוס
+// 🎨 צביעת תאי סטטוס
     const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = 1; R <= range.e.r; ++R) { // מתחיל מ-1 לדלג על כותרת
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: 7 }); // עמודה 7 = סטטוס
+    for (let R = 2; R <= range.e.r; ++R) { // מתחיל מ-2 לדלג על כותרת ושורה ראשונה
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: 7 }); // עמודה 7 = סטטוס (0-indexed)
         const cell = ws[cellAddress];
         if (cell && cell.v) {
             if (cell.v.includes('🟢')) {
@@ -4476,6 +4492,7 @@ function createAllGapsSheet(wb, analysis) {
             }
         }
     }
+    
     
     // עיצוב עמודות
     ws['!cols'] = [
