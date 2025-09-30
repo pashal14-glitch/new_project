@@ -1023,16 +1023,29 @@
                 const transaction = db.transaction(['gapStatuses'], 'readwrite');
                 const store = transaction.objectStore('gapStatuses');
                 
+                // מחיקת נתונים ישנים
                 await store.clear();
-                await store.add({
+                
+                // שמירת נתונים חדשים
+                const saveRequest = store.add({
                     id: 1,
                     statuses: gapStatuses,
                     lastUpdated: new Date().toISOString()
                 });
                 
-                console.log('💾 סטטוסי פערים נשמרו');
+                return new Promise((resolve, reject) => {
+                    saveRequest.onsuccess = () => {
+                        console.log('💾 סטטוסי פערים נשמרו:', Object.keys(gapStatuses).length);
+                        resolve(true);
+                    };
+                    saveRequest.onerror = () => {
+                        console.error('❌ שגיאה בשמירה');
+                        reject(saveRequest.error);
+                    };
+                });
             } catch (error) {
                 console.error('❌ שגיאה בשמירת סטטוסים:', error);
+                return false;
             }
         }
         
@@ -1091,7 +1104,10 @@
                 console.log('🔍 מחפש נתונים שמורים...');
                 const savedData = await loadFromIndexedDB();
                 
-                if (savedData && savedData.results && savedData.results.length > 0) {
+             if (savedData && savedData.results && savedData.results.length > 0) {
+                    
+                    // 🆕 טעינת סטטוסי פערים
+                    await loadGapStatusesFromIndexedDB();
                     // יש נתונים שמורים!
                     const loadTime = new Date(savedData.timestamp).toLocaleString('he-IL');
                     
@@ -3655,13 +3671,16 @@ function toggleColumnWithCheckbox(columnIndex, checkbox) {
 // ========================
 // שלב ב' - אנליזה מתקדמת
 // ========================
-function analyzeGaps_basic() {
+async function analyzeGaps_basic() {
     console.log("🔍 מתחיל ניתוח פערים...");
     
     if (!calculationResults || calculationResults.length === 0) {
         alert("❌ לא נמצאו תוצאות חישוב. הרץ תחילה 'חשב מילואים'");
         return;
     }
+    
+    // 🆕 טעינת סטטוסים לפני הצגה
+    await loadGapStatusesFromIndexedDB();
     
     const analysis = categorizeGaps();
     showAnalysisWindow(analysis);
@@ -4451,8 +4470,11 @@ function showAnalysisWindow(analysis) {
         </div>
         <h2>🔍 ניתוח פערים מפורט</h2>
         <div style="display: flex; gap: 10px;">
-            <button class="btn" onclick="exportGapsToExcel()" style="background: #2e7d32; color: white;">
+           <button class="btn" onclick="exportGapsToExcel()" style="background: #2e7d32; color: white;">
                 📊 ייצא לאקסל
+            </button>
+            <button class="btn" onclick="clearAllGapStatuses()" style="background: #ff9800; color: white;">
+                🔄 אפס סטטוסים
             </button>
             <button class="btn" onclick="closeAnalysisWindow()" style="background: #d32f2f; color: white;">
                 ❌ סגור
@@ -4633,6 +4655,20 @@ function showStatusNotification(message) {
         notification.style.transition = 'opacity 0.3s';
         setTimeout(() => notification.remove(), 300);
     }, 2000);
+}
+// פונקציה לאיפוס כל הסטטוסים
+async function clearAllGapStatuses() {
+    if (!confirm('⚠️ האם למחוק את כל הסטטוסים?\n\nפעולה זו תאפס את כל הסימונים שעשית.')) {
+        return;
+    }
+    
+    gapStatuses = {};
+    await saveGapStatusesToIndexedDB();
+    
+    // רענון התצוגה
+    analyzeGaps_basic();
+    
+    showStatusNotification('✅ כל הסטטוסים אופסו');
 }
 // ==================== פונקציות עדכון סטטוס בממשק - END ====================
 
