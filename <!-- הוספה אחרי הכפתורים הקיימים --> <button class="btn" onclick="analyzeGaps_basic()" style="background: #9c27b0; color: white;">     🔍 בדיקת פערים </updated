@@ -589,6 +589,80 @@
     max-height: 300px;
     overflow-y: auto;
 }
+
+/* ==================== עיצוב כפתורי סטטוס - START ==================== */
+.status-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+}
+
+.status-btn {
+    padding: 6px 12px;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.status-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.status-btn.unchecked {
+    border-color: #9e9e9e;
+    color: #757575;
+}
+
+.status-btn.unchecked.active {
+    background: #f5f5f5;
+    border-color: #616161;
+    color: #424242;
+}
+
+.status-btn.reviewing {
+    border-color: #ff9800;
+    color: #e65100;
+}
+
+.status-btn.reviewing.active {
+    background: #fff3e0;
+    border-color: #f57c00;
+    color: #e65100;
+    font-weight: bold;
+}
+
+.status-btn.completed {
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+.status-btn.completed.active {
+    background: #e8f5e9;
+    border-color: #388e3c;
+    color: #1b5e20;
+    font-weight: bold;
+}
+
+.gap-row-unchecked {
+    background: white;
+}
+
+.gap-row-reviewing {
+    background: #fff8e1 !important;
+}
+
+.gap-row-completed {
+    background: #e8f5e9 !important;
+    opacity: 0.7;
+}
+/* ==================== עיצוב כפתורי סטטוס - END ==================== */
     </style>
 </head>
 <body>
@@ -4366,19 +4440,36 @@ function showAnalysisWindow(analysis) {
                                     <th style="padding: 8px; border: 1px solid #ddd;">פער</th>
                                     <th style="padding: 8px; border: 1px solid #ddd;">הסבר</th>
                                     <th style="padding: 8px; border: 1px solid #ddd;">פרטים נוספים</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; min-width: 280px;">סטטוס</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${category.items.map(item => `
-                                    <tr>
-                                        <td style="padding: 8px; border: 1px solid #ddd;"><strong>${item.employeeId}</strong></td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.period}</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${item.columnG} ₪</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd; background: #e8f5e8;"><strong>${item.columnL} ₪</strong></td>
-                                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #ff9800;">${item.gap} ₪</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.9em;">${item.explanation}</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.8em; color: #666;">${item.details || ''}</td>
-                                    </tr>
+                                   <tr class="gap-row gap-row-${getGapStatus(item.employeeId, item.startDate)}" data-employee="${item.employeeId}" data-date="${item.startDate}">
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>${item.employeeId}</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${item.period}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">${item.columnG} ₪</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; background: #e8f5e8;"><strong>${item.columnL} ₪</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #ff9800;">${item.gap} ₪</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.9em;">${item.explanation}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.8em; color: #666;">${item.details || ''}</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                        <div class="status-buttons">
+                                            <button class="status-btn unchecked ${getGapStatus(item.employeeId, item.startDate) === 'unchecked' ? 'active' : ''}" 
+                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'unchecked')">
+                                                ⚪ לא נבדק
+                                            </button>
+                                            <button class="status-btn reviewing ${getGapStatus(item.employeeId, item.startDate) === 'reviewing' ? 'active' : ''}" 
+                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'reviewing')">
+                                                🟡 בבדיקה
+                                            </button>
+                                            <button class="status-btn completed ${getGapStatus(item.employeeId, item.startDate) === 'completed' ? 'active' : ''}" 
+                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'completed')">
+                                                🟢 טופל
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                                 `).join('')}
                             </tbody>
                         </table>
@@ -4404,6 +4495,70 @@ function closeAnalysis() {
     document.getElementById('analysisOverlay').style.display = 'none';
     document.getElementById('analysisWindow').style.display = 'none';
 }
+
+// ==================== פונקציות עדכון סטטוס בממשק - START ====================
+function updateGapStatus(employeeId, startDate, newStatus) {
+    console.log(`🔄 מעדכן סטטוס: ${employeeId}, ${newStatus}`);
+    
+    // עדכון הסטטוס
+    setGapStatus(employeeId, startDate, newStatus);
+    
+    // מציאת השורה בטבלה
+    const row = document.querySelector(`tr[data-employee="${employeeId}"][data-date="${startDate}"]`);
+    if (!row) return;
+    
+    // עדכון מחלקות השורה
+    row.className = `gap-row gap-row-${newStatus}`;
+    
+    // עדכון כפתורים
+    const buttons = row.querySelectorAll('.status-btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.classList.contains(newStatus)) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // הודעה קטנה
+    showStatusNotification(`✅ סטטוס עודכן ל: ${getStatusText(newStatus)}`);
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'unchecked': return 'לא נבדק';
+        case 'reviewing': return 'בבדיקה';
+        case 'completed': return 'טופל';
+        default: return status;
+    }
+}
+
+function showStatusNotification(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #4caf50;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-size: 14px;
+        font-weight: 600;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => notification.remove(), 300);
+    }, 2000);
+}
+// ==================== פונקציות עדכון סטטוס בממשק - END ====================
+
     </script>
 <!-- חלון אנליזה נפרד -->
 <div class="overlay" id="analysisOverlay" onclick="closeAnalysis()"></div>
