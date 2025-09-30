@@ -116,9 +116,8 @@
             background: #27ae60;
         }
 
-      .controls {
+     .controls {
     display: flex;
-    flex-direction: row;    /* <-- הוסיפי שורה זו! */
     gap: 15px;
     justify-content: center;
     flex-wrap: wrap;
