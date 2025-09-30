@@ -1106,8 +1106,7 @@
                 
              if (savedData && savedData.results && savedData.results.length > 0) {
                     
-                    // 🆕 טעינת סטטוסי פערים
-                    await loadGapStatusesFromIndexedDB();
+                    
                     // יש נתונים שמורים!
                     const loadTime = new Date(savedData.timestamp).toLocaleString('he-IL');
                     
@@ -1121,6 +1120,8 @@
                     
                     if (userWantsToLoad) {
                         console.log('⏳ טוען נתונים שמורים...');
+                        // 🆕 טעינת סטטוסי פערים
+                    await loadGapStatusesFromIndexedDB();
                         
                         // המרת תאריכים חזרה לאובייקטי Date
                         calculationResults = savedData.results.map(r => ({
@@ -2184,6 +2185,10 @@ function loadExcelFile(files) {
     miluimData = [];
     salaryData = [];
     attendanceData = [];
+// 🆕 איפוס סטטוסי פערים בטעינת קבצים חדשים
+    console.log('🔄 מאפס סטטוסי פערים - קבצים חדשים נטענו');
+    gapStatuses = {};
+    saveGapStatusesToIndexedDB();
     
     // משתנים למעקב
     let processedFiles = 0;
@@ -3342,6 +3347,9 @@ if (document.getElementById('employeeInput')) {
                 salaryData = [];
                 attendanceData = [];
                 calculationResults = [];
+           // 🆕 איפוס סטטוסי פערים
+            gapStatuses = {};
+            saveGapStatusesToIndexedDB();
                 
                 // Reset upload status
                 document.querySelector('.upload-card').classList.remove('uploaded');
@@ -3679,13 +3687,15 @@ async function analyzeGaps_basic() {
         return;
     }
     
-    // 🆕 טעינת סטטוסים לפני הצגה
-    await loadGapStatusesFromIndexedDB();
+    // 🔥 טעינת סטטוסים רק אם יש תוצאות חישוב (כלומר - המשתמש טען נתונים)
+    // אם calculationResults מלא, זה אומר שהמשתמש אמר "כן" לטעינה או חישב מחדש
+    if (calculationResults.length > 0) {
+        await loadGapStatusesFromIndexedDB();
+    }
     
     const analysis = categorizeGaps();
     showAnalysisWindow(analysis);
 }
-
 function categorizeGaps() {
     // בדיקת Debug
     console.log("🔍 התחלת בדיקת פערים...");
