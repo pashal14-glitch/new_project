@@ -599,11 +599,15 @@
         <!-- Header -->
         <div class="header">
             <h1>🎖️ מחשבון מילואים מתקדם</h1>
+            <p>גרסה 2.0 - חישוב מדויק של תגמולי מילואים לפי תקנות הביטוח הלאומי (תגמולים למשרתים במילואים), תשל"ח-1977 </p>
         </div>
         <!-- Upload Section -->
         <div class="upload-section">
-            <div class="upload-grid">             
-                    <button class="upload-btn" id="excelBtn">טעינת קבצים</button>
+            <div class="upload-grid">
+                <div class="upload-card" onclick="document.getElementById('excelFile').click()" style="grid-column: 1 / -1;">
+                    <h3>📊 קובץ אקסל עם 3 גליונות</h3>
+                 <p>קובץ ראשי עם 3 גליונות + קבצים נוספים לעיבוד</p>
+                    <button class="upload-btn" id="excelBtn">טען קבצים</button>
                     <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls,.xla" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
                         <div class="sheet-status">
