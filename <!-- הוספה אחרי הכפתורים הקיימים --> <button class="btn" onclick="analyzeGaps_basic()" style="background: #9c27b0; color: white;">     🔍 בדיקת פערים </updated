@@ -116,11 +116,13 @@
             background: #27ae60;
         }
 
-     .controls {
-    display: flex;
+    .controls {
+    display: flex !important;
+    flex-direction: row !important;
     gap: 15px;
     justify-content: center;
     flex-wrap: wrap;
+    align-items: center;
 }
         }
 
