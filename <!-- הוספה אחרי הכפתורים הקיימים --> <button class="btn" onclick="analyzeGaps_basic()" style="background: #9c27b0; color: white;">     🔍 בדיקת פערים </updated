@@ -219,10 +219,10 @@
             opacity: 0.9;
         }
 
-       .results-table {
+      .results-table {
     background: white;
     border-radius: 10px;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: visible;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
@@ -2307,6 +2307,36 @@ if (uniqueEmployees.length > 100) {
         monthsUsedForWorkDays: monthsForWorkDays.length  // למעקב
     };
 }
+// גלילה עליונה בלבד
+function addTopScroll() {
+    const table = document.querySelector('.results-table');
+    if (!table) return;
+    
+    // מחק גלילה קודמת אם קיימת
+    const existingScroll = table.parentNode.querySelector('.top-scroll');
+    if (existingScroll) {
+        existingScroll.remove();
+    }
+    
+    // יצירת גלילה עליונה
+    const topScrollDiv = document.createElement('div');
+    topScrollDiv.className = 'top-scroll';
+    topScrollDiv.style.overflowX = 'auto';
+    topScrollDiv.style.overflowY = 'hidden';
+    topScrollDiv.style.marginBottom = '10px';
+    
+    const topScrollContent = document.createElement('div');
+    topScrollContent.style.width = table.scrollWidth + 'px';
+    topScrollContent.style.height = '1px';
+    
+    topScrollDiv.appendChild(topScrollContent);
+    table.parentNode.insertBefore(topScrollDiv, table);
+    
+    // סנכרון רק מהגלילה העליונה לטבלה
+    topScrollDiv.onscroll = function() {
+        table.scrollLeft = topScrollDiv.scrollLeft;
+    };
+}
 function displayResults(data = calculationResults, options = {}) {
     const {
         page = 1,
@@ -2552,6 +2582,7 @@ function displayResults(data = calculationResults, options = {}) {
     if (isSingleEmployee) {
         window.singleEmployeeResults = data;
     }
+addTopScroll();
 }
 
 // 🔧 הוסף 3 פונקציות קטנות אלה:
