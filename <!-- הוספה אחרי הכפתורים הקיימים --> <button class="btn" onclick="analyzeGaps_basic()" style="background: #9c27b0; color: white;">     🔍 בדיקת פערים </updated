@@ -784,7 +784,10 @@
         let originalAttendanceData = []; 
         let showCrossMonthOnly =[] ; 
         let currentDisplayData = [];
-        let currentDisplayOptions = {};
+        let currentDisplayOptions = {};   
+        // ==================== מערכת סטטוסים לפערים - START ====================
+        let gapStatuses = {}; // אוביקט לשמירת סטטוסים: {gapKey: 'unchecked'|'reviewing'|'completed'}
+        // ==================== מערכת סטטוסים לפערים - END ====================
 
         // ==================== IndexedDB System - START ====================
         const DB_NAME = 'MiluimCalculatorDB';
@@ -794,16 +797,23 @@
         // פונקציה 1: פתיחת מאגר נתונים
         function openDatabase() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                const request = indexedDB.open(DB_NAME, 2); // 🔥 שינוי גרסה ל-2
                 
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => resolve(request.result);
                 
-                request.onupgradeneeded = (event) => {
+               request.onupgradeneeded = (event) => {
                     const db = event.target.result;
+                    
+                    // Store לתוצאות חישוב
                     if (!db.objectStoreNames.contains(STORE_NAME)) {
                         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
                         store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                    
+                    // 🆕 Store לסטטוסי פערים
+                    if (!db.objectStoreNames.contains('gapStatuses')) {
+                        db.createObjectStore('gapStatuses', { keyPath: 'id' });
                     }
                 };
             });
@@ -864,7 +874,77 @@
                 return null;
             }
         }
-
+// ==================== פונקציות ניהול סטטוס פערים - START ====================
+        
+        // יצירת מפתח ייחודי לפער
+        function createGapKey(employeeId, startDate) {
+            return `${employeeId}_${new Date(startDate).toISOString()}`;
+        }
+        
+        // קבלת סטטוס פער
+        function getGapStatus(employeeId, startDate) {
+            const key = createGapKey(employeeId, startDate);
+            return gapStatuses[key] || 'unchecked';
+        }
+        
+        // עדכון סטטוס פער
+        function setGapStatus(employeeId, startDate, status) {
+            const key = createGapKey(employeeId, startDate);
+            gapStatuses[key] = status;
+            
+            // שמירה ב-IndexedDB
+            saveGapStatusesToIndexedDB();
+            
+            console.log(`✅ סטטוס עודכן: ${key} -> ${status}`);
+        }
+        
+        // שמירת סטטוסים ל-IndexedDB
+        async function saveGapStatusesToIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['gapStatuses'], 'readwrite');
+                const store = transaction.objectStore('gapStatuses');
+                
+                await store.clear();
+                await store.add({
+                    id: 1,
+                    statuses: gapStatuses,
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                console.log('💾 סטטוסי פערים נשמרו');
+            } catch (error) {
+                console.error('❌ שגיאה בשמירת סטטוסים:', error);
+            }
+        }
+        
+        // טעינת סטטוסים מ-IndexedDB
+        async function loadGapStatusesFromIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const transaction = db.transaction(['gapStatuses'], 'readonly');
+                const store = transaction.objectStore('gapStatuses');
+                const request = store.get(1);
+                
+                return new Promise((resolve) => {
+                    request.onsuccess = () => {
+                        if (request.result && request.result.statuses) {
+                            gapStatuses = request.result.statuses;
+                            console.log('✅ סטטוסי פערים נטענו:', Object.keys(gapStatuses).length);
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                    };
+                    request.onerror = () => resolve(false);
+                });
+            } catch (error) {
+                console.error('❌ שגיאה בטעינת סטטוסים:', error);
+                return false;
+            }
+        }
+        
+        // ==================== פונקציות ניהול סטטוס פערים - END ====================
         // פונקציה 4: מחיקת נתונים
         async function clearIndexedDB() {
             try {
@@ -879,6 +959,7 @@
                 return false;
             }
         }
+
         // ==================== IndexedDB System - END ====================
        
 
