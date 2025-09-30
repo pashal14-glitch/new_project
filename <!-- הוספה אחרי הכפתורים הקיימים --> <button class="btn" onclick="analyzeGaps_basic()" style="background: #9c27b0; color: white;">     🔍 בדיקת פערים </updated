@@ -116,11 +116,13 @@
             background: #27ae60;
         }
 
-        .controls {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
+      .controls {
+    display: flex;
+    flex-direction: row;    /* <-- הוסיפי שורה זו! */
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
         }
 
         .btn {
