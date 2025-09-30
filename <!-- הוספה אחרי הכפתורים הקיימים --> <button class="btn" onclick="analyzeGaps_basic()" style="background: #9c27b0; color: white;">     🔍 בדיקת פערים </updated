@@ -621,9 +621,11 @@
 }
 
 .status-btn.unchecked.active {
-    background: #f5f5f5;
-    border-color: #616161;
-    color: #424242;
+    background: #9e9e9e;
+    border-color: #757575;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: scale(1.05);
 }
 
 .status-btn.reviewing {
@@ -632,10 +634,12 @@
 }
 
 .status-btn.reviewing.active {
-    background: #fff3e0;
+    background: #ff9800;
     border-color: #f57c00;
-    color: #e65100;
+    color: white;
     font-weight: bold;
+    box-shadow: 0 4px 12px rgba(255,152,0,0.4);
+    transform: scale(1.05);
 }
 
 .status-btn.completed {
@@ -644,23 +648,39 @@
 }
 
 .status-btn.completed.active {
-    background: #e8f5e9;
+    background: #4caf50;
     border-color: #388e3c;
-    color: #1b5e20;
+    color: white;
     font-weight: bold;
+    box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+    transform: scale(1.05);
+}
+/* כפתורים לא פעילים - יותר דהויים */
+.status-btn:not(.active) {
+    opacity: 0.5;
 }
 
+.status-btn:not(.active):hover {
+    opacity: 0.8;
+}
 .gap-row-unchecked {
-    background: white;
+    background: white !important;
 }
 
 .gap-row-reviewing {
-    background: #fff8e1 !important;
+    background: linear-gradient(to left, #fff3e0, white) !important;
+    border-right: 4px solid #ff9800 !important;
 }
 
 .gap-row-completed {
-    background: #e8f5e9 !important;
-    opacity: 0.7;
+    background: linear-gradient(to left, #e8f5e9, white) !important;
+    border-right: 4px solid #4caf50 !important;
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.gap-row-completed td {
+    color: #666 !important;
 }
 /* ==================== עיצוב כפתורי סטטוס - END ==================== */
     </style>
@@ -970,11 +990,20 @@
             return `${employeeId}_${dateStr}`;
         }
         
-        // קבלת סטטוס פער
-        function getGapStatus(employeeId, startDate) {
-            const key = createGapKey(employeeId, startDate);
-            return gapStatuses[key] || 'unchecked';
-        }
+        function getGapStatus(employeeId, identifier) {
+    // identifier יכול להיות startDate או period
+    let key;
+    
+    if (typeof identifier === 'string' && identifier.includes(' - ')) {
+        // זה period (למשל: "01/01/2024 - 31/01/2024")
+        key = `${employeeId}_${identifier}`;
+    } else {
+        // זה תאריך
+        key = createGapKey(employeeId, identifier);
+    }
+    
+    return gapStatuses[key] || 'unchecked';
+}
         
         // עדכון סטטוס פער
         function setGapStatus(employeeId, startDate, status) {
@@ -4460,7 +4489,7 @@ function showAnalysisWindow(analysis) {
                             </thead>
                             <tbody>
                                 ${category.items.map(item => `
-                                   <tr class="gap-row gap-row-${getGapStatus(item.employeeId, item.startDate)}" data-employee="${item.employeeId}" data-date="${item.startDate}">
+                                  <tr class="gap-row gap-row-${getGapStatus(item.employeeId, item.period)}" data-employee="${item.employeeId}" data-period="${item.period}">
                                     <td style="padding: 8px; border: 1px solid #ddd;"><strong>${item.employeeId}</strong></td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${item.period}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd;">${item.columnG} ₪</td>
@@ -4468,18 +4497,18 @@ function showAnalysisWindow(analysis) {
                                     <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #ff9800;">${item.gap} ₪</td>
                                     <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.9em;">${item.explanation}</td>
                                     <td style="padding: 8px; border: 1px solid #ddd; font-size: 0.8em; color: #666;">${item.details || ''}</td>
-                                    <td style="padding: 8px; border: 1px solid #ddd;">
+                                   <td style="padding: 8px; border: 1px solid #ddd;">
                                         <div class="status-buttons">
-                                            <button class="status-btn unchecked ${getGapStatus(item.employeeId, item.startDate) === 'unchecked' ? 'active' : ''}" 
-                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'unchecked')">
+                                            <button class="status-btn unchecked ${getGapStatus(item.employeeId, item.period) === 'unchecked' ? 'active' : ''}" 
+                                                    onclick="updateGapStatusByPeriod('${item.employeeId}', '${item.period}', 'unchecked')">
                                                 ⚪ לא נבדק
                                             </button>
-                                            <button class="status-btn reviewing ${getGapStatus(item.employeeId, item.startDate) === 'reviewing' ? 'active' : ''}" 
-                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'reviewing')">
+                                            <button class="status-btn reviewing ${getGapStatus(item.employeeId, item.period) === 'reviewing' ? 'active' : ''}" 
+                                                    onclick="updateGapStatusByPeriod('${item.employeeId}', '${item.period}', 'reviewing')">
                                                 🟡 בבדיקה
                                             </button>
-                                            <button class="status-btn completed ${getGapStatus(item.employeeId, item.startDate) === 'completed' ? 'active' : ''}" 
-                                                    onclick="updateGapStatus('${item.employeeId}', '${item.startDate}', 'completed')">
+                                            <button class="status-btn completed ${getGapStatus(item.employeeId, item.period) === 'completed' ? 'active' : ''}" 
+                                                    onclick="updateGapStatusByPeriod('${item.employeeId}', '${item.period}', 'completed')">
                                                 🟢 טופל
                                             </button>
                                         </div>
@@ -4537,7 +4566,40 @@ function updateGapStatus(employeeId, startDate, newStatus) {
     // הודעה קטנה
     showStatusNotification(`✅ סטטוס עודכן ל: ${getStatusText(newStatus)}`);
 }
-
+function updateGapStatusByPeriod(employeeId, period, newStatus) {
+    console.log(`🔄 מעדכן סטטוס לפי תקופה: ${employeeId}, ${period}, ${newStatus}`);
+    
+    // השתמש ב-period כמפתח במקום תאריך
+    const key = `${employeeId}_${period}`;
+    gapStatuses[key] = newStatus;
+    
+    // שמירה ב-IndexedDB
+    saveGapStatusesToIndexedDB();
+    
+    // מציאת השורה בטבלה - חיפוש לפי employeeId ו-period
+    const rows = document.querySelectorAll('.gap-row');
+    rows.forEach(row => {
+        const rowEmployee = row.querySelector('td:first-child')?.textContent.trim();
+        const rowPeriod = row.querySelector('td:nth-child(2)')?.textContent.trim();
+        
+        if (rowEmployee === employeeId && rowPeriod === period) {
+            // עדכון מחלקות השורה
+            row.className = `gap-row gap-row-${newStatus}`;
+            
+            // עדכון כפתורים
+            const buttons = row.querySelectorAll('.status-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(newStatus)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+    });
+    
+    // הודעה קטנה
+    showStatusNotification(`✅ סטטוס עודכן ל: ${getStatusText(newStatus)}`);
+}
 function getStatusText(status) {
     switch(status) {
         case 'unchecked': return 'לא נבדק';
