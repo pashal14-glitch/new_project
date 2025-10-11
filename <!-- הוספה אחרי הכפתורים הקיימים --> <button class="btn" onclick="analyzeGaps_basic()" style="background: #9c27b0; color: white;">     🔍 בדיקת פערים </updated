@@ -878,7 +878,8 @@
         // ==================== מערכת סטטוסים לפערים - START ====================
         let gapStatuses = {}; // אוביקט לשמירת סטטוסים: {gapKey: 'unchecked'|'reviewing'|'completed'}
         // ==================== מערכת סטטוסים לפערים - END ====================
-
+        // מאגר לשמירת מידע על פערים לכל שורה
+        let gapStatusData = {};
         // ==================== IndexedDB System - START ====================
         const DB_NAME = 'MiluimCalculatorDB';
         const DB_VERSION = 1;
@@ -2012,7 +2013,23 @@ async function calculateMiluim(config = {}) {
                     itemsPerPage: calculationResults.length > 100 ? 50 : null 
                 });
             }
-       
+       // 🆕 ניתוח פערים אוטומטי ברקע
+try {
+    console.log('🔍 מפעיל ניתוח פערים אוטומטי...');
+    const analysis = categorizeGaps();
+    console.log('✅ ניתוח פערים הושלם:', {
+        סה״כ_רשומות: analysis.totalRecords,
+        פערים_שנמצאו: analysis.gapsFound,
+        ללא_פערים: analysis.noGaps,
+        נתונים_נשמרו: Object.keys(gapStatusData).length
+    });
+} catch (error) {
+    console.error('❌ שגיאה בניתוח פערים אוטומטי:', error);
+}
+
+// עדכון סטטיסטיקות וייצוא
+updateSummaryStats();
+document.getElementById('exportSection').style.display = 'block';
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
             document.getElementById('exportSection').style.display = 'block';
@@ -2883,8 +2900,12 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${formatCurrency((result.continuousValue || 0) * (result.miluimDays || 0))}</strong></td>
                 <td><button class="details-btn" onclick="showDetails(${correctIndex})">פירוט</button></td>
                 <td>${result.paidAmount || 0}</td>
-                <td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}">${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)}</td>
-                <td>${result.compulsion  || 0}</td>
+<td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}" 
+    style="${getGapCellStyle(result)}" 
+    onclick="showGapDetails('${result.employeeId}', '${result.startDate}', '${result.endDate}')"
+    title="לחץ לפרטים נוספים על הפער">
+    ${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)} ${getGapIcon(result)}
+</td>                <td>${result.compulsion  || 0}</td>
                 <td>${result.compulsionContinuous || 0}</td>
                 <td>${result.emergencyCompulsion4405 || 0}</td> 
                 <td>${supplementResult.supplementDays}</td>
@@ -3739,6 +3760,19 @@ function categorizeGaps() {
                 details: `${monthlyCheck.monthPeriods} תקופות באותו חודש, ערכים: ${monthlyCheck.allValues.map(v => v.toFixed(2)).join(', ')}₪`
             });
             gapsFound++;
+            
+            // 🆕 שמירה במאגר הגלובלי
+            const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+            gapStatusData[key] = {
+                status: 'ok',
+                statusIcon: '🟢',
+                category: 'ערך בגין חודשי',
+                explanation: monthlyCheck.explanation,
+                gap: gap.toFixed(2),
+                columnG: (result.continuousValue || 0).toFixed(2),
+                columnL: (result.paidAmount || 0).toFixed(2),
+                details: `${monthlyCheck.monthPeriods} תקופות באותו חודש`
+            };
         }
     });
 
@@ -3794,6 +3828,19 @@ function categorizeGaps() {
                 });
                 categoryFound = true;
                 gapsFound++;
+                
+                // 🆕 שמירה במאגר
+                const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                gapStatusData[key] = {
+                    status: categories[lastErrorType].status,
+                    statusIcon: categories[lastErrorType].status === 'fix' ? '🔴' : (categories[lastErrorType].status === 'ok' ? '🟢' : '🟡'),
+                    category: categories[lastErrorType].name,
+                    explanation: `המשך תקלה מ-${formatDate(originalErrorDate)}`,
+                    gap: (columnG - columnL).toFixed(2),
+                    columnG: columnG.toFixed(2),
+                    columnL: columnL.toFixed(2),
+                    details: `ערך G נגרר מתקלה מקורית`
+                };
             } else {
                 // איפוס מעקב תקלות אם אין רצף או ערך שונה
                 if (!isConsecutive || !hasSameGValue) {
@@ -3819,6 +3866,19 @@ function categorizeGaps() {
                     gapsFound++;
                     lastErrorType = 'forceValueNotApplied';
                     originalErrorDate = result.startDate;
+                    
+                    // 🆕 שמירה במאגר
+                    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                    gapStatusData[key] = {
+                        status: 'fix',
+                        statusIcon: '🔴',
+                        category: 'אי החלת ערך כפייה',
+                        explanation: "יש ערך כפוי מרצף - לא הותאם לתשלום",
+                        gap: (columnL - columnO).toFixed(2),
+                        columnG: columnG.toFixed(2),
+                        columnL: columnL.toFixed(2),
+                        details: `שולם ${columnL}₪ במקום ${columnO}₪`
+                    };
                 }
                 
                 // בדיקה 1.2: ערך כפיית חירום (עמודה P) - מילואים חדשים
@@ -3837,6 +3897,19 @@ function categorizeGaps() {
                     gapsFound++;
                     lastErrorType = 'emergencyCompulsionNotApplied';
                     originalErrorDate = result.startDate;
+                    
+                    // 🆕 שמירה במאגר
+                    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                    gapStatusData[key] = {
+                        status: 'fix',
+                        statusIcon: '🔴',
+                        category: 'תקלת חוקה - כפיית חירום',
+                        explanation: "מילואים חדשים - שולם יותר מערך הכפייה החירום",
+                        gap: (columnL - columnP).toFixed(2),
+                        columnG: columnG.toFixed(2),
+                        columnL: columnL.toFixed(2),
+                        details: `שולם ${columnL}₪ במקום ${columnP}₪`
+                    };
                 }
                 
                 // **שלב 2: בדיקות כשאין ערכי כפייה (O=0 ו-P=0)**
@@ -3858,6 +3931,19 @@ function categorizeGaps() {
                         gapsFound++;
                         lastErrorType = 'minimumValueIssue';
                         originalErrorDate = result.startDate;
+                        
+                        // 🆕 שמירה במאגר
+                        const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                        gapStatusData[key] = {
+                            status: 'fix',
+                            statusIcon: '🔴',
+                            category: 'שכר מינימום',
+                            explanation: "שולם ערך קטן משכר מינימום",
+                            gap: (minimumDaily - columnL).toFixed(2),
+                            columnG: columnG.toFixed(2),
+                            columnL: columnL.toFixed(2),
+                            details: `שולם ${columnL}₪ - פחות מהמינימום ${minimumDaily}₪`
+                        };
                     }
                     
                     // בדיקה 2.2: בדיקת ברוטו מינימלי לא תקין
@@ -3877,6 +3963,19 @@ function categorizeGaps() {
                             gapsFound++;
                             lastErrorType = 'incorrectMinimumBruto';
                             originalErrorDate = result.startDate;
+                            
+                            // 🆕 שמירה במאגר
+                            const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                            gapStatusData[key] = {
+                                status: 'fix',
+                                statusIcon: '🔴',
+                                category: 'ברוטו מינימלי שגוי',
+                                explanation: "תקלה בחוקה - ברוטו מינימלי לא תקין",
+                                gap: (columnG - columnL).toFixed(2),
+                                columnG: columnG.toFixed(2),
+                                columnL: columnL.toFixed(2),
+                                details: `חושב לפי ברוטו מינימלי במקום ערך נכון`
+                            };
                         }
                         
                         // בדיקה 2.3: פונקציית אבחון מתקדמת - מילואים רגילים שלא קיבלו ערך גבוה מ-60 יום
@@ -3896,6 +3995,19 @@ function categorizeGaps() {
                                 gapsFound++;
                                 lastErrorType = 'higherValue60DayIssue';
                                 originalErrorDate = result.startDate;
+                                
+                                // 🆕 שמירה במאגר
+                                const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                gapStatusData[key] = {
+                                    status: 'fix',
+                                    statusIcon: '🔴',
+                                    category: 'תקלת חוקה - ערך 60 יום',
+                                    explanation: diagnosis.explanation,
+                                    gap: (diagnosis.columnF - diagnosis.columnL).toFixed(2),
+                                    columnG: diagnosis.columnG.toFixed(2),
+                                    columnL: diagnosis.columnL.toFixed(2),
+                                    details: `היה צריך לקבל ערך גבוה יותר`
+                                };
                             }
                             
                             // בדיקה 2.4: פונקציית אבחון מתקדמת - מילואים חדשים שקיבלו ערך גבוה
@@ -3916,6 +4028,19 @@ function categorizeGaps() {
                                     gapsFound++;
                                     lastErrorType = 'newMiluimHigherValueIssue';
                                     originalErrorDate = result.startDate;
+                                    
+                                    // 🆕 שמירה במאגר
+                                    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                    gapStatusData[key] = {
+                                        status: 'fix',
+                                        statusIcon: '🔴',
+                                        category: 'תקלת חוקה - מילואים חדשים',
+                                        explanation: newMiluimDiagnosis.explanation,
+                                        gap: (newMiluimDiagnosis.columnL - newMiluimDiagnosis.columnE).toFixed(2),
+                                        columnG: columnG.toFixed(2),
+                                        columnL: newMiluimDiagnosis.columnL.toFixed(2),
+                                        details: `קיבל ערך גבוה מדי`
+                                    };
                                 }
                                 
                                 // בדיקה 2.5: בדיקות נוספות (בלי כלל חודשי!)
@@ -3947,6 +4072,19 @@ function categorizeGaps() {
                                         gapsFound++;
                                         lastErrorType = 'continuousValue';
                                         originalErrorDate = result.startDate;
+                                        
+                                        // 🆕 שמירה במאגר
+                                        const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                        gapStatusData[key] = {
+                                            status: 'ok',
+                                            statusIcon: '🟢',
+                                            category: 'ערך כפוי תקין',
+                                            explanation: "תקופה עם ערך כפוי תקין",
+                                            gap: gap.toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            details: matchesN ? `תואם עמודה N` : `תואם עמודה O`
+                                        };
                                     }
                                     
                                     // בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
@@ -3964,6 +4102,19 @@ function categorizeGaps() {
                                         // לא נחשב כגאפ שדורש תיקון - לא מוסיפים ל gapsFound
                                         lastErrorType = 'lockedValue';
                                         originalErrorDate = result.startDate;
+                                        
+                                        // 🆕 שמירה במאגר
+                                        const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                        gapStatusData[key] = {
+                                            status: 'info',
+                                            statusIcon: '🔵',
+                                            category: 'ערך נעול',
+                                            explanation: "ערך G נעול למילואים חדשים - לא תקלה",
+                                            gap: (columnG - columnL).toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            details: `ערך נעול ע"י מגבלת 120%`
+                                        };
                                     }
                                     
                                     // לא מזוהה - רק אם לא נמצא שום דבר אחר
@@ -3981,6 +4132,19 @@ function categorizeGaps() {
                                         gapsFound++;
                                         lastErrorType = 'unknown';
                                         originalErrorDate = result.startDate;
+                                        
+                                        // 🆕 שמירה במאגר
+                                        const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                        gapStatusData[key] = {
+                                            status: 'check',
+                                            statusIcon: '🟡',
+                                            category: 'לא מזוהה',
+                                            explanation: "סיבת הפער לא ברורה",
+                                            gap: gap.toFixed(2),
+                                            columnG: columnG.toFixed(2),
+                                            columnL: columnL.toFixed(2),
+                                            details: "דורש בדיקה ידנית"
+                                        };
                                     }
                                 }
                             }
@@ -3995,9 +4159,24 @@ function categorizeGaps() {
                 lastErrorType = null;
                 originalErrorDate = null;
                 noGaps++;
+                
+                // 🆕 שמירה במאגר גם לשורות ללא פער
+                const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                gapStatusData[key] = {
+                    status: 'ok',
+                    statusIcon: '🟢',
+                    category: 'ללא פער',
+                    explanation: "אין פער או פער קטן מ-1 ש״ח",
+                    gap: '0.00',
+                    columnG: columnG.toFixed(2),
+                    columnL: columnL.toFixed(2),
+                    details: "הכל תקין"
+                };
             }
         });
     });
+    
+    console.log("✅ ניתוח פערים הושלם. נתונים נשמרו ב-gapStatusData");
     
     return {
         totalRecords,
@@ -5563,6 +5742,112 @@ function showSpecification() {
     
     document.body.appendChild(specModal);
 }
+// ========================================
+// 🆕 פונקציות עזר לאינטראקציה עם פערים
+// ========================================
+
+/**
+ * מחזירה CSS לצביעת תא הפער לפי סטטוס
+ */
+function getGapCellStyle(result) {
+    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+    const gapData = gapStatusData[key];
+    
+    if (!gapData) {
+        // אם אין מידע - רקע רגיל
+        return '';
+    }
+    
+    // צביעה לפי סטטוס
+    let bgColor = '#f9f9f9'; // ברירת מחדל
+    
+    if (gapData.status === 'fix') {
+        bgColor = '#ffebee'; // אדום בהיר - דורש תיקון
+    } else if (gapData.status === 'check') {
+        bgColor = '#fff8e1'; // צהוב בהיר - דורש בדיקה
+    } else if (gapData.status === 'ok') {
+        bgColor = '#e8f5e9'; // ירוק בהיר - תקין
+    } else if (gapData.status === 'info') {
+        bgColor = '#e3f2fd'; // כחול בהיר - מידע
+    }
+    
+    return `background-color: ${bgColor}; cursor: pointer; font-weight: 600; transition: all 0.2s;`;
+}
+
+/**
+ * מחזירה אייקון לפי סטטוס הפער
+ */
+function getGapIcon(result) {
+    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+    const gapData = gapStatusData[key];
+    
+    if (!gapData) {
+        return ' 🔍'; // אייקון ברירת מחדל
+    }
+    
+    return ' ' + gapData.statusIcon;
+}
+
+/**
+ * מציגה חלון פופאפ עם פרטי הפער המלאים
+ */
+function showGapDetails(employeeId, startDate, endDate) {
+    const key = `${employeeId}_${startDate}_${endDate}`;
+    const gapData = gapStatusData[key];
+    
+    if (!gapData) {
+        alert('⚠️ אין מידע זמין על פער זה.\n\nייתכן שהניתוח טרם רץ או שהנתונים לא נשמרו.\n\nנסה ללחוץ על כפתור "נתח פערים" תחילה.');
+        return;
+    }
+    
+    // בניית ההודעה המעוצבת
+    const statusEmoji = gapData.statusIcon;
+    const statusText = 
+        gapData.status === 'fix' ? '🔴 דורש תיקון מיידי' :
+        gapData.status === 'check' ? '🟡 דורש בדיקה ידנית' :
+        gapData.status === 'ok' ? '🟢 תקין' :
+        '🔵 למידע';
+    
+    const message = `
+╔═══════════════════════════════════════╗
+║           📊 פרטי הפער               ║
+╚═══════════════════════════════════════╝
+
+👤 עובד: ${employeeId}
+📅 תקופה: ${formatDate(new Date(startDate))} - ${formatDate(new Date(endDate))}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${statusEmoji} סטטוס: ${statusText}
+
+🏷️ קטגוריה: ${gapData.category}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 פירוט סכומים:
+   • גובה הפער: ${gapData.gap} ₪
+   • עמודה G (רציף): ${gapData.columnG} ₪
+   • עמודה L (משולם): ${gapData.columnL} ₪
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 הסבר:
+${gapData.explanation}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️ פרטים נוספים:
+${gapData.details}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 לפרטים מלאים, לחץ על "נתח פערים" בתפריט
+    `.trim();
+    
+    alert(message);
+}
+
+console.log('✅ פונקציות אינטראקציה לפערים נטענו בהצלחה!');
 </script>
 </body>
 </html>
