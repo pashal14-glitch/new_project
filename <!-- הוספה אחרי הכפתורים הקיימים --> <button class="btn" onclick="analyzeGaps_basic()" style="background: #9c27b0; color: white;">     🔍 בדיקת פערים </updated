@@ -2027,9 +2027,6 @@ try {
     console.error('❌ שגיאה בניתוח פערים אוטומטי:', error);
 }
 
-// עדכון סטטיסטיקות וייצוא
-updateSummaryStats();
-document.getElementById('exportSection').style.display = 'block';
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
             document.getElementById('exportSection').style.display = 'block';
