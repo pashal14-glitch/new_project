@@ -2018,10 +2018,10 @@ try {
     console.log('🔍 מפעיל ניתוח פערים אוטומטי...');
     const analysis = categorizeGaps();
     console.log('✅ ניתוח פערים הושלם:', {
-        סה״כ_רשומות: analysis.totalRecords,
-        פערים_שנמצאו: analysis.gapsFound,
-        ללא_פערים: analysis.noGaps,
-        נתונים_נשמרו: Object.keys(gapStatusData).length
+        'סה״כ רשומות': analysis.totalRecords,
+        'פערים שנמצאו': analysis.gapsFound,
+        'ללא פערים': analysis.noGaps,
+        'נתונים נשמרו': Object.keys(gapStatusData).length
     });
 } catch (error) {
     console.error('❌ שגיאה בניתוח פערים אוטומטי:', error);
