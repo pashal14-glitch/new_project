@@ -2443,7 +2443,7 @@ function getPaymentAmount(result, type) {
     const endExcel = dateToExcelNumber(result.endDate);
     
     // יצירת מפתח לחיפוש
-    const key = `${result.employeeId}|${startExcel}|${endExcel}`;
+  const key = `${result.passportNum}|${startExcel}|${endExcel}`;
     
     console.log('מחפש מפתח:', key);
     
