@@ -4241,7 +4241,7 @@ function categorizeGaps() {
         });
     });
     
-    console.log("✅ ניתוח פערים הושלם. נתונים נשמרו ב-gapStatusData");
+
 // שמירת הפירוט המלא
 await saveGapDetailsToIndexedDB();
 
