@@ -1012,17 +1012,23 @@ td[onclick*="showGapDetails"]:hover {
     return gapStatuses[key] || 'unchecked';
 }
         
-        // עדכון סטטוס פער
-        function setGapStatus(employeeId, startDate, status) {
-            const key = createGapKey(employeeId, startDate);
-            gapStatuses[key] = status;
-            
-            // שמירה ב-IndexedDB
-            saveGapStatusesToIndexedDB();
-            
-            console.log(`✅ סטטוס עודכן: ${key} -> ${status}`);
-        }
-        
+      // עדכון סטטוס פער
+function setGapStatus(employeeId, startDate, status) {
+    const key = createGapKey(employeeId, startDate);
+    gapStatuses[key] = status;
+    
+    // שמירה ב-IndexedDB
+    saveGapStatusesToIndexedDB();
+    
+    console.log(`✅ סטטוס עודכן: ${key} -> ${status}`);
+    
+    // 🆕 רענון התצוגה אם יש תוצאות
+    if (calculationResults && calculationResults.length > 0) {
+        displayResults(calculationResults, { 
+            itemsPerPage: calculationResults.length > 100 ? 50 : null 
+        });
+    }
+}
         // שמירת סטטוסים ל-IndexedDB
         async function saveGapStatusesToIndexedDB() {
             try {
@@ -4896,24 +4902,19 @@ function updateGapStatus(employeeId, startDate, newStatus) {
 function updateGapStatusByPeriod(employeeId, period, newStatus) {
     console.log(`🔄 מעדכן סטטוס לפי תקופה: ${employeeId}, ${period}, ${newStatus}`);
     
-    // השתמש ב-period כמפתח במקום תאריך
     const key = `${employeeId}_${period}`;
     gapStatuses[key] = newStatus;
     
-    // שמירה ב-IndexedDB
     saveGapStatusesToIndexedDB();
     
-    // מציאת השורה בטבלה - חיפוש לפי employeeId ו-period
     const rows = document.querySelectorAll('.gap-row');
     rows.forEach(row => {
         const rowEmployee = row.querySelector('td:first-child')?.textContent.trim();
         const rowPeriod = row.querySelector('td:nth-child(2)')?.textContent.trim();
         
         if (rowEmployee === employeeId && rowPeriod === period) {
-            // עדכון מחלקות השורה
             row.className = `gap-row gap-row-${newStatus}`;
             
-            // עדכון כפתורים
             const buttons = row.querySelectorAll('.status-btn');
             buttons.forEach(btn => {
                 btn.classList.remove('active');
@@ -4924,8 +4925,16 @@ function updateGapStatusByPeriod(employeeId, period, newStatus) {
         }
     });
     
-    // הודעה קטנה
     showStatusNotification(`✅ סטטוס עודכן ל: ${getStatusText(newStatus)}`);
+    
+    // 🆕 רענון התצוגה הראשית!
+    if (calculationResults && calculationResults.length > 0) {
+        console.log('🔄 מרענן תצוגה ראשית...');
+        displayResults(calculationResults, { 
+            itemsPerPage: calculationResults.length > 100 ? 50 : null 
+        });
+        console.log('✅ תצוגה רוענה');
+    }
 }
 function getStatusText(status) {
     switch(status) {
