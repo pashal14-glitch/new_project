@@ -2525,7 +2525,8 @@ function dateToExcelNumber(date) {
                         compulsion: parseFloat(row[12]),
                         crossMonth:row[13],
                         emergencyCompulsion4405: parseFloat(row[14]),
-                        emergency40percentage:row[15]
+                        emergency40percentage:row[15],
+                        passportNum:row[16]
 
                     })).filter(item => item.employeeId);
                     break;
@@ -2908,6 +2909,7 @@ function displayResults(data = calculationResults, options = {}) {
             <table>
                 <thead>
                     <tr>
+                        <th>מספר זהות</th>
                         <th>עובד</th>
                         <th>תחילה</th>
                         <th>סיום</th>
@@ -2963,6 +2965,7 @@ function displayResults(data = calculationResults, options = {}) {
         
         html += `
             <tr class="${rowClass}">
+               <td><strong>${result.passportNum}</strong></td>
                 <td><strong>${result.employeeId}</strong></td>
                 <td>${formatDate(result.startDate)}</td>
                 <td>${formatDate(result.endDate)}</td>
