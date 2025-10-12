@@ -5788,63 +5788,180 @@ function getGapIcon(result) {
 /**
  * מציגה חלון פופאפ עם פרטי הפער המלאים
  */
+/**
+ * מציגה חלון מעוצב עם פרטי הפער המלאים
+ */
 function showGapDetails(employeeId, startDate, endDate) {
     const key = `${employeeId}_${startDate}_${endDate}`;
     const gapData = gapStatusData[key];
     
     if (!gapData) {
-        alert('⚠️ אין מידע זמין על פער זה.\n\nייתכן שהניתוח טרם רץ או שהנתונים לא נשמרו.\n\nנסה ללחוץ על כפתור "נתח פערים" תחילה.');
+        alert('⚠️ אין מידע זמין על פער זה.\n\nייתכן שהניתוח טרם רץ.\nנסה ללחוץ על "נתח פערים" תחילה.');
         return;
     }
     
-    // בניית ההודעה המעוצבת
+    // בניית חלון HTML מעוצב
     const statusEmoji = gapData.statusIcon;
     const statusText = 
-        gapData.status === 'fix' ? '🔴 דורש תיקון מיידי' :
-        gapData.status === 'check' ? '🟡 דורש בדיקה ידנית' :
-        gapData.status === 'ok' ? '🟢 תקין' :
-        '🔵 למידע';
+        gapData.status === 'fix' ? 'דורש תיקון מיידי' :
+        gapData.status === 'check' ? 'דורש בדיקה ידנית' :
+        gapData.status === 'ok' ? 'תקין' :
+        'למידע';
     
-    const message = `
-╔═══════════════════════════════════════╗
-║           📊 פרטי הפער               ║
-╚═══════════════════════════════════════╝
-
-👤 עובד: ${employeeId}
-📅 תקופה: ${formatDate(new Date(startDate))} - ${formatDate(new Date(endDate))}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${statusEmoji} סטטוס: ${statusText}
-
-🏷️ קטגוריה: ${gapData.category}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💰 פירוט סכומים:
-   • גובה הפער: ${gapData.gap} ₪
-   • עמודה G (רציף): ${gapData.columnG} ₪
-   • עמודה L (משולם): ${gapData.columnL} ₪
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📝 הסבר:
-${gapData.explanation}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-ℹ️ פרטים נוספים:
-${gapData.details}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 לפרטים מלאים, לחץ על "נתח פערים" בתפריט
-    `.trim();
+    const statusColor = 
+        gapData.status === 'fix' ? '#e74c3c' :
+        gapData.status === 'check' ? '#f39c12' :
+        gapData.status === 'ok' ? '#27ae60' :
+        '#3498db';
     
-    alert(message);
+    // יצירת overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'gapDetailsOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        animation: fadeIn 0.2s ease;
+    `;
+    
+    // יצירת החלון
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 15px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+        direction: rtl;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 15px 15px 0 0;">
+            <h2 style="margin: 0; font-size: 1.8em; display: flex; align-items: center; gap: 10px;">
+                📊 פרטי הפער
+            </h2>
+        </div>
+        
+        <div style="padding: 25px;">
+            <!-- פרטי עובד ותקופה -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">👤 עובד</div>
+                        <div style="font-size: 1.2em; font-weight: bold;">${employeeId}</div>
+                    </div>
+                    <div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">📅 תקופה</div>
+                        <div style="font-size: 1em; font-weight: 500;">
+                            ${formatDate(new Date(startDate))}<br>
+                            ${formatDate(new Date(endDate))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- סטטוס -->
+            <div style="background: ${statusColor}15; border-right: 4px solid ${statusColor}; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 2em;">${statusEmoji}</span>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">סטטוס</div>
+                        <div style="font-size: 1.3em; font-weight: bold; color: ${statusColor};">${statusText}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- קטגוריה -->
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="color: #666; font-size: 0.9em; margin-bottom: 5px;">🏷️ קטגוריה</div>
+                <div style="font-size: 1.1em; font-weight: 600; color: #2c3e50;">${gapData.category}</div>
+            </div>
+            
+            <!-- סכומים -->
+            <div style="background: #fff8e1; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">💰 פירוט סכומים</div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #ddd;">גובה הפער:</td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #ddd; font-weight: bold; text-align: left;">${gapData.gap} ₪</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #ddd;">עמודה G (רציף):</td>
+                        <td style="padding: 8px 0; border-bottom: 1px solid #ddd; font-weight: 600; text-align: left;">${gapData.columnG} ₪</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0;">עמודה L (משולם):</td>
+                        <td style="padding: 8px 0; font-weight: 600; text-align: left;">${gapData.columnL} ₪</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- הסבר -->
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">📝 הסבר</div>
+                <div style="line-height: 1.6; color: #2c3e50;">${gapData.explanation}</div>
+            </div>
+            
+            <!-- פרטים נוספים -->
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">ℹ️ פרטים נוספים</div>
+                <div style="line-height: 1.6; color: #555;">${gapData.details}</div>
+            </div>
+            
+            <!-- כפתור סגירה -->
+            <div style="text-align: center;">
+                <button onclick="document.getElementById('gapDetailsOverlay').remove()" 
+                        style="background: #667eea; color: white; border: none; padding: 12px 40px; border-radius: 8px; font-size: 1.1em; cursor: pointer; font-weight: bold; transition: all 0.3s;"
+                        onmouseover="this.style.background='#5568d3'" 
+                        onmouseout="this.style.background='#667eea'">
+                    ✓ סגור
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // הוספת אנימציות
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // הוספת אפשרות לסגור בלחיצה על הרקע
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    };
+    
+    // הוספת אפשרות לסגור עם ESC
+    document.addEventListener('keydown', function closeOnEsc(e) {
+        if (e.key === 'Escape') {
+            overlay.remove();
+            document.removeEventListener('keydown', closeOnEsc);
+        }
+    });
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 }
-
-console.log('✅ פונקציות אינטראקציה לפערים נטענו בהצלחה!');
 </script>
 </body>
 </html>
