@@ -5817,17 +5817,40 @@ function showSpecification() {
 /**
  * מחזירה CSS לצביעת תא הפער לפי סטטוס
  */
+/**
+ * מחזירה CSS לצביעת תא הפער לפי סטטוס
+ * קודם בודקת סימון ידני, אחר כך ניתוח אוטומטי
+ */
 function getGapCellStyle(result) {
     const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+    
+    // 🆕 בדיקה 1: האם יש סימון ידני?
+    const period = `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`;
+    const manualStatusKey = `${result.employeeId}_${period}`;
+    const manualStatus = gapStatuses[manualStatusKey];
+    
+    // אם יש סימון ידני - השתמש בו!
+    if (manualStatus && manualStatus !== 'unchecked') {
+        let bgColor = '#f9f9f9';
+        
+        if (manualStatus === 'completed') {
+            bgColor = '#e8f5e9'; // ירוק - טופל! ✅
+        } else if (manualStatus === 'reviewing') {
+            bgColor = '#fff8e1'; // צהוב - בבדיקה 🟡
+        }
+        
+        return `background-color: ${bgColor}; cursor: pointer; font-weight: 600; transition: all 0.2s;`;
+    }
+    
+    // 🆕 בדיקה 2: אם אין סימון ידני - השתמש בניתוח אוטומטי
     const gapData = gapStatusData[key];
     
     if (!gapData) {
-        // אם אין מידע - רקע רגיל
-        return '';
+        return ''; // אם אין מידע בכלל
     }
     
-    // צביעה לפי סטטוס
-    let bgColor = '#f9f9f9'; // ברירת מחדל
+    // צביעה לפי ניתוח אוטומטי
+    let bgColor = '#f9f9f9';
     
     if (gapData.status === 'fix') {
         bgColor = '#ffebee'; // אדום בהיר - דורש תיקון
@@ -5845,8 +5868,28 @@ function getGapCellStyle(result) {
 /**
  * מחזירה אייקון לפי סטטוס הפער
  */
+/**
+ * מחזירה אייקון לפי סטטוס הפער
+ * קודם בודקת סימון ידני, אחר כך ניתוח אוטומטי
+ */
 function getGapIcon(result) {
     const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+    
+    // 🆕 בדיקה 1: האם יש סימון ידני?
+    const period = `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`;
+    const manualStatusKey = `${result.employeeId}_${period}`;
+    const manualStatus = gapStatuses[manualStatusKey];
+    
+    // אם יש סימון ידני - הצג אייקון מתאים
+    if (manualStatus && manualStatus !== 'unchecked') {
+        if (manualStatus === 'completed') {
+            return ' ✅'; // טופל!
+        } else if (manualStatus === 'reviewing') {
+            return ' 🔄'; // בבדיקה
+        }
+    }
+    
+    // 🆕 בדיקה 2: אם אין סימון ידני - השתמש בניתוח אוטומטי
     const gapData = gapStatusData[key];
     
     if (!gapData) {
