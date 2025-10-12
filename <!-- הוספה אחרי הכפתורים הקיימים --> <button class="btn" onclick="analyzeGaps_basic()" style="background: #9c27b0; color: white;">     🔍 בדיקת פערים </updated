@@ -683,6 +683,45 @@ td[onclick*="showGapDetails"]:hover {
 .gap-row-completed td {
     color: #666 !important;
 }
+.category-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.status-btn {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    background: white;
+    font-size: 0.85em;
+    transition: all 0.2s;
+}
+
+.status-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.status-btn.active {
+    font-weight: bold;
+    border-width: 2px;
+}
+
+.status-btn.unchecked.active {
+    background: #f5f5f5;
+    border-color: #999;
+}
+
+.status-btn.reviewing.active {
+    background: #fff9c4;
+    border-color: #ffc107;
+}
+
+.status-btn.completed.active {
+    background: #e8f5e9;
+    border-color: #4caf50;
+}
 /* ==================== עיצוב כפתורי סטטוס - END ==================== */
     </style>
 </head>
@@ -4805,11 +4844,23 @@ function showAnalysisWindow(analysis) {
             const statusText = category.status === 'ok' ? 'תקין' : category.status === 'fix' ? 'דורש תיקון' : 'בדיקה ידנית';
             
             categoriesHTML += `
-                <div class="category-box category-${category.status}">
-                    <div class="category-header" onclick="toggleCategory('${key}')">
-                        <span>${statusIcon} ${category.name}</span>
-                        <span>${category.items.length} מקרים | ${statusText}</span>
-                    </div>
+    <div class="category-box category-${category.status}">
+        <div class="category-header" onclick="toggleCategory('${key}')">
+            <span>${statusIcon} ${category.name}</span>
+            <span>${category.items.length} מקרים | ${statusText}</span>
+        </div>
+        <div style="padding: 10px; background: #f5f5f5; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #ddd;">
+            <strong>סמן הכל כ:</strong>
+            <button class="status-btn unchecked" onclick="markAllInCategory('${key}', 'unchecked'); event.stopPropagation();">
+                ⚪ לא נבדק
+            </button>
+            <button class="status-btn reviewing" onclick="markAllInCategory('${key}', 'reviewing'); event.stopPropagation();">
+                🟡 בבדיקה
+            </button>
+            <button class="status-btn completed" onclick="markAllInCategory('${key}', 'completed'); event.stopPropagation();">
+                🟢 טופל
+            </button>
+        </div>
                     <div class="category-content" id="category-${key}">
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
@@ -4939,6 +4990,51 @@ function updateGapStatusByPeriod(employeeId, period, newStatus) {
         });
         console.log('✅ תצוגה רוענה');
     }
+}
+// פונקציה לסימון כל הפערים בקטגוריה
+function markAllInCategory(categoryKey, newStatus) {
+    console.log(`📌 מסמן את כל הקטגוריה ${categoryKey} כ-${newStatus}`);
+    
+    // מציאת כל הפערים בקטגוריה הזו
+    const categoryElement = document.getElementById(`category-${categoryKey}`);
+    if (!categoryElement) {
+        console.error('לא נמצאה קטגוריה:', categoryKey);
+        return;
+    }
+    
+    const rows = categoryElement.querySelectorAll('.gap-row');
+    let updatedCount = 0;
+    
+    rows.forEach(row => {
+        const employeeId = row.querySelector('td:first-child')?.textContent.trim();
+        const period = row.querySelector('td:nth-child(2)')?.textContent.trim();
+        
+        if (employeeId && period) {
+            // עדכון הסטטוס
+            const key = `${employeeId}_${period}`;
+            gapStatuses[key] = newStatus;
+            
+            // עדכון מחלקות השורה
+            row.className = `gap-row gap-row-${newStatus}`;
+            
+            // עדכון כפתורים
+            const buttons = row.querySelectorAll('.status-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(newStatus)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updatedCount++;
+        }
+    });
+    
+    // שמירה ב-IndexedDB
+    saveGapStatusesToIndexedDB();
+    
+    // הודעה למשתמש
+    showStatusNotification(`✅ ${updatedCount} פערים עודכנו ל: ${getStatusText(newStatus)}`);
 }
 function getStatusText(status) {
     switch(status) {
