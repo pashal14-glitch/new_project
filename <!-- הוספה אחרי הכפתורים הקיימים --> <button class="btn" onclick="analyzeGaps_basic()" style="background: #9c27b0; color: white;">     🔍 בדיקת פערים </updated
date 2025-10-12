@@ -8,6 +8,11 @@
     <title>מחשבון מילואים מתקדם - גרסה 2.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+/* אפקט hover עדין - רק שינוי צבע גבול */
+td[onclick*="showGapDetails"]:hover {
+    border-color: #333 !important;
+    background-color: rgba(0,0,0,0.05) !important;
+}
         * {
             margin: 0;
             padding: 0;
@@ -5852,7 +5857,7 @@ function showSpecification() {
 function getGapCellStyle(result) {
     const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
     
-    // 🆕 בדיקה 1: האם יש סימון ידני?
+    // בדיקה 1: האם יש סימון ידני?
     const period = `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`;
     const manualStatusKey = `${result.employeeId}_${period}`;
     const manualStatus = gapStatuses[manualStatusKey];
@@ -5867,10 +5872,17 @@ function getGapCellStyle(result) {
             bgColor = '#fff8e1'; // צהוב - בבדיקה 🟡
         }
         
-        return `background-color: ${bgColor}; cursor: pointer; font-weight: 600; transition: all 0.2s;`;
+        // 🆕 עיצוב משופר!
+     return `
+    background-color: ${bgColor}; 
+    font-weight: 600; 
+    border: 2px solid #999;
+    padding: 8px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+`;
     }
     
-    // 🆕 בדיקה 2: אם אין סימון ידני - השתמש בניתוח אוטומטי
+    // בדיקה 2: אם אין סימון ידני - השתמש בניתוח אוטומטי
     const gapData = gapStatusData[key];
     
     if (!gapData) {
@@ -5890,7 +5902,15 @@ function getGapCellStyle(result) {
         bgColor = '#e3f2fd'; // כחול בהיר - מידע
     }
     
-    return `background-color: ${bgColor}; cursor: pointer; font-weight: 600; transition: all 0.2s;`;
+    // 🆕 עיצוב משופר!
+    return `
+        background-color: ${bgColor}; 
+        cursor: pointer; 
+        font-weight: 600; 
+        transition: all 0.2s;
+        border: 2px dashed #999;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    `;
 }
 
 /**
