@@ -5585,6 +5585,26 @@ function showMiluimTable() {
     html += '</table>';
     document.getElementById('miluimTable').innerHTML = html;
 }
+// פונקציה עזר חדשה - לאיסוף תקופות רציפות אחורה
+function collectBackwardConsecutivePeriods(periods, startIndex) {
+    const collected = [];
+    
+    // חוזרים אחורה מהאינדקס שניתן
+    for (let i = startIndex - 1; i >= 0; i--) {
+        const currentPeriod = periods[i];
+        const nextPeriod = periods[i + 1];
+        
+        // בודקים אם רציף לתקופה הבאה
+        if (isPeriodsConsecutive(currentPeriod, nextPeriod)) {
+            collected.unshift(currentPeriod); // מוסיפים בהתחלה
+        } else {
+            break; // נתקלנו בפער - עוצרים
+        }
+    }
+    
+    return collected;
+}
+
 function calculateEmergency40Supplement(calculationResults) {
     console.log('🔥 מתחיל חישוב תוספת 40% לשירות חירום...');
     
@@ -5629,6 +5649,15 @@ function calculateEmergency40Supplement(calculationResults) {
                     currentBlock = [];
                 }
                 
+                // ⭐ חדש: אם זו תחילת מקבץ חירום חדש, אסוף תקופות רציפות אחורה
+                if (isEmergencyService && currentBlock.length === 0) {
+                    const backwardPeriods = collectBackwardConsecutivePeriods(periods, i);
+                    if (backwardPeriods.length > 0) {
+                        console.log(`📍 נמצאו ${backwardPeriods.length} תקופות רציפות אחורה לעובד ${employeeId}`);
+                        currentBlock.push(...backwardPeriods);
+                    }
+                }
+                
                 // התחלת בלוק חדש או המשך קיים
                 currentBlock.push(currentPeriod);
                 isInEmergencyBlock = true;
@@ -5652,7 +5681,6 @@ function calculateEmergency40Supplement(calculationResults) {
     console.log('✅ חישוב תוספת חירום הושלם:', supplementResults);
     return supplementResults;
 }
-
 function isPeriodsConsecutive(period1, period2) {
     // המרת תאריכים
     const endDate1 = new Date(period1.endDate);
