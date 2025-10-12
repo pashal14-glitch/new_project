@@ -1305,6 +1305,7 @@ class MiluimCalculatorCache {
     );
 
     return {
+        passportNum: originalMiluim ? originalMiluim.passportNum : null, // 👈 ✅ הוסיפי את השורה הזו!
         employeeId,
         startDate: serviceStartDate,
         basicValue: basicResult.dailyValue,
