@@ -752,7 +752,25 @@ td[onclick*="showGapDetails"]:hover {
                     </div>
                 </div>
             </div>
-
+<div class="upload-section">
+    <h2>📂 טעינת נתונים</h2>
+    
+    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+        <!-- הכפתור הקיים -->
+        <input type="file" id="fileInput" accept=".xlsx,.xls" 
+               onchange="loadExcelFile(this.files)" multiple>
+        
+        <!-- 🆕 כפתור חדש: נקה הכל -->
+        <button onclick="clearAllDataConfirm()" 
+                style="padding: 12px 30px; background: #f44336; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+            🗑️ נקה נתונים קיימים
+        </button>
+    </div>
+    
+    <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
+        💡 רוצה להתחיל מאפס? לחצי "נקה נתונים" לפני טעינת קובץ חדש
+    </p>
+</div>
             <div class="controls">
                 <button class="btn" id="calculateBtn" disabled>🧮 חשב מילואים</button>
                 <button class="btn" id="clearBtn">🗑️ נקה הכל</button>
