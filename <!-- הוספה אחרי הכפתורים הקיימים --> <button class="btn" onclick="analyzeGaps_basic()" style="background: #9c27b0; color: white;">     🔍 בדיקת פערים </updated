@@ -2154,6 +2154,14 @@ async function calculateMiluim(config = {}) {
 try {
     console.log('🔍 מפעיל ניתוח פערים אוטומטי...');
     const analysis = categorizeGaps();
+    
+    // 🆕 שמירת הפירוט המלא - מיד אחרי הניתוח!
+    saveGapDetailsToIndexedDB().then(() => {
+        console.log('💾 פירוט פערים נשמר בהצלחה');
+    }).catch(err => {
+        console.error('❌ שגיאה בשמירת פירוט:', err);
+    });
+    
     console.log('✅ ניתוח פערים הושלם:', {
         'סה״כ רשומות': analysis.totalRecords,
         'פערים שנמצאו': analysis.gapsFound,
