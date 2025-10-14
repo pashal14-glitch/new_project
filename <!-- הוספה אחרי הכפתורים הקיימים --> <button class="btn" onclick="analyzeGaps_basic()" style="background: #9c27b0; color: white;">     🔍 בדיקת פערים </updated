@@ -1062,6 +1062,211 @@ td[onclick*="showGapDetails"]:hover {
             }
         }
 /**
+ * משווה רשומה ישנה לרשומה חדשה ומחליט אם היא השתנתה
+ * @param {Object} oldSignature - החתימה הישנה מ-IndexedDB
+ * @param {Object} newResult - התוצאה החדשה מהחישוב
+ * @returns {Object} { changed: boolean, reason: string, oldValue: number, newValue: number }
+ */
+function detectRecordChange(oldSignature, newResult) {
+    const newPayment = (newResult.continuousValue || 0) * (newResult.miluimDays || 0);
+    const oldPayment = oldSignature.payment;
+    
+    // סף שינוי: אם ההבדל גדול מ-0.01 ₪ (אגורה)
+    const THRESHOLD = 0.01;
+    const paymentDiff = Math.abs(newPayment - oldPayment);
+    
+    if (paymentDiff > THRESHOLD) {
+        return {
+            changed: true,
+            reason: 'payment_changed',
+            oldValue: oldPayment,
+            newValue: newPayment,
+            diff: newPayment - oldPayment,
+            details: `תשלום השתנה מ-${oldPayment.toFixed(2)} ל-${newPayment.toFixed(2)} (${(paymentDiff).toFixed(2)} ₪)`
+        };
+    }
+    
+    // בדיקות נוספות (אופציונלי):
+    
+    // בדיקה: האם מספר ימי המילואים השתנה?
+    if (oldSignature.miluimDays !== newResult.miluimDays) {
+        return {
+            changed: true,
+            reason: 'days_changed',
+            oldValue: oldSignature.miluimDays,
+            newValue: newResult.miluimDays,
+            details: `ימי מילואים השתנו מ-${oldSignature.miluimDays} ל-${newResult.miluimDays}`
+        };
+    }
+    
+    // בדיקה: האם הערך הרציף השתנה?
+    if (Math.abs((oldSignature.continuousValue || 0) - (newResult.continuousValue || 0)) > THRESHOLD) {
+        return {
+            changed: true,
+            reason: 'continuous_value_changed',
+            oldValue: oldSignature.continuousValue,
+            newValue: newResult.continuousValue,
+            details: `ערך רציף השתנה מ-${oldSignature.continuousValue} ל-${newResult.continuousValue}`
+        };
+    }
+    
+    // בדיקה: האם תאריך הסיום השתנה?
+    const oldEndDate = new Date(oldSignature.endDate).getTime();
+    const newEndDate = new Date(newResult.endDate).getTime();
+    if (oldEndDate !== newEndDate) {
+        return {
+            changed: true,
+            reason: 'end_date_changed',
+            oldValue: oldSignature.endDate,
+            newValue: newResult.endDate,
+            details: `תאריך סיום השתנה`
+        };
+    }
+    
+    // לא השתנה דבר
+    return {
+        changed: false,
+        reason: 'identical',
+        details: 'הרשומה זהה לגמרי'
+    };
+}
+/**
+ * מבצעת מיזוג חכם בין נתונים ישנים לחדשים
+ * @param {Object} oldData - הנתונים הישנים מ-IndexedDB
+ * @param {Array} newCalculationResults - התוצאות החדשות
+ * @returns {Object} סטטיסטיקות המיזוג
+ */
+async function smartMerge(oldData, newCalculationResults) {
+    console.log('🔄 מתחיל מיזוג חכם...');
+    
+    const oldStatuses = oldData.gapStatuses || {};
+    const oldSignatures = oldData.recordSignatures || {};
+    
+    // מבני נתונים לאיסוף סטטיסטיקות
+    const stats = {
+        preserved: 0,      // סטטוסים שנשמרו ללא שינוי
+        reset: 0,          // סטטוסים שאופסו בגלל שינוי
+        newRecords: 0,     // רשומות חדשות לגמרי
+        deleted: 0         // רשומות שנעלמו
+    };
+    
+    const changeLog = {
+        preserved: [],     // רשימת רשומות ששומרו
+        reset: [],         // רשימת רשומות שאופסו + סיבה
+        newRecords: [],    // רשימת רשומות חדשות
+        deleted: []        // רשימת רשומות שנמחקו
+    };
+    
+    // 🔄 שלב 1: עבור על כל התוצאות החדשות
+    gapStatuses = {}; // איפוס גלובלי
+    
+    for (const newResult of newCalculationResults) {
+        const key = createGapKey(newResult.employeeId, newResult.startDate);
+        
+        // בדיקה: האם המפתח הזה היה בקובץ הישן?
+        if (oldSignatures[key]) {
+            // 🔍 הרשומה קיימת - בדוק האם השתנתה
+            const changeDetection = detectRecordChange(oldSignatures[key], newResult);
+            
+            if (changeDetection.changed) {
+                // ❌ הרשומה השתנתה → איפוס סטטוס
+                gapStatuses[key] = 'unchecked';
+                stats.reset++;
+                
+                changeLog.reset.push({
+                    key: key,
+                    employeeId: newResult.employeeId,
+                    startDate: newResult.startDate,
+                    endDate: newResult.endDate,
+                    oldStatus: oldStatuses[key] || 'unchecked',
+                    changeReason: changeDetection.reason,
+                    changeDetails: changeDetection.details,
+                    oldValue: changeDetection.oldValue,
+                    newValue: changeDetection.newValue,
+                    diff: changeDetection.diff
+                });
+                
+                console.log(`⚠️  איפוס: ${key} - ${changeDetection.details}`);
+            } else {
+                // ✅ הרשומה זהה → שמור סטטוס
+                gapStatuses[key] = oldStatuses[key] || 'unchecked';
+                stats.preserved++;
+                
+                changeLog.preserved.push({
+                    key: key,
+                    employeeId: newResult.employeeId,
+                    startDate: newResult.startDate,
+                    status: gapStatuses[key]
+                });
+                
+                console.log(`✅ נשמר: ${key} - סטטוס: ${gapStatuses[key]}`);
+            }
+        } else {
+            // 🆕 מפתח חדש - לא היה בקובץ הישן
+            gapStatuses[key] = 'unchecked';
+            stats.newRecords++;
+            
+            changeLog.newRecords.push({
+                key: key,
+                employeeId: newResult.employeeId,
+                startDate: newResult.startDate,
+                endDate: newResult.endDate
+            });
+            
+            console.log(`🆕 חדש: ${key}`);
+        }
+    }
+    
+    // 🗑️ שלב 2: מצא רשומות שנמחקו (היו בישן, אין בחדש)
+    const newKeys = new Set(
+        newCalculationResults.map(r => createGapKey(r.employeeId, r.startDate))
+    );
+    
+    Object.keys(oldSignatures).forEach(oldKey => {
+        if (!newKeys.has(oldKey)) {
+            stats.deleted++;
+            
+            // חלץ מידע מהמפתח (format: "employeeId_startDate")
+            const [employeeId, startDate] = oldKey.split('_');
+            
+            changeLog.deleted.push({
+                key: oldKey,
+                employeeId: employeeId,
+                startDate: startDate,
+                oldStatus: oldStatuses[oldKey] || 'unchecked',
+                oldPayment: oldSignatures[oldKey].payment
+            });
+            
+            console.log(`🗑️ נמחק: ${oldKey} (לא קיים בקובץ החדש)`);
+        }
+    });
+    
+    // 📊 שלב 3: הצג דוח מפורט בקונסול
+    console.log(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           🔄 דוח מיזוג נתונים
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 סטטיסטיקות כלליות:
+   ✅ נשמרו (ללא שינוי):    ${stats.preserved} רשומות
+   ⚠️  אופסו (שינוי נתונים):  ${stats.reset} רשומות
+   🆕 נוספו (חדשות):         ${stats.newRecords} רשומות
+   🗑️ נמחקו (לא בקובץ חדש): ${stats.deleted} רשומות
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 קובץ ישן:  ${oldData.totalRecords} רשומות
+📁 קובץ חדש: ${newCalculationResults.length} רשומות
+💾 סטטוסים:  ${Object.keys(gapStatuses).length} פעילים
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    `);
+    
+    // 🎨 שלב 4: שמור הכל
+    await saveToIndexedDB(newCalculationResults);
+    await saveGapStatusesToIndexedDB();
+    
+    return { stats, changeLog };
+}
+/**
  * מנקה את כל הנתונים השמורים ומאפסת את המערכת
  */
 async function clearAllDataConfirm() {
