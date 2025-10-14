@@ -1267,6 +1267,78 @@ async function smartMerge(oldData, newCalculationResults) {
     return { stats, changeLog };
 }
 /**
+ * מציג דיאלוג מתקדם למשתמש
+ * @param {Object} oldData - הנתונים הישנים
+ * @returns {Promise<string>} 'merge' | 'fresh' | 'cancel'
+ */
+function showMergeDialog(oldData) {
+    return new Promise((resolve) => {
+        const statusCount = Object.keys(oldData.gapStatuses || {}).length;
+        const completedCount = Object.values(oldData.gapStatuses || {})
+            .filter(s => s === 'completed').length;
+        const reviewingCount = Object.values(oldData.gapStatuses || {})
+            .filter(s => s === 'reviewing').length;
+        
+        const oldDate = new Date(oldData.timestamp).toLocaleString('he-IL');
+        
+        const dialogHTML = `
+        <div class="overlay" id="mergeDialogOverlay" style="display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 15px; padding: 30px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <h2 style="margin: 0 0 20px 0; color: #667eea;">🔄 זוהה קובץ חדש</h2>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 10px 0;">📊 הנתונים הקיימים:</h3>
+                    <ul style="list-style: none; padding: 0; margin: 10px 0;">
+                        <li>📁 ${oldData.totalRecords} רשומות מחושבות</li>
+                        <li>📅 עדכון אחרון: ${oldDate}</li>
+                        <li>💾 ${statusCount} סימונים שמורים:</li>
+                        <li style="margin-right: 20px;">✅ ${completedCount} טופלו</li>
+                        <li style="margin-right: 20px;">🟡 ${reviewingCount} בבדיקה</li>
+                        <li style="margin-right: 20px;">⚪ ${statusCount - completedCount - reviewingCount} לא נבדקו</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #4caf50;">
+                    <h3 style="margin: 0 0 10px 0;">✅ מיזוג חכם (מומלץ)</h3>
+                    <p style="margin: 5px 0; color: #555;">
+                        המערכת תשמור את הסימונים שלך ותאפס <strong>רק</strong> רשומות ששינו נתונים.
+                    </p>
+                    <button onclick="resolveMergeDialog('merge')" 
+                            style="width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                        🔄 המשך עם מיזוג חכם
+                    </button>
+                </div>
+                
+                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #ff9800;">
+                    <h3 style="margin: 0 0 10px 0;">🔄 התחל מאפס</h3>
+                    <p style="margin: 5px 0; color: #555;">
+                        כל הסימונים יימחקו ותצטרכי לבדוק הכל מחדש.
+                    </p>
+                    <button onclick="resolveMergeDialog('fresh')" 
+                            style="width: 100%; padding: 15px; background: #ff9800; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                        🗑️ מחק הכל והתחל מחדש
+                    </button>
+                </div>
+                
+                <button onclick="resolveMergeDialog('cancel')" 
+                        style="width: 100%; padding: 10px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', dialogHTML);
+        
+        // הוספת פונקציה גלובלית לסגירה
+        window.resolveMergeDialog = (choice) => {
+            document.getElementById('mergeDialogOverlay').remove();
+            delete window.resolveMergeDialog;
+            resolve(choice);
+        };
+    });
+}
+/**
  * מנקה את כל הנתונים השמורים ומאפסת את המערכת
  */
 async function clearAllDataConfirm() {
@@ -2348,7 +2420,7 @@ function calculateMiluimForEmployeeWithCache(employeeId) {
             });
         }
         
-  // 🚀 פונקציה מתוקנת ומושלמת לחישוב מילואים
+ // 🚀 פונקציה מתוקנת ומושלמת לחישוב מילואים - עם מיזוג חכם
 async function calculateMiluim(config = {}) {
     const {
         employeeIds = null,        // מערך עובדים ספציפיים או null לכולם
@@ -2359,6 +2431,51 @@ async function calculateMiluim(config = {}) {
         autoDisplayResults = true, // הצגה אוטומטית של תוצאות
         returnResults = false     // החזרת תוצאות במקום הצגה
     } = config;
+
+    // 🆕🆕🆕 תוספת: בדיקה והצעת מיזוג 🆕🆕🆕
+    // ============================================
+    console.log('🔍 בודק נתונים ישנים...');
+    
+    const oldData = await loadFromIndexedDB();
+    
+    console.log('📦 נתונים ישנים:', oldData);
+    
+    if (oldData && 
+        oldData.totalRecords > 0 && 
+        Object.keys(oldData.gapStatuses || {}).length > 0) {
+        
+        console.log('📊 נמצאו נתונים ישנים:', {
+            records: oldData.totalRecords,
+            statuses: Object.keys(oldData.gapStatuses).length,
+            timestamp: oldData.timestamp
+        });
+        
+        const userChoice = await showMergeDialog(oldData);
+        
+        console.log('👤 בחירת משתמש:', userChoice);
+        
+        if (userChoice === 'cancel') {
+            console.log('👤 משתמש ביטל את הפעולה');
+            return;
+        }
+        
+        if (userChoice === 'fresh') {
+            console.log('👤 משתמש בחר: התחלה מאפס');
+            gapStatuses = {};
+        } else if (userChoice === 'merge') {
+            console.log('👤 משתמש בחר: מיזוג עם שמירת סטטוסים');
+        }
+        
+        window.userMergeChoice = userChoice;
+        window.oldDataForMerge = oldData;
+    } else {
+        console.log('ℹ️  אין נתונים ישנים - טעינה רגילה');
+        gapStatuses = {};
+        window.userMergeChoice = null;
+        window.oldDataForMerge = null;
+    }
+    // ============================================
+    // 🆕🆕🆕 סוף תוספת 🆕🆕🆕
 
     // === 1. הכנה ובדיקות ===
     calculationResults = [];
@@ -2439,27 +2556,28 @@ async function calculateMiluim(config = {}) {
                     itemsPerPage: calculationResults.length > 100 ? 50 : null 
                 });
             }
-       // 🆕 ניתוח פערים אוטומטי ברקע
-try {
-    console.log('🔍 מפעיל ניתוח פערים אוטומטי...');
-    const analysis = categorizeGaps();
-    
-    // 🆕 שמירת הפירוט המלא - מיד אחרי הניתוח!
-    saveGapDetailsToIndexedDB().then(() => {
-        console.log('💾 פירוט פערים נשמר בהצלחה');
-    }).catch(err => {
-        console.error('❌ שגיאה בשמירת פירוט:', err);
-    });
-    
-    console.log('✅ ניתוח פערים הושלם:', {
-        'סה״כ רשומות': analysis.totalRecords,
-        'פערים שנמצאו': analysis.gapsFound,
-        'ללא פערים': analysis.noGaps,
-        'נתונים נשמרו': Object.keys(gapStatusData).length
-    });
-} catch (error) {
-    console.error('❌ שגיאה בניתוח פערים אוטומטי:', error);
-}
+            
+            // ניתוח פערים אוטומטי ברקע
+            try {
+                console.log('🔍 מפעיל ניתוח פערים אוטומטי...');
+                const analysis = categorizeGaps();
+                
+                // שמירת הפירוט המלא - מיד אחרי הניתוח!
+                saveGapDetailsToIndexedDB().then(() => {
+                    console.log('💾 פירוט פערים נשמר בהצלחה');
+                }).catch(err => {
+                    console.error('❌ שגיאה בשמירת פירוט:', err);
+                });
+                
+                console.log('✅ ניתוח פערים הושלם:', {
+                    'סה״כ רשומות': analysis.totalRecords,
+                    'פערים שנמצאו': analysis.gapsFound,
+                    'ללא פערים': analysis.noGaps,
+                    'נתונים נשמרו': Object.keys(gapStatusData).length
+                });
+            } catch (error) {
+                console.error('❌ שגיאה בניתוח פערים אוטומטי:', error);
+            }
 
             // עדכון סטטיסטיקות וייצוא
             updateSummaryStats();
@@ -2475,32 +2593,47 @@ try {
 
         console.log(`✅ הושלם! ${calculationResults.length} תוצאות`);
        
-        // ==================== שמירה אוטומטית - START ====================
-        // שמירה אוטומטית ל-IndexedDB
+        // 🆕🆕🆕 תוספת: מיזוג או שמירה רגילה 🆕🆕🆕
+        // ============================================
         (async () => {
             try {
-                const saved = await saveToIndexedDB(calculationResults);
-                if (saved) {
-                    console.log('💾 הנתונים נשמרו אוטומטית ב-IndexedDB');
+                if (window.userMergeChoice === 'merge' && window.oldDataForMerge) {
+                    // המשתמש בחר מיזוג - בצע מיזוג חכם
+                    console.log('🔄 מבצע מיזוג חכם...');
+                    const mergeResult = await smartMerge(window.oldDataForMerge, calculationResults);
                     
-                    // הצגת הודעה קטנה למשתמש (אופציונלי)
-                    const saveNotification = document.createElement('div');
-                    saveNotification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #27ae60; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; font-size: 14px;';
-                    saveNotification.innerHTML = '💾 נתונים נשמרו בזיכרון';
-                    document.body.appendChild(saveNotification);
+                    // הצג דוח מיזוג
+                    showMergeReport(mergeResult.stats, mergeResult.changeLog);
                     
-                    // הסרת ההודעה אחרי 3 שניות
-                    setTimeout(() => {
-                        saveNotification.style.opacity = '0';
-                        saveNotification.style.transition = 'opacity 0.5s';
-                        setTimeout(() => saveNotification.remove(), 500);
-                    }, 3000);
+                    // נקה משתנים זמניים
+                    delete window.userMergeChoice;
+                    delete window.oldDataForMerge;
+                } else {
+                    // שמירה רגילה (לא מיזוג)
+                    const saved = await saveToIndexedDB(calculationResults);
+                    if (saved) {
+                        console.log('💾 הנתונים נשמרו אוטומטית ב-IndexedDB');
+                        
+                        // הצגת הודעה קטנה למשתמש
+                        const saveNotification = document.createElement('div');
+                        saveNotification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #27ae60; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; font-size: 14px;';
+                        saveNotification.innerHTML = '💾 נתונים נשמרו בזיכרון';
+                        document.body.appendChild(saveNotification);
+                        
+                        // הסרת ההודעה אחרי 3 שניות
+                        setTimeout(() => {
+                            saveNotification.style.opacity = '0';
+                            saveNotification.style.transition = 'opacity 0.5s';
+                            setTimeout(() => saveNotification.remove(), 500);
+                        }, 3000);
+                    }
                 }
             } catch (error) {
-                console.error('❌ שגיאה בשמירה אוטומטית:', error);
+                console.error('❌ שגיאה בשמירה:', error);
             }
         })();
-        // ==================== שמירה אוטומטית - END ====================
+        // ============================================
+        // 🆕🆕🆕 סוף תוספת 🆕🆕🆕
         
         if (returnResults) return calculationResults;
     };
@@ -2560,10 +2693,10 @@ try {
                 await new Promise(resolve => setTimeout(resolve, 30));
             }
             
-            // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
+            // ✅ חישוב עמודה O אחרי שכל הנתונים מוכנים
             calculateCompulsionContinuous();
             console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
-            propagateEmergencyCompulsion4405(); // 
+            propagateEmergencyCompulsion4405();
             console.log('ערכי כפיה חירום 4405 הופצו לאשכולות');
             
             // סיום חישוב עם Batches - הצגת תוצאות
@@ -2584,11 +2717,11 @@ try {
                     calculationResults.push(...results);
                 }
                 
-                // ✅ התיקון: חישוב עמודה O אחרי שכל הנתונים מוכנים
+                // ✅ חישוב עמודה O אחרי שכל הנתונים מוכנים
                 calculateCompulsionContinuous();
                 console.log('ערכי כפייה רציפה חושבו ונוספו לטבלה');
-            propagateEmergencyCompulsion4405(); // 
-            console.log('ערכי כפיה חירום 4405 הופצו לאשכולות');
+                propagateEmergencyCompulsion4405();
+                console.log('ערכי כפיה חירום 4405 הופצו לאשכולות');
                 
                 // הצגת תוצאות
                 processResults();
