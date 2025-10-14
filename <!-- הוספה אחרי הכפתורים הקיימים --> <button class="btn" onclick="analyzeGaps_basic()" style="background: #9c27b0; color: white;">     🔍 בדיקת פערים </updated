@@ -2664,9 +2664,10 @@ async function calculateMiluim(config = {}) {
     
     console.log('📦 נתונים ישנים:', oldData);
     
-    if (oldData && 
-        oldData.totalRecords > 0 && 
-        Object.keys(oldData.gapStatuses || {}).length > 0) {
+   // if (oldData && 
+   //     oldData.totalRecords > 0 && 
+   //     Object.keys(oldData.gapStatuses || {}).length > 0) {
+if (oldData && oldData.totalRecords > 0) {  // 👈 פשוט יותר!
         
         console.log('📊 נמצאו נתונים ישנים:', {
             records: oldData.totalRecords,
