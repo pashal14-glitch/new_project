@@ -977,32 +977,61 @@ td[onclick*="showGapDetails"]:hover {
     });
 }
 
-        // פונקציה 2: שמירת נתונים
-        async function saveToIndexedDB(data) {
-            try {
-                const db = await openDatabase();
-                const transaction = db.transaction([STORE_NAME], 'readwrite');
-                const store = transaction.objectStore(STORE_NAME);
-                
-                // מחיקת נתונים ישנים
-                await store.clear();
-                
-                // שמירת הנתונים החדשים
-                const saveData = {
-                    timestamp: new Date().toISOString(),
-                    results: data,
-                    totalRecords: data.length
+       async function saveToIndexedDB(data) {
+    try {
+        const db = await openDatabase();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        await store.clear();
+        
+        const saveData = {
+            timestamp: new Date().toISOString(),
+            results: data,
+            totalRecords: data.length,
+            
+            // 🆕 1. שמירת סטטוסי הפערים
+            gapStatuses: gapStatuses,
+            
+            // 🆕 2. מטא-דאטה לזיהוי מהיר
+            metadata: {
+                employeeCount: new Set(data.map(r => r.employeeId)).size,
+                totalPayment: data.reduce((sum, r) => 
+                    sum + ((r.continuousValue || 0) * (r.miluimDays || 0)), 0
+                ),
+                dateRange: {
+                    earliest: Math.min(...data.map(r => new Date(r.startDate).getTime())),
+                    latest: Math.max(...data.map(r => new Date(r.endDate).getTime()))
+                }
+            },
+            
+            // 🆕 3. "חתימה" של כל רשומה לזיהוי שינויים
+            recordSignatures: data.reduce((acc, r) => {
+                const key = createGapKey(r.employeeId, r.startDate);
+                acc[key] = {
+                    payment: (r.continuousValue || 0) * (r.miluimDays || 0),
+                    continuousValue: r.continuousValue,
+                    miluimDays: r.miluimDays,
+                    endDate: r.endDate
                 };
-                
-                await store.add(saveData);
-                
-                console.log('✅ נתונים נשמרו ב-IndexedDB:', data.length, 'רשומות');
-                return true;
-            } catch (error) {
-                console.error('❌ שגיאה בשמירה ל-IndexedDB:', error);
-                return false;
-            }
-        }
+                return acc;
+            }, {})
+        };
+        
+        await store.add(saveData);
+        
+        console.log('✅ נתונים נשמרו ב-IndexedDB:', {
+            records: data.length,
+            statuses: Object.keys(gapStatuses).length,
+            signatures: Object.keys(saveData.recordSignatures).length
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('❌ שגיאה בשמירה:', error);
+        return false;
+    }
+}
 
         // פונקציה 3: טעינת נתונים
         async function loadFromIndexedDB() {
