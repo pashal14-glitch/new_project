@@ -1032,7 +1032,61 @@ td[onclick*="showGapDetails"]:hover {
                 return null;
             }
         }
-
+/**
+ * מנקה את כל הנתונים השמורים ומאפסת את המערכת
+ */
+async function clearAllDataConfirm() {
+    const confirmed = confirm(
+        '⚠️ האם את בטוחה?\n\n' +
+        'פעולה זו תמחק:\n' +
+        '✗ את כל התוצאות המחושבות\n' +
+        '✗ את כל הסימונים שלך (✅🟡⚪)\n' +
+        '✗ את כל הנתונים השמורים\n\n' +
+        'לא ניתן לבטל פעולה זו!\n\n' +
+        'האם להמשיך?'
+    );
+    
+    if (!confirmed) {
+        console.log('👤 משתמש ביטל את הניקוי');
+        return;
+    }
+    
+    try {
+        // 1. נקה IndexedDB
+        const db = await openDatabase();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        await store.clear();
+        
+        // 2. נקה גם סטטוסי פערים
+        if (db.objectStoreNames.contains('gapStatuses')) {
+            const gapTransaction = db.transaction(['gapStatuses'], 'readwrite');
+            const gapStore = gapTransaction.objectStore('gapStatuses');
+            await gapStore.clear();
+        }
+        
+        // 3. אפס משתנים גלובליים
+        calculationResults = [];
+        gapStatuses = {};
+        miluimData = [];
+        salaryData = [];
+        attendanceData = [];
+        
+        // 4. נקה תצוגה
+        document.getElementById('resultsContainer').innerHTML = '';
+        document.getElementById('summaryStats').style.display = 'none';
+        document.getElementById('exportSection').style.display = 'none';
+        
+        // 5. הודעה למשתמש
+        alert('✅ כל הנתונים נוקו בהצלחה!\n\nכעת תוכלי לטעון קובץ חדש והמערכת תתחיל מאפס.');
+        
+        console.log('🗑️ כל הנתונים נוקו מהמערכת');
+        
+    } catch (error) {
+        console.error('❌ שגיאה בניקוי נתונים:', error);
+        alert('❌ שגיאה בניקוי נתונים. נסי שוב או רענני את הדף.');
+    }
+}
 // ==================== פונקציות ניהול סטטוס פערים - START ====================
         
         function createGapKey(employeeId, startDate) {
