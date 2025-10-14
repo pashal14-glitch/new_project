@@ -6138,9 +6138,6 @@ function getGapIcon(result) {
 }
 
 /**
- * מציגה חלון פופאפ עם פרטי הפער המלאים
- */
-/**
  * מציגה חלון מעוצב עם פרטי הפער המלאים
  */
 function showGapDetails(employeeId, startDate, endDate) {
@@ -6152,19 +6149,44 @@ function showGapDetails(employeeId, startDate, endDate) {
         return;
     }
     
-    // בניית חלון HTML מעוצב
-    const statusEmoji = gapData.statusIcon;
-    const statusText = 
-        gapData.status === 'fix' ? 'דורש תיקון מיידי' :
-        gapData.status === 'check' ? 'דורש בדיקה ידנית' :
-        gapData.status === 'ok' ? 'תקין' :
-        'למידע';
+    // 🆕 בדיקה: האם יש סימון ידני?
+    const period = `${formatDate(new Date(startDate))} - ${formatDate(new Date(endDate))}`;
+    const manualStatusKey = `${employeeId}_${period}`;
+    const manualStatus = gapStatuses[manualStatusKey];
     
-    const statusColor = 
-        gapData.status === 'fix' ? '#e74c3c' :
-        gapData.status === 'check' ? '#f39c12' :
-        gapData.status === 'ok' ? '#27ae60' :
-        '#3498db';
+    // 🆕 אם יש סימון ידני - השתמש בו! אחרת - השתמש בניתוח אוטומטי
+    let statusEmoji, statusText, statusColor;
+    
+    if (manualStatus && manualStatus !== 'unchecked') {
+        // שימוש בסטטוס הידני
+        if (manualStatus === 'completed') {
+            statusEmoji = '✅';
+            statusText = 'טופל';
+            statusColor = '#27ae60';
+        } else if (manualStatus === 'reviewing') {
+            statusEmoji = '🔄';
+            statusText = 'בבדיקה';
+            statusColor = '#f39c12';
+        } else {
+            statusEmoji = '⚪';
+            statusText = 'לא נבדק';
+            statusColor = '#95a5a6';
+        }
+    } else {
+        // שימוש בסטטוס אוטומטי
+        statusEmoji = gapData.statusIcon;
+        statusText = 
+            gapData.status === 'fix' ? 'דורש תיקון מיידי' :
+            gapData.status === 'check' ? 'דורש בדיקה ידנית' :
+            gapData.status === 'ok' ? 'תקין' :
+            'למידע';
+        
+        statusColor = 
+            gapData.status === 'fix' ? '#e74c3c' :
+            gapData.status === 'check' ? '#f39c12' :
+            gapData.status === 'ok' ? '#27ae60' :
+            '#3498db';
+    }
     
     // יצירת overlay
     const overlay = document.createElement('div');
@@ -6229,6 +6251,7 @@ function showGapDetails(employeeId, startDate, endDate) {
                     <div>
                         <div style="font-size: 0.9em; color: #666;">סטטוס</div>
                         <div style="font-size: 1.3em; font-weight: bold; color: ${statusColor};">${statusText}</div>
+                        ${manualStatus && manualStatus !== 'unchecked' ? '<div style="font-size: 0.8em; color: #999; margin-top: 4px;">✓ סומן ידנית</div>' : ''}
                     </div>
                 </div>
             </div>
@@ -6314,6 +6337,7 @@ function showGapDetails(employeeId, startDate, endDate) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 }
+
 </script>
 </body>
 </html>
