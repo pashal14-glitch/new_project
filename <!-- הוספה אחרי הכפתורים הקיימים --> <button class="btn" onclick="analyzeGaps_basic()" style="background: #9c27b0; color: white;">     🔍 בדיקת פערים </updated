@@ -1142,106 +1142,88 @@ async function smartMerge(oldData, newCalculationResults) {
     const oldStatuses = oldData.gapStatuses || {};
     const oldSignatures = oldData.recordSignatures || {};
     
-    // מבני נתונים לאיסוף סטטיסטיקות
+    // ✅ שלב את הסטטוסים מ-oldData עם הסטטוסים מ-IndexedDB
+    // זה משלב גם ISO וגם period!
+    const mergedStatuses = {
+        ...oldStatuses,      // סטטוסים מהקובץ הישן (ISO)
+        ...gapStatuses       // סטטוסים מ-IndexedDB (כולל period!)
+    };
+    
+    // איפוס עם כל הסטטוסים הקיימים
+    gapStatuses = {...mergedStatuses};
+    
+    console.log('✅ שולבו סטטוסים:', Object.keys(gapStatuses).length);
+    console.log('📋 דוגמה למפתחות:', Object.keys(gapStatuses).slice(0, 5));
+    
+    // המשך המיזוג כרגיל...
     const stats = {
-        preserved: 0,      // סטטוסים שנשמרו ללא שינוי
-        reset: 0,          // סטטוסים שאופסו בגלל שינוי
-        newRecords: 0,     // רשומות חדשות לגמרי
-        deleted: 0         // רשומות שנעלמו
+        preserved: 0,
+        reset: 0,
+        newRecords: 0,
+        deleted: 0
     };
     
-    const changeLog = {
-        preserved: [],     // רשימת רשומות ששומרו
-        reset: [],         // רשימת רשומות שאופסו + סיבה
-        newRecords: [],    // רשימת רשומות חדשות
-        deleted: []        // רשימת רשומות שנמחקו
-    };
-    
-    // 🔄 שלב 1: עבור על כל התוצאות החדשות
-    gapStatuses = {}; // איפוס גלובלי
+    const changeLog = [];
     
     for (const newResult of newCalculationResults) {
         const key = createGapKey(newResult.employeeId, newResult.startDate);
+        const period = `${formatDate(newResult.startDate)} - ${formatDate(newResult.endDate)}`;
+        const periodKey = `${newResult.employeeId}_${period}`;
         
-        // בדיקה: האם המפתח הזה היה בקובץ הישן?
         if (oldSignatures[key]) {
-            // 🔍 הרשומה קיימת - בדוק האם השתנתה
             const changeDetection = detectRecordChange(oldSignatures[key], newResult);
             
             if (changeDetection.changed) {
-                // ❌ הרשומה השתנתה → איפוס סטטוס
                 gapStatuses[key] = 'unchecked';
+                // אם היה סטטוס period, אפס גם אותו
+                if (mergedStatuses[periodKey]) {
+                    gapStatuses[periodKey] = 'unchecked';
+                    console.log(`⚠️ אופס period: ${periodKey}`);
+                }
                 stats.reset++;
-                
-                changeLog.reset.push({
-                    key: key,
+                changeLog.push({
+                    type: 'reset',
                     employeeId: newResult.employeeId,
-                    startDate: newResult.startDate,
-                    endDate: newResult.endDate,
-                    oldStatus: oldStatuses[key] || 'unchecked',
-                    changeReason: changeDetection.reason,
-                    changeDetails: changeDetection.details,
-                    oldValue: changeDetection.oldValue,
-                    newValue: changeDetection.newValue,
-                    diff: changeDetection.diff
+                    period: period,
+                    reason: changeDetection.reason
                 });
-                
-                console.log(`⚠️  איפוס: ${key} - ${changeDetection.details}`);
             } else {
-                // ✅ הרשומה זהה → שמור סטטוס
-                gapStatuses[key] = oldStatuses[key] || 'unchecked';
+                // רשומה זהה - שמור סטטוסים (גם ISO וגם period)
+                gapStatuses[key] = mergedStatuses[key] || 'unchecked';
+                if (mergedStatuses[periodKey]) {
+                    gapStatuses[periodKey] = mergedStatuses[periodKey];
+                    console.log(`✅ נשמר period: ${periodKey} = ${mergedStatuses[periodKey]}`);
+                }
                 stats.preserved++;
-                
-                changeLog.preserved.push({
-                    key: key,
+                changeLog.push({
+                    type: 'preserved',
                     employeeId: newResult.employeeId,
-                    startDate: newResult.startDate,
-                    status: gapStatuses[key]
+                    period: period
                 });
-                
-                console.log(`✅ נשמר: ${key} - סטטוס: ${gapStatuses[key]}`);
             }
         } else {
-            // 🆕 מפתח חדש - לא היה בקובץ הישן
+            // רשומה חדשה
             gapStatuses[key] = 'unchecked';
             stats.newRecords++;
-            
-            changeLog.newRecords.push({
-                key: key,
+            changeLog.push({
+                type: 'new',
                 employeeId: newResult.employeeId,
-                startDate: newResult.startDate,
-                endDate: newResult.endDate
+                period: period
             });
-            
-            console.log(`🆕 חדש: ${key}`);
         }
     }
     
-    // 🗑️ שלב 2: מצא רשומות שנמחקו (היו בישן, אין בחדש)
-    const newKeys = new Set(
-        newCalculationResults.map(r => createGapKey(r.employeeId, r.startDate))
-    );
-    
-    Object.keys(oldSignatures).forEach(oldKey => {
-        if (!newKeys.has(oldKey)) {
+    // בדיקת רשומות שנמחקו
+    for (const oldKey of Object.keys(oldSignatures)) {
+        const exists = newCalculationResults.some(r => 
+            createGapKey(r.employeeId, r.startDate) === oldKey
+        );
+        if (!exists) {
+            delete gapStatuses[oldKey];
             stats.deleted++;
-            
-            // חלץ מידע מהמפתח (format: "employeeId_startDate")
-            const [employeeId, startDate] = oldKey.split('_');
-            
-            changeLog.deleted.push({
-                key: oldKey,
-                employeeId: employeeId,
-                startDate: startDate,
-                oldStatus: oldStatuses[oldKey] || 'unchecked',
-                oldPayment: oldSignatures[oldKey].payment
-            });
-            
-            console.log(`🗑️ נמחק: ${oldKey} (לא קיים בקובץ החדש)`);
         }
-    });
+    }
     
-    // 📊 שלב 3: הצג דוח מפורט בקונסול
     console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
            🔄 דוח מיזוג נתונים
@@ -1260,7 +1242,6 @@ async function smartMerge(oldData, newCalculationResults) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `);
     
-    // 🎨 שלב 4: שמור הכל
     await saveToIndexedDB(newCalculationResults);
     await saveGapStatusesToIndexedDB();
     
