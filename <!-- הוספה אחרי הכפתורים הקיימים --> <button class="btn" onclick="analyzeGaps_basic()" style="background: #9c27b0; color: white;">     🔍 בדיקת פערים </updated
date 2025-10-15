@@ -2988,9 +2988,9 @@ function loadExcelFile(files) {
     salaryData = [];
     attendanceData = [];
 // 🆕 איפוס סטטוסי פערים בטעינת קבצים חדשים
-    console.log('🔄 מאפס סטטוסי פערים - קבצים חדשים נטענו');
-    gapStatuses = {};
-    saveGapStatusesToIndexedDB();
+  //  console.log('🔄 מאפס סטטוסי פערים - קבצים חדשים נטענו');
+  //  gapStatuses = {};
+ //   saveGapStatusesToIndexedDB();
     
     // משתנים למעקב
     let processedFiles = 0;
