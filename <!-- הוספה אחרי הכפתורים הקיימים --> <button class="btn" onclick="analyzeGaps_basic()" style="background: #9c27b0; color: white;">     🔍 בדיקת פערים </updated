@@ -1312,6 +1312,7 @@ function showMergeReport(stats, changeLog) {
     if (!changeLog.reset) changeLog.reset = [];
     if (!changeLog.newRecords) changeLog.newRecords = [];
     if (!changeLog.deleted) changeLog.deleted = [];
+  window.lastMergeChangeLog = changeLog;
     let reportHTML = `
     <div class="overlay" id="mergeReportOverlay" style="display: flex;">
         <div style="background: white; border-radius: 15px; padding: 30px; max-width: 900px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
@@ -1509,10 +1510,16 @@ function showMergeReport(stats, changeLog) {
                         `⚠️ <strong>${stats.reset} רשומות דורשות בדיקה מחדש</strong> - הן מסומנות כעת כ"לא נבדק"` : 
                         '✅ כל הסימונים נשמרו בהצלחה!'}
                 </p>
-                <button onclick="closeMergeReport()" 
-                        style="padding: 15px 40px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
-                    ✅ המשך לעבודה
-                </button>
+               <div style="display: flex; gap: 15px; justify-content: center;">
+    <button onclick="exportMergeReport()" 
+            style="padding: 15px 30px; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+        📊 ייצא דוח לאקסל
+    </button>
+    <button onclick="closeMergeReport()" 
+            style="padding: 15px 30px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+        ✅ המשך לעבודה
+    </button>
+</div>
             </div>
         </div>
     </div>
@@ -1529,6 +1536,68 @@ function showMergeReport(stats, changeLog) {
         // הצג את התוצאות המעודכנות
         displayResults(calculationResults);
     };
+}
+function exportMergeReport() {
+    // קבל את ה-changeLog מה-window (נשמור אותו קודם)
+    const changeLog = window.lastMergeChangeLog;
+    
+    if (!changeLog) {
+        alert('אין נתוני מיזוג לייצוא');
+        return;
+    }
+    
+    const workbook = XLSX.utils.book_new();
+    
+    // גיליון 1: רשומות שאופסו
+    if (changeLog.reset && changeLog.reset.length > 0) {
+        const resetData = changeLog.reset.map(r => ({
+            'מספר עובד': r.employeeId,
+            'תאריך התחלה': new Date(r.startDate).toLocaleDateString('he-IL'),
+            'תאריך סיום': r.endDate ? new Date(r.endDate).toLocaleDateString('he-IL') : '',
+            'תשלום ישן (₪)': r.oldValue ? r.oldValue.toFixed(2) : '',
+            'תשלום חדש (₪)': r.newValue ? r.newValue.toFixed(2) : '',
+            'הפרש (₪)': r.diff ? r.diff.toFixed(2) : '',
+            'סיבה': r.reason || '',
+            'סטטוס ישן': r.oldStatus === 'completed' ? 'טופל' : 
+                         r.oldStatus === 'reviewing' ? 'בבדיקה' : 'לא נבדק'
+        }));
+        
+        const ws1 = XLSX.utils.json_to_sheet(resetData);
+        XLSX.utils.book_append_sheet(workbook, ws1, 'רשומות שאופסו');
+    }
+    
+    // גיליון 2: רשומות חדשות
+    if (changeLog.newRecords && changeLog.newRecords.length > 0) {
+        const newData = changeLog.newRecords.map(r => ({
+            'מספר עובד': r.employeeId,
+            'תאריך התחלה': new Date(r.startDate).toLocaleDateString('he-IL'),
+            'תאריך סיום': r.endDate ? new Date(r.endDate).toLocaleDateString('he-IL') : '',
+            'תקופה': r.period || ''
+        }));
+        
+        const ws2 = XLSX.utils.json_to_sheet(newData);
+        XLSX.utils.book_append_sheet(workbook, ws2, 'רשומות חדשות');
+    }
+    
+    // גיליון 3: רשומות שנמחקו
+    if (changeLog.deleted && changeLog.deleted.length > 0) {
+        const deletedData = changeLog.deleted.map(r => ({
+            'מספר עובד': r.employeeId,
+            'תאריך': r.startDate,
+            'תשלום (₪)': r.oldPayment ? r.oldPayment.toFixed(2) : '',
+            'סטטוס שהיה': r.oldStatus === 'completed' ? 'טופל' : 
+                          r.oldStatus === 'reviewing' ? 'בבדיקה' : 'לא נבדק'
+        }));
+        
+        const ws3 = XLSX.utils.json_to_sheet(deletedData);
+        XLSX.utils.book_append_sheet(workbook, ws3, 'רשומות שנמחקו');
+    }
+    
+    // ייצוא הקובץ
+    const fileName = `דוח_מיזוג_${new Date().toLocaleDateString('he-IL').replace(/\./g, '-')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log('✅ דוח מיזוג יוצא לאקסל:', fileName);
 }
 /**
  * מנקה את כל הנתונים השמורים ומאפסת את המערכת
