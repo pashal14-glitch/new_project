@@ -1123,10 +1123,9 @@ async function smartMerge(oldData, newCalculationResults) {
     const oldSignatures = oldData.recordSignatures || {};
     
     // ✅ שלב את הסטטוסים מ-oldData עם הסטטוסים מ-IndexedDB
-    // זה משלב גם ISO וגם period!
     const mergedStatuses = {
-        ...oldStatuses,      // סטטוסים מהקובץ הישן (ISO)
-        ...gapStatuses       // סטטוסים מ-IndexedDB (כולל period!)
+        ...oldStatuses,
+        ...gapStatuses
     };
     
     // איפוס עם כל הסטטוסים הקיימים
@@ -1135,7 +1134,7 @@ async function smartMerge(oldData, newCalculationResults) {
     console.log('✅ שולבו סטטוסים:', Object.keys(gapStatuses).length);
     console.log('📋 דוגמה למפתחות:', Object.keys(gapStatuses).slice(0, 5));
     
-    // המשך המיזוג כרגיל...
+    // סטטיסטיקות
     const stats = {
         preserved: 0,
         reset: 0,
@@ -1143,8 +1142,15 @@ async function smartMerge(oldData, newCalculationResults) {
         deleted: 0
     };
     
-    const changeLog = [];
-    
+    // 👇 הגדרת changeLog כאובייקט
+    const changeLog = {
+        reset: [],
+        newRecords: [],
+        deleted: [],
+        preserved: []
+    };
+
+    // לולאה על כל התוצאות החדשות
     for (const newResult of newCalculationResults) {
         const key = createGapKey(newResult.employeeId, newResult.startDate);
         const period = `${formatDate(newResult.startDate)} - ${formatDate(newResult.endDate)}`;
@@ -1154,29 +1160,35 @@ async function smartMerge(oldData, newCalculationResults) {
             const changeDetection = detectRecordChange(oldSignatures[key], newResult);
             
             if (changeDetection.changed) {
+                // רשומה השתנתה - איפוס
                 gapStatuses[key] = 'unchecked';
-                // אם היה סטטוס period, אפס גם אותו
                 if (mergedStatuses[periodKey]) {
                     gapStatuses[periodKey] = 'unchecked';
                     console.log(`⚠️ אופס period: ${periodKey}`);
                 }
                 stats.reset++;
-                changeLog.push({
-                    type: 'reset',
+                
+                changeLog.reset.push({
                     employeeId: newResult.employeeId,
+                    startDate: newResult.startDate,
+                    endDate: newResult.endDate,
                     period: period,
-                    reason: changeDetection.reason
+                    reason: changeDetection.reason,
+                    oldValue: changeDetection.oldValue,
+                    newValue: changeDetection.newValue,
+                    diff: (changeDetection.newValue || 0) - (changeDetection.oldValue || 0),
+                    oldStatus: oldStatuses[key] || 'unchecked'
                 });
             } else {
-                // רשומה זהה - שמור סטטוסים (גם ISO וגם period)
+                // רשומה זהה - שמור סטטוסים
                 gapStatuses[key] = mergedStatuses[key] || 'unchecked';
                 if (mergedStatuses[periodKey]) {
                     gapStatuses[periodKey] = mergedStatuses[periodKey];
                     console.log(`✅ נשמר period: ${periodKey} = ${mergedStatuses[periodKey]}`);
                 }
                 stats.preserved++;
-                changeLog.push({
-                    type: 'preserved',
+                
+                changeLog.preserved.push({
                     employeeId: newResult.employeeId,
                     period: period
                 });
@@ -1185,9 +1197,11 @@ async function smartMerge(oldData, newCalculationResults) {
             // רשומה חדשה
             gapStatuses[key] = 'unchecked';
             stats.newRecords++;
-            changeLog.push({
-                type: 'new',
+            
+            changeLog.newRecords.push({
                 employeeId: newResult.employeeId,
+                startDate: newResult.startDate,
+                endDate: newResult.endDate,
                 period: period
             });
         }
@@ -1199,8 +1213,16 @@ async function smartMerge(oldData, newCalculationResults) {
             createGapKey(r.employeeId, r.startDate) === oldKey
         );
         if (!exists) {
+            const oldSig = oldSignatures[oldKey];
             delete gapStatuses[oldKey];
             stats.deleted++;
+            
+            changeLog.deleted.push({
+                employeeId: oldSig.employeeId,
+                startDate: oldSig.startDate,
+                oldPayment: oldSig.paidAmount || 0,
+                oldStatus: oldStatuses[oldKey] || 'unchecked'
+            });
         }
     }
     
@@ -1226,6 +1248,78 @@ async function smartMerge(oldData, newCalculationResults) {
     await saveGapStatusesToIndexedDB();
     
     return { stats, changeLog };
+}
+/**
+ * מציג דיאלוג מתקדם למשתמש
+ * @param {Object} oldData - הנתונים הישנים
+ * @returns {Promise<string>} 'merge' | 'fresh' | 'cancel'
+ */
+function showMergeDialog(oldData) {
+    return new Promise((resolve) => {
+        const statusCount = Object.keys(oldData.gapStatuses || {}).length;
+        const completedCount = Object.values(oldData.gapStatuses || {})
+            .filter(s => s === 'completed').length;
+        const reviewingCount = Object.values(oldData.gapStatuses || {})
+            .filter(s => s === 'reviewing').length;
+        
+        const oldDate = new Date(oldData.timestamp).toLocaleString('he-IL');
+        
+        const dialogHTML = `
+        <div class="overlay" id="mergeDialogOverlay" style="display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 15px; padding: 30px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <h2 style="margin: 0 0 20px 0; color: #667eea;">🔄 זוהה קובץ חדש</h2>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 10px 0;">📊 הנתונים הקיימים:</h3>
+                    <ul style="list-style: none; padding: 0; margin: 10px 0;">
+                        <li>📁 ${oldData.totalRecords} רשומות מחושבות</li>
+                        <li>📅 עדכון אחרון: ${oldDate}</li>
+                        <li>💾 ${statusCount} סימונים שמורים:</li>
+                        <li style="margin-right: 20px;">✅ ${completedCount} טופלו</li>
+                        <li style="margin-right: 20px;">🟡 ${reviewingCount} בבדיקה</li>
+                        <li style="margin-right: 20px;">⚪ ${statusCount - completedCount - reviewingCount} לא נבדקו</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #4caf50;">
+                    <h3 style="margin: 0 0 10px 0;">✅ מיזוג חכם (מומלץ)</h3>
+                    <p style="margin: 5px 0; color: #555;">
+                        המערכת תשמור את הסימונים שלך ותאפס <strong>רק</strong> רשומות ששינו נתונים.
+                    </p>
+                    <button onclick="resolveMergeDialog('merge')" 
+                            style="width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                        🔄 המשך עם מיזוג חכם
+                    </button>
+                </div>
+                
+                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #ff9800;">
+                    <h3 style="margin: 0 0 10px 0;">🔄 התחל מאפס</h3>
+                    <p style="margin: 5px 0; color: #555;">
+                        כל הסימונים יימחקו ותצטרכי לבדוק הכל מחדש.
+                    </p>
+                    <button onclick="resolveMergeDialog('fresh')" 
+                            style="width: 100%; padding: 15px; background: #ff9800; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                        🗑️ מחק הכל והתחל מחדש
+                    </button>
+                </div>
+                
+                <button onclick="resolveMergeDialog('cancel')" 
+                        style="width: 100%; padding: 10px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', dialogHTML);
+        
+        // הוספת פונקציה גלובלית לסגירה
+        window.resolveMergeDialog = (choice) => {
+            document.getElementById('mergeDialogOverlay').remove();
+            delete window.resolveMergeDialog;
+            resolve(choice);
+        };
+    });
 }
 /**
  * מציג דיאלוג מתקדם למשתמש
@@ -1377,11 +1471,11 @@ function showMergeReport(stats, changeLog) {
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 10px;">${record.employeeId}</td>
                     <td style="padding: 10px;">${new Date(record.startDate).toLocaleDateString('he-IL')}</td>
-                    <td style="padding: 10px;">${record.oldValue.toFixed(2)} ₪</td>
-                    <td style="padding: 10px;">${record.newValue.toFixed(2)} ₪</td>
-                    <td style="padding: 10px; color: ${diffColor}; font-weight: bold;">
-                        ${diffSign}${record.diff.toFixed(2)} ₪
-                    </td>
+                  <td style="padding: 10px;">${record.oldValue ? record.oldValue.toFixed(2) + ' ₪' : '-'}</td>
+<td style="padding: 10px;">${record.newValue ? record.newValue.toFixed(2) + ' ₪' : '-'}</td>
+<td style="padding: 10px; color: ${diffColor}; font-weight: bold;">
+    ${record.diff ? diffSign + record.diff.toFixed(2) + ' ₪' : '-'}
+</td>
                     <td style="padding: 10px;">${oldStatusText}</td>
                 </tr>
             `;
@@ -1527,15 +1621,18 @@ function showMergeReport(stats, changeLog) {
     
     document.body.insertAdjacentHTML('beforeend', reportHTML);
     
-    // הוספת פונקציה גלובלית לסגירה
-    window.closeMergeReport = () => {
-        const overlay = document.getElementById('mergeReportOverlay');
-        if (overlay) overlay.remove();
-        delete window.closeMergeReport;
-        
-        // הצג את התוצאות המעודכנות
-        displayResults(calculationResults);
-    };
+   window.closeMergeReport = async () => {
+    const overlay = document.getElementById('mergeReportOverlay');
+    if (overlay) overlay.remove();
+    delete window.closeMergeReport;
+    
+    // ✅ טען סטטוסים מחדש לפני הצגה!
+    await loadGapStatusesFromIndexedDB();
+    console.log('✅ סטטוסים נטענו אחרי סגירת דוח:', Object.keys(gapStatuses).length);
+    
+    // הצג תוצאות עם הסטטוסים המעודכנים
+   // displayResults(calculationResults);
+};
 }
 function exportMergeReport() {
     // קבל את ה-changeLog מה-window (נשמור אותו קודם)
@@ -2862,6 +2959,9 @@ if (oldData && oldData.totalRecords > 0) {  // 👈 פשוט יותר!
                 if (window.userMergeChoice === 'merge' && window.oldDataForMerge) {
                     // המשתמש בחר מיזוג - בצע מיזוג חכם
                     console.log('🔄 מבצע מיזוג חכם...');
+                    // ✅ טען סטטוסים מ-IndexedDB לפני המיזוג!
+    await loadGapStatusesFromIndexedDB();
+    console.log('✅ סטטוסים נטענו לפני מיזוג:', Object.keys(gapStatuses).length);
                     const mergeResult = await smartMerge(window.oldDataForMerge, calculationResults);
                     
                     // הצג דוח מיזוג
