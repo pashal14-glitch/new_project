@@ -1007,15 +1007,21 @@ td[onclick*="showGapDetails"]:hover {
             
             // 🆕 3. "חתימה" של כל רשומה לזיהוי שינויים
             recordSignatures: data.reduce((acc, r) => {
-                const key = createGapKey(r.employeeId, r.startDate);
-                acc[key] = {
-                    payment: (r.continuousValue || 0) * (r.miluimDays || 0),
-                    continuousValue: r.continuousValue,
-                    miluimDays: r.miluimDays,
-                    endDate: r.endDate
-                };
-                return acc;
-            }, {})
+    const key = createGapKey(r.employeeId, r.startDate);
+    acc[key] = {
+        employeeId: r.employeeId,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        days: r.days,
+        paidAmount: r.paidAmount,
+        compulsion: r.compulsion,
+        crossMonth: r.crossMonth,
+        emergencyCompulsion4405: r.emergencyCompulsion4405,
+        emergency40percentage: r.emergency40percentage,
+        passportNum: r.passportNum
+    };
+    return acc;
+}, {})
         };
         
         await store.add(saveData);
@@ -1068,67 +1074,41 @@ td[onclick*="showGapDetails"]:hover {
  * @returns {Object} { changed: boolean, reason: string, oldValue: number, newValue: number }
  */
 function detectRecordChange(oldSignature, newResult) {
-    const newPayment = (newResult.continuousValue || 0) * (newResult.miluimDays || 0);
-    const oldPayment = oldSignature.payment;
-    
-    // סף שינוי: אם ההבדל גדול מ-0.01 ₪ (אגורה)
     const THRESHOLD = 0.01;
-    const paymentDiff = Math.abs(newPayment - oldPayment);
     
-    if (paymentDiff > THRESHOLD) {
-        return {
-            changed: true,
-            reason: 'payment_changed',
-            oldValue: oldPayment,
-            newValue: newPayment,
-            diff: newPayment - oldPayment,
-            details: `תשלום השתנה מ-${oldPayment.toFixed(2)} ל-${newPayment.toFixed(2)} (${(paymentDiff).toFixed(2)} ₪)`
-        };
+    if (oldSignature.startDate !== newResult.startDate) {
+        return { changed: true, reason: 'start_date_changed' };
     }
     
-    // בדיקות נוספות (אופציונלי):
-    
-    // בדיקה: האם מספר ימי המילואים השתנה?
-    if (oldSignature.miluimDays !== newResult.miluimDays) {
-        return {
-            changed: true,
-            reason: 'days_changed',
-            oldValue: oldSignature.miluimDays,
-            newValue: newResult.miluimDays,
-            details: `ימי מילואים השתנו מ-${oldSignature.miluimDays} ל-${newResult.miluimDays}`
-        };
+    if (oldSignature.endDate !== newResult.endDate) {
+        return { changed: true, reason: 'end_date_changed' };
     }
     
-    // בדיקה: האם הערך הרציף השתנה?
-    if (Math.abs((oldSignature.continuousValue || 0) - (newResult.continuousValue || 0)) > THRESHOLD) {
-        return {
-            changed: true,
-            reason: 'continuous_value_changed',
-            oldValue: oldSignature.continuousValue,
-            newValue: newResult.continuousValue,
-            details: `ערך רציף השתנה מ-${oldSignature.continuousValue} ל-${newResult.continuousValue}`
-        };
+    if (Math.abs((oldSignature.paidAmount || 0) - (newResult.paidAmount || 0)) > THRESHOLD) {
+        return { changed: true, reason: 'paid_amount_changed' };
     }
     
-    // בדיקה: האם תאריך הסיום השתנה?
-    const oldEndDate = new Date(oldSignature.endDate).getTime();
-    const newEndDate = new Date(newResult.endDate).getTime();
-    if (oldEndDate !== newEndDate) {
-        return {
-            changed: true,
-            reason: 'end_date_changed',
-            oldValue: oldSignature.endDate,
-            newValue: newResult.endDate,
-            details: `תאריך סיום השתנה`
-        };
+    if (Math.abs((oldSignature.compulsion || 0) - (newResult.compulsion || 0)) > THRESHOLD) {
+        return { changed: true, reason: 'compulsion_changed' };
     }
     
-    // לא השתנה דבר
-    return {
-        changed: false,
-        reason: 'identical',
-        details: 'הרשומה זהה לגמרי'
-    };
+    if ((oldSignature.crossMonth || 0) !== (newResult.crossMonth || 0)) {
+        return { changed: true, reason: 'cross_month_changed' };
+    }
+    
+    if (Math.abs((oldSignature.emergencyCompulsion4405 || 0) - (newResult.emergencyCompulsion4405 || 0)) > THRESHOLD) {
+        return { changed: true, reason: 'emergency_compulsion_changed' };
+    }
+    
+    if (Math.abs((oldSignature.emergency40percentage || 0) - (newResult.emergency40percentage || 0)) > THRESHOLD) {
+        return { changed: true, reason: 'emergency_40_percentage_changed' };
+    }
+    
+    if ((oldSignature.passportNum || '') !== (newResult.passportNum || '')) {
+        return { changed: true, reason: 'passport_num_changed' };
+    }
+    
+    return { changed: false, reason: 'identical' };
 }
 /**
  * מבצעת מיזוג חכם בין נתונים ישנים לחדשים
@@ -1325,6 +1305,13 @@ function showMergeDialog(oldData) {
  * @param {Object} changeLog - יומן שינויים
  */
 function showMergeReport(stats, changeLog) {
+ // בדיקת קיום changeLog ואיתחול במידת הצורך
+    if (!changeLog) {
+        changeLog = { reset: [], newRecords: [], deleted: [] };
+    }
+    if (!changeLog.reset) changeLog.reset = [];
+    if (!changeLog.newRecords) changeLog.newRecords = [];
+    if (!changeLog.deleted) changeLog.deleted = [];
     let reportHTML = `
     <div class="overlay" id="mergeReportOverlay" style="display: flex;">
         <div style="background: white; border-radius: 15px; padding: 30px; max-width: 900px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
