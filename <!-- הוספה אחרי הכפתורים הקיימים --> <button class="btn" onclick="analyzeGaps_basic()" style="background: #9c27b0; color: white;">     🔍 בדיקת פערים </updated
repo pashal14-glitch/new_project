@@ -1074,41 +1074,102 @@ td[onclick*="showGapDetails"]:hover {
  * @returns {Object} { changed: boolean, reason: string, oldValue: number, newValue: number }
  */
 function detectRecordChange(oldSignature, newResult) {
-    const THRESHOLD = 0.01;
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 בודק שינויים עבור עובד:', newResult.employeeId);
+    console.log('📅 תקופה:', formatDate(newResult.startDate), '-', formatDate(newResult.endDate));
     
-    if (oldSignature.startDate !== newResult.startDate) {
-        return { changed: true, reason: 'start_date_changed' };
+    console.log('\n📊 השוואת ערכים:');
+    console.log('┌─────────────────┬─────────────┬─────────────┬──────────┐');
+    console.log('│ שדה            │ ישן         │ חדש         │ שונה?    │');
+    console.log('├─────────────────┼─────────────┼─────────────┼──────────┤');
+    
+    const changeDetection = {
+        changed: false,
+        reason: '',
+        oldValue: null,
+        newValue: null
+    };
+    
+    // בדיקת סכום ששולם
+    const oldPaid = oldSignature.paidAmount || 0;
+    const newPaid = newResult.paidAmount || 0;
+    const paidChanged = Math.abs(oldPaid - newPaid) > 0.01;
+    console.log(`│ סכום ששולם     │ ${oldPaid.toFixed(2).padEnd(11)} │ ${newPaid.toFixed(2).padEnd(11)} │ ${paidChanged ? '❌ כן' : '✅ לא'.padEnd(8)} │`);
+    
+    if (paidChanged) {
+        changeDetection.changed = true;
+        changeDetection.reason = 'שינוי בסכום ששולם';
+        changeDetection.oldValue = oldPaid;
+        changeDetection.newValue = newPaid;
     }
     
-    if (oldSignature.endDate !== newResult.endDate) {
-        return { changed: true, reason: 'end_date_changed' };
+    // בדיקת החזר
+    const oldRefund = oldSignature.refundAmount || 0;
+    const newRefund = newResult.refundAmount || 0;
+    const refundChanged = Math.abs(oldRefund - newRefund) > 0.01;
+    console.log(`│ החזר           │ ${oldRefund.toFixed(2).padEnd(11)} │ ${newRefund.toFixed(2).padEnd(11)} │ ${refundChanged ? '❌ כן' : '✅ לא'.padEnd(8)} │`);
+    
+    if (refundChanged && !changeDetection.changed) {
+        changeDetection.changed = true;
+        changeDetection.reason = 'שינוי בסכום החזר';
+        changeDetection.oldValue = oldRefund;
+        changeDetection.newValue = newRefund;
     }
     
-    if (Math.abs((oldSignature.paidAmount || 0) - (newResult.paidAmount || 0)) > THRESHOLD) {
-        return { changed: true, reason: 'paid_amount_changed' };
+    // בדיקת מאזן
+    const oldBalance = oldSignature.balance || 0;
+    const newBalance = newResult.balance || 0;
+    const balanceChanged = Math.abs(oldBalance - newBalance) > 0.01;
+    console.log(`│ מאזן           │ ${oldBalance.toFixed(2).padEnd(11)} │ ${newBalance.toFixed(2).padEnd(11)} │ ${balanceChanged ? '❌ כן' : '✅ לא'.padEnd(8)} │`);
+    
+    if (balanceChanged && !changeDetection.changed) {
+        changeDetection.changed = true;
+        changeDetection.reason = 'שינוי במאזן';
+        changeDetection.oldValue = oldBalance;
+        changeDetection.newValue = newBalance;
     }
     
-    if (Math.abs((oldSignature.compulsion || 0) - (newResult.compulsion || 0)) > THRESHOLD) {
-        return { changed: true, reason: 'compulsion_changed' };
+    // בדיקת תאריך התחלה
+    const oldStart = new Date(oldSignature.startDate).getTime();
+    const newStart = new Date(newResult.startDate).getTime();
+    const startChanged = oldStart !== newStart;
+    console.log(`│ תאריך התחלה    │ ${formatDate(new Date(oldSignature.startDate)).padEnd(11)} │ ${formatDate(newResult.startDate).padEnd(11)} │ ${startChanged ? '❌ כן' : '✅ לא'.padEnd(8)} │`);
+    
+    if (startChanged && !changeDetection.changed) {
+        changeDetection.changed = true;
+        changeDetection.reason = 'שינוי בתאריך התחלה';
+        changeDetection.oldValue = formatDate(new Date(oldSignature.startDate));
+        changeDetection.newValue = formatDate(newResult.startDate);
     }
     
-    if ((oldSignature.crossMonth || 0) !== (newResult.crossMonth || 0)) {
-        return { changed: true, reason: 'cross_month_changed' };
+    // בדיקת תאריך סיום
+    const oldEnd = new Date(oldSignature.endDate).getTime();
+    const newEnd = new Date(newResult.endDate).getTime();
+    const endChanged = oldEnd !== newEnd;
+    console.log(`│ תאריך סיום     │ ${formatDate(new Date(oldSignature.endDate)).padEnd(11)} │ ${formatDate(newResult.endDate).padEnd(11)} │ ${endChanged ? '❌ כן' : '✅ לא'.padEnd(8)} │`);
+    
+    if (endChanged && !changeDetection.changed) {
+        changeDetection.changed = true;
+        changeDetection.reason = 'שינוי בתאריך סיום';
+        changeDetection.oldValue = formatDate(new Date(oldSignature.endDate));
+        changeDetection.newValue = formatDate(newResult.endDate);
     }
     
-    if (Math.abs((oldSignature.emergencyCompulsion4405 || 0) - (newResult.emergencyCompulsion4405 || 0)) > THRESHOLD) {
-        return { changed: true, reason: 'emergency_compulsion_changed' };
+    console.log('└─────────────────┴─────────────┴─────────────┴──────────┘');
+    
+    if (changeDetection.changed) {
+        console.log('🔴 תוצאה: זוהה שינוי!');
+        console.log('📝 סיבה:', changeDetection.reason);
+        console.log('   ערך ישן:', changeDetection.oldValue);
+        console.log('   ערך חדש:', changeDetection.newValue);
+        console.log('   הפרש:', changeDetection.newValue - changeDetection.oldValue);
+    } else {
+        console.log('🟢 תוצאה: אין שינויים - הסטטוס יישמר!');
     }
     
-    if (Math.abs((oldSignature.emergency40percentage || 0) - (newResult.emergency40percentage || 0)) > THRESHOLD) {
-        return { changed: true, reason: 'emergency_40_percentage_changed' };
-    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
-    if ((oldSignature.passportNum || '') !== (newResult.passportNum || '')) {
-        return { changed: true, reason: 'passport_num_changed' };
-    }
-    
-    return { changed: false, reason: 'identical' };
+    return changeDetection;
 }
 /**
  * מבצעת מיזוג חכם בין נתונים ישנים לחדשים
