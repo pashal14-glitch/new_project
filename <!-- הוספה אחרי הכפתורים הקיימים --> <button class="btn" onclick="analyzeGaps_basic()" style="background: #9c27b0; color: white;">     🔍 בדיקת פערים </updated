@@ -778,6 +778,10 @@ td[onclick*="showGapDetails"]:hover {
 <button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;">
     🔍 בדיקת פערים
 </button>
+<button class="btn" onclick="appendRecords()" 
+        style="background: linear-gradient(45deg, #16a085, #1abc9c);">
+    ➕ הוספת רשומות
+</button>
 <button class="btn" onclick="openSupplementCalculatorWindow()" 
         style="background: linear-gradient(45deg, #FF6B6B, #FF5722);">
     🧮 חישוב תוספת 40%
