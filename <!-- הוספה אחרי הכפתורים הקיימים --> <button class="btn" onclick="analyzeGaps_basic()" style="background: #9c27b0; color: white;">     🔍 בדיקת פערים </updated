@@ -1816,6 +1816,104 @@ async function clearAllDataConfirm() {
         alert('❌ שגיאה בניקוי נתונים. נסי שוב או רענני את הדף.');
     }
 }
+async function appendRecords() {
+    // בדיקה שיש קובץ חדש
+    if (!miluimData || miluimData.length === 0) {
+        alert('⚠️ אין קובץ חדש!\n\nטען קובץ תחילה.');
+        return;
+    }
+    
+    // בדיקה שיש נתונים קיימים
+    const oldData = await loadFromIndexedDB();
+    if (!oldData || !oldData.results || oldData.results.length === 0) {
+        alert('⚠️ אין נתונים קיימים במערכת.\n\nהשתמש בחישוב רגיל במקום.');
+        return;
+    }
+    
+    // אישור פשוט
+    const confirmMsg = `➕ הוספת רשומות חדשות\n\n` +
+                      `רשומות קיימות: ${oldData.results.length}\n` +
+                      `רשומות חדשות: ${miluimData.length}\n\n` +
+                      `להוסיף את הרשומות החדשות?`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    try {
+        console.log('🚀 מתחיל תהליך הוספת רשומות...');
+        
+        // שלב 1: שמור את הנתונים הישנים ב-miluimData כדי שיכללו בחישוב
+        const oldMiluimData = oldData.results.map(r => ({
+            employeeId: r.employeeId,
+            startDate: r.startDate,
+            endDate: r.endDate,
+            days: r.miluimDays,
+            paidAmount: r.paidAmount,
+            compulsion: r.compulsion,
+            crossMonth: r.crossMonth,
+            emergencyCompulsion4405: r.emergencyCompulsion4405,
+            emergency40percentage: r.emergency40percentage,
+            passportNum: r.passportNum
+        }));
+        
+        // שלב 2: חבר את הישן והחדש
+        const newMiluimData = [...miluimData]; // שמור את החדשים
+        miluimData = [...oldMiluimData, ...newMiluimData]; // חבר הכל
+        
+        console.log(`📊 מכין לחישוב:`);
+        console.log(`   - נתונים ישנים: ${oldMiluimData.length}`);
+        console.log(`   - נתונים חדשים: ${newMiluimData.length}`);
+        console.log(`   - סה"כ לחישוב: ${miluimData.length}`);
+        
+        // שלב 3: הודעת טעינה
+        document.getElementById('resultsContainer').innerHTML = 
+            `<div class="loading">
+                🔄 מחשב ${miluimData.length} רשומות...
+                <br>
+                <small>(${oldMiluimData.length} ישנות + ${newMiluimData.length} חדשות)</small>
+            </div>`;
+        
+        // שלב 4: איפוס משתנים גלובליים
+        calculationResults = [];
+        gapStatuses = {};
+        gapStatusData = {};
+        
+        // שלב 5: הרץ חישוב רגיל - בדיוק כמו בטעינה רגילה!
+        await calculateMiluim({
+            batchSize: miluimData.length > 100 ? 20 : 0,
+            showProgress: miluimData.length > 100,
+            enableCancel: false,
+            autoDisplayResults: true  // ✅ חשוב! זה יציג את התוצאות
+        });
+        
+        console.log(`✅ החישוב הושלם! נמצאו ${calculationResults.length} תוצאות`);
+        
+        // שלב 6: שמירה ב-IndexedDB (הפונקציה הרגילה)
+        await saveToIndexedDB(calculationResults);
+        console.log('💾 נתונים נשמרו ב-IndexedDB');
+        
+        // שלב 7: הרץ ניתוח פערים אוטומטית
+        setTimeout(() => {
+            console.log('🔍 מריץ ניתוח פערים...');
+            analyzeGaps_basic();
+        }, 500);
+        
+        // שלב 8: הודעת הצלחה
+        const message = `✅ נוספו ${newMiluimData.length} רשומות חדשות בהצלחה!\n` +
+                       `סה"כ ${calculationResults.length} רשומות במערכת`;
+        
+        showStatusNotification(message);
+        console.log(message);
+        
+    } catch (error) {
+        console.error('❌ שגיאה בהוספת רשומות:', error);
+        alert(`❌ שגיאה בהוספת רשומות:\n${error.message}`);
+        
+        // במקרה של שגיאה, טען מחדש את הנתונים הישנים
+        location.reload();
+    }
+}
 // ==================== פונקציות ניהול סטטוס פערים - START ====================
         
         function createGapKey(employeeId, startDate) {
