@@ -1314,78 +1314,7 @@ async function smartMerge(oldData, newCalculationResults) {
     
     return { stats, changeLog };
 }
-/**
- * מציג דיאלוג מתקדם למשתמש
- * @param {Object} oldData - הנתונים הישנים
- * @returns {Promise<string>} 'merge' | 'fresh' | 'cancel'
- */
-function showMergeDialog(oldData) {
-    return new Promise((resolve) => {
-        const statusCount = Object.keys(oldData.gapStatuses || {}).length;
-        const completedCount = Object.values(oldData.gapStatuses || {})
-            .filter(s => s === 'completed').length;
-        const reviewingCount = Object.values(oldData.gapStatuses || {})
-            .filter(s => s === 'reviewing').length;
-        
-        const oldDate = new Date(oldData.timestamp).toLocaleString('he-IL');
-        
-        const dialogHTML = `
-        <div class="overlay" id="mergeDialogOverlay" style="display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; border-radius: 15px; padding: 30px; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-                <h2 style="margin: 0 0 20px 0; color: #667eea;">🔄 זוהה קובץ חדש</h2>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h3 style="margin: 0 0 10px 0;">📊 הנתונים הקיימים:</h3>
-                    <ul style="list-style: none; padding: 0; margin: 10px 0;">
-                        <li>📁 ${oldData.totalRecords} רשומות מחושבות</li>
-                        <li>📅 עדכון אחרון: ${oldDate}</li>
-                        <li>💾 ${statusCount} סימונים שמורים:</li>
-                        <li style="margin-right: 20px;">✅ ${completedCount} טופלו</li>
-                        <li style="margin-right: 20px;">🟡 ${reviewingCount} בבדיקה</li>
-                        <li style="margin-right: 20px;">⚪ ${statusCount - completedCount - reviewingCount} לא נבדקו</li>
-                    </ul>
-                </div>
-                
-                <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #4caf50;">
-                    <h3 style="margin: 0 0 10px 0;">✅ מיזוג חכם (מומלץ)</h3>
-                    <p style="margin: 5px 0; color: #555;">
-                        המערכת תשמור את הסימונים שלך ותאפס <strong>רק</strong> רשומות ששינו נתונים.
-                    </p>
-                    <button onclick="resolveMergeDialog('merge')" 
-                            style="width: 100%; padding: 15px; background: #4caf50; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
-                        🔄 המשך עם מיזוג חכם
-                    </button>
-                </div>
-                
-                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #ff9800;">
-                    <h3 style="margin: 0 0 10px 0;">🔄 התחל מאפס</h3>
-                    <p style="margin: 5px 0; color: #555;">
-                        כל הסימונים יימחקו ותצטרכי לבדוק הכל מחדש.
-                    </p>
-                    <button onclick="resolveMergeDialog('fresh')" 
-                            style="width: 100%; padding: 15px; background: #ff9800; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">
-                        🗑️ מחק הכל והתחל מחדש
-                    </button>
-                </div>
-                
-                <button onclick="resolveMergeDialog('cancel')" 
-                        style="width: 100%; padding: 10px; background: #f5f5f5; color: #666; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
-                    ❌ ביטול
-                </button>
-            </div>
-        </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', dialogHTML);
-        
-        // הוספת פונקציה גלובלית לסגירה
-        window.resolveMergeDialog = (choice) => {
-            document.getElementById('mergeDialogOverlay').remove();
-            delete window.resolveMergeDialog;
-            resolve(choice);
-        };
-    });
-}
+
 /**
  * מציג דיאלוג מתקדם למשתמש
  * @param {Object} oldData - הנתונים הישנים
