@@ -3812,6 +3812,7 @@ function displayResults(data = calculationResults, options = {}) {
         pageData = data.slice(start, end);
     }
     
+    // ✅ צבירת כל ה-HTML ב-string אחד
     let html = '';
     
     if (title) {
@@ -3858,7 +3859,7 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>ימים</th>
                         <th>E - ערך בסיסי</th>
                         <th>F - ערך מומלץ</th>
-                        <th>G - ערך רציף</th>
+                        <th>G - ערך רצוף</th>
                         <th>I - חירום 90</th>
                         <th>J - מקס 120%</th>
                         <th>K - תחילת אשכול</th>
@@ -3875,14 +3876,14 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>ימי תוספת חירום 40%</th>
                         <th>תוספת חירום ₪</th>
                         <th>סה"כ כולל תוספת חירום</th>
-                        <th>נדרש מבי"ל</th>
-                        <th>אושר מבי"ל</th>
-
+                        <th>נדרש מביטל</th>
+                        <th>אושר מביטל</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
+    // ✅ בניית שורות הטבלה ב-loop אחד - צבירה ב-string
     pageData.forEach((result, index) => {
         let correctIndex;
         if (itemsPerPage) {
@@ -3921,30 +3922,23 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${formatCurrency((result.continuousValue || 0) * (result.miluimDays || 0))}</strong></td>
                 <td><button class="details-btn" onclick="showDetails(${correctIndex})">פירוט</button></td>
                 <td>${result.paidAmount || 0}</td>
-<td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}" 
-    style="${getGapCellStyle(result)}" 
-    onclick="showGapDetails('${result.employeeId}', '${result.startDate}', '${result.endDate}')"
-    title="לחץ לפרטים נוספים על הפער">
-    ${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)} ${getGapIcon(result)}
-</td>                <td>${result.compulsion  || 0}</td>
+                <td class="amount-difference ${((result.paidAmount || 0) - (result.continuousValue || 0)) > 0 ? 'positive-diff' : 'negative-diff'}" 
+                    style="${getGapCellStyle(result)}" 
+                    onclick="showGapDetails('${result.employeeId}', '${result.startDate}', '${result.endDate}')"
+                    title="לחץ לפרטים נוספים על הפער">
+                    ${((result.paidAmount || 0) - (result.continuousValue || 0)).toFixed(0)} ${getGapIcon(result)}
+                </td>
+                <td>${result.compulsion || 0}</td>
                 <td>${result.compulsionContinuous || 0}</td>
-                <td>${result.emergencyCompulsion4405 || 0}</td> 
+                <td>${result.emergencyCompulsion4405 || 0}</td>
                 <td>${supplementResult.supplementDays}</td>
-                <td>${supplementAmount.toFixed(0)} ₪</td>
-                <td>${totalWithSupplement.toFixed(2)} ₪</td>
-                <td class="${emergencySupplementDays > 0 ? 'emergency-supplement' : ''}" 
-                ${emergencySupplementData ? `title="בלוק חירום: ${emergencySupplementData.blockStartDate} - ${emergencySupplementData.blockEndDate}"` : ''}>
-                ${emergencySupplementDays > 0 ? emergencySupplementDays : '-'}
-                 </td>
-               <td class="${emergencySupplementAmount > 0 ? 'emergency-supplement' : ''}">
-                ${emergencySupplementAmount > 0 ? emergencySupplementAmount.toFixed(0) + ' ₪' : '-'}
-               </td>
-               <td class="total-with-emergency" style="background: #e8f5e8; font-weight: bold;">
-                ${totalWithEmergencySupplement.toFixed(2)} ₪
-               </td>
-                <td>${getPaymentAmount(result, 'requested')}</td>
-                <td>${getPaymentAmount(result, 'approved')}</td>
-
+                <td>${supplementAmount.toFixed(2)}</td>
+                <td><strong>${totalWithSupplement.toFixed(2)}</strong></td>
+                <td>${emergencySupplementDays}</td>
+                <td>${emergencySupplementAmount.toFixed(2)}</td>
+                <td><strong>${totalWithEmergencySupplement.toFixed(2)}</strong></td>
+                <td>${result.requiredFromBituach || '-'}</td>
+                <td>${result.approvedFromBituach || '-'}</td>
             </tr>
         `;
     });
@@ -3972,6 +3966,7 @@ function displayResults(data = calculationResults, options = {}) {
         `;
     }
     
+    // ✅ עדכון DOM פעם אחת בלבד!
     container.innerHTML = html;
     
     // הכפתורים החדשים שלא יגרמו לשגיאות
@@ -4019,9 +4014,9 @@ function displayResults(data = calculationResults, options = {}) {
     if (isSingleEmployee) {
         window.singleEmployeeResults = data;
     }
-addTopScroll();
+    
+    addTopScroll();
 }
-
 // 🔧 הוסף 3 פונקציות קטנות אלה:
 function navigateToPage(newPage) {
     const newOptions = { ...currentDisplayOptions, page: newPage };
