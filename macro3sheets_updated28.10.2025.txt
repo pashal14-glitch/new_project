@@ -1,0 +1,494 @@
+Option Explicit
+
+' Constants for sheet names
+Const SHEET_NAME_MILUIM = "90291"
+Const SHEET_NAME_SALARY = "94010"  
+Const SHEET_NAME_ATTENDANCE = "1857"
+
+' Global variables
+Dim salaryDict As Object
+Dim attendanceDict As Object
+Dim duplicatesDict As Object
+
+' Creates conversion button in active sheet
+Sub CreateConvertButton()
+    Dim btn As Button
+    Dim ws As Worksheet
+    
+    Set ws = ActiveSheet
+    
+    On Error Resume Next
+    ws.Buttons("ConvertButton").Delete
+    On Error GoTo 0
+    
+    Set btn = ws.Buttons.Add(10, 10, 200, 40)
+    btn.Name = "ConvertButton"
+    btn.Text = "Convert to 3 Sheets"
+    btn.OnAction = "ConvertToThreeSheets"
+    btn.Font.Size = 12
+    btn.Font.Bold = True
+    
+    MsgBox "Convert button created successfully!", vbInformation, "Ready"
+End Sub
+
+' Main conversion process
+Sub ConvertToThreeSheets()
+    Dim sourceWs As Worksheet
+    Dim newWb As Workbook
+    Dim sourceData As Variant
+    Dim lastRow As Long
+    Dim startTime As Double
+    
+    startTime = Timer
+    
+    Set sourceWs = ActiveSheet
+    lastRow = sourceWs.Cells(sourceWs.Rows.Count, "A").End(xlUp).Row
+    
+    ' Validation
+    If lastRow < 2 Then
+        MsgBox "No data found in sheet!", vbCritical, "Error"
+        Exit Sub
+    End If
+    
+    If sourceWs.Cells(1, 1).Value = "" Then
+        MsgBox "Please ensure the sheet contains data", vbCritical, "Error"
+        Exit Sub
+    End If
+    
+    ' User confirmation
+    Dim response As VbMsgBoxResult
+    Dim msg As String
+    msg = "Start conversion to 3 separate sheets?" & vbCrLf & vbCrLf & _
+          "This will create a new file with sheets:" & vbCrLf & _
+          "• " & SHEET_NAME_MILUIM & " (Miluim data)" & vbCrLf & _
+          "• " & SHEET_NAME_SALARY & " (Salary data)" & vbCrLf & _
+          "• " & SHEET_NAME_ATTENDANCE & " (Attendance data)"
+    
+    response = MsgBox(msg, vbYesNo + vbQuestion, "Confirm Conversion")
+    
+    If response = vbNo Then
+        MsgBox "Conversion cancelled", vbInformation, "Cancelled"
+        Exit Sub
+    End If
+    
+    ' Optimize Excel performance
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    
+    MsgBox "Starting conversion process...", vbInformation, "Converting"
+    
+    ' Create new workbook
+    Set newWb = Workbooks.Add
+    
+    ' Initialize dictionaries
+    Set salaryDict = CreateObject("Scripting.Dictionary")
+    Set attendanceDict = CreateObject("Scripting.Dictionary")
+    Set duplicatesDict = CreateObject("Scripting.Dictionary")
+    
+    ' Read all source data
+    sourceData = sourceWs.Range("A1:R" & lastRow).Value
+    
+    ' Create the 3 sheets
+    Call CreateMiluimSheet(newWb, sourceData)
+    Call CreateSalarySheet(newWb, sourceData)
+    Call CreateAttendanceSheet(newWb, sourceData)
+    ' Create error sheet if duplicates found
+    If duplicatesDict.Count > 0 Then
+        Call CreateErrorSheet(newWb)
+    End If
+    
+    ' Delete default sheet
+   Application.DisplayAlerts = False
+On Error Resume Next
+newWb.Sheets("Sheet1").Delete
+On Error GoTo 0
+Application.DisplayAlerts = True
+
+' Reorder sheets in correct sequence
+newWb.Sheets(SHEET_NAME_ATTENDANCE).Move After:=newWb.Sheets(newWb.Sheets.Count)
+newWb.Sheets(SHEET_NAME_SALARY).Move After:=newWb.Sheets(SHEET_NAME_MILUIM)
+    
+    ' Save new workbook
+    Call SaveNewWorkbook(newWb)
+    
+    ' Restore Excel settings
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+    ' Report completion time
+    Dim executionTime As Double
+    executionTime = Timer - startTime
+    
+    MsgBox "Conversion completed successfully!" & vbCrLf & _
+           "Execution time: " & Format(executionTime, "0.00") & " seconds", _
+           vbInformation, "Complete!"
+End Sub
+
+' Creates miluim data sheet (90291)
+Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
+    Dim ws As Worksheet
+    Dim rowCount As Long, i As Long
+    
+    Set ws = wb.Worksheets.Add
+    ws.Name = SHEET_NAME_MILUIM
+    
+    ' Headers
+    ws.Cells(1, 1) = "Employee ID"
+    ws.Cells(1, 2) = "Start Date"  
+    ws.Cells(1, 3) = "End Date"
+    ws.Cells(1, 4) = "Miluim Days"
+    ws.Cells(1, 12) = "Amount Paid"           ' L - paidAmount
+    ws.Cells(1, 13) = "Compulsion"            ' M - compulsion
+    ws.Cells(1, 14) = "Cross Month"           ' N - crossMonth
+    ws.Cells(1, 15) = "Emergency Comp 4405"   ' O - emergencyCompulsion4405
+    ws.Cells(1, 16) = "Emergency 40%"         ' P - emergency40percentage
+    ws.Cells(1, 17) = "Passport Number"       ' Q - passportNum
+     ws.Cells(1, 18) = "Maamad"               ' R - maamad
+    
+    ' Format headers
+    With ws.Range("A1:D1,L1:R1")
+        .Font.Bold = True
+        .Interior.Color = RGB(68, 114, 196)
+        .Font.Color = RGB(255, 255, 255)
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    rowCount = 1
+    
+    ' Process miluim data
+    For i = 2 To UBound(sourceData, 1)
+        If Not IsEmpty(sourceData(i, 1)) And Not IsEmpty(sourceData(i, 2)) Then
+            rowCount = rowCount + 1
+            ws.Cells(rowCount, 1) = sourceData(i, 1)  ' Employee ID
+            ws.Cells(rowCount, 2) = sourceData(i, 2)  ' Start Date
+            ws.Cells(rowCount, 3) = sourceData(i, 3)  ' End Date
+            ws.Cells(rowCount, 4) = sourceData(i, 3) - sourceData(i, 2) + 1  ' Calculate days
+            ' Check if service crosses months
+            Dim startDate As Date
+            Dim endDate As Date
+            startDate = CDate(sourceData(i, 2))
+            endDate = CDate(sourceData(i, 3))
+            
+            ' If different month OR different year, mark as crossing months
+            If Month(startDate) <> Month(endDate) Or Year(startDate) <> Year(endDate) Then
+                ws.Cells(rowCount, 14) = "1"  ' Cross Month = Yes
+            Else
+                ws.Cells(rowCount, 14) = "0"   ' Cross Month = No
+            End If
+
+            
+            ' ✅ החלף בבלוק הזה:
+            ' Map columns P- from source to output
+            If UBound(sourceData, 2) >= 16 Then
+                ws.Cells(rowCount, 16) = sourceData(i, 16)  ' P - Amount Paid
+            End If
+            If UBound(sourceData, 2) >= 17 Then
+                ws.Cells(rowCount, 17) = sourceData(i, 17)  ' Q - Compulsion
+            End If
+            If UBound(sourceData, 2) >= 14 Then
+                ws.Cells(rowCount, 18) = sourceData(i, 18)  ' R - Cross Month
+            End If
+            If UBound(sourceData, 2) >= 15 Then
+                ws.Cells(rowCount, 15) = sourceData(i, 15)  ' O - Emergency Comp 4405
+            End If
+            If UBound(sourceData, 2) >= 16 Then
+                ws.Cells(rowCount, 16) = sourceData(i, 16)  ' P - Emergency 40%
+            End If
+            If UBound(sourceData, 2) >= 17 Then
+                ws.Cells(rowCount, 17) = sourceData(i, 17)  ' Q - Passport Number
+            End If
+            If UBound(sourceData, 2) >= 18 Then
+                ws.Cells(rowCount, 18) = sourceData(i, 18)  ' R - Maamad
+            End If
+        End If
+    Next i
+    
+    ' Format columns
+ws.Columns("A:D").AutoFit
+ws.Columns("L:Q").AutoFit
+ws.Range("B:C").NumberFormat = "dd/mm/yyyy"
+ws.Range("L:L,M:M,O:O").NumberFormat = "#,##0"  
+ws.Range("N:N,P:P").NumberFormat = "@"          
+ws.Range("Q:R").NumberFormat = "@"   
+' Optional: Highlight "Yes" in Cross Month column
+Dim lastMiluimRow As Long
+lastMiluimRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+If lastMiluimRow > 1 Then
+    With ws.Range("N2:N" & lastMiluimRow)
+        .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""Yes"""
+        .FormatConditions(1).Interior.Color = RGB(255, 255, 0)  ' Yellow background
+        .FormatConditions(1).Font.Bold = True
+    End With
+End If
+
+End Sub
+
+' Creates salary data sheet (94010) with no duplicates
+Sub CreateSalarySheet(wb As Workbook, sourceData As Variant)
+    Dim ws As Worksheet
+    Dim rowCount As Long, i As Long, j As Long
+    Dim employeeId As String
+    Dim serviceDate As Date
+    Dim monthDate As Date
+    Dim dictKey As String
+    Dim brutoValue As Double
+    
+    Set ws = wb.Worksheets.Add
+    ws.Name = SHEET_NAME_SALARY
+    
+    ' Headers
+    ws.Cells(1, 1) = "Employee ID"
+    ws.Cells(1, 2) = "Month/Year"
+    ws.Cells(1, 3) = "Monthly Bruto"
+    
+    ' Format headers
+    With ws.Range("A1:C1")
+        .Font.Bold = True
+        .Interior.Color = RGB(112, 173, 71)
+        .Font.Color = RGB(255, 255, 255)
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    ' Process data with dictionary to prevent duplicates
+    For i = 2 To UBound(sourceData, 1)
+        If Not IsEmpty(sourceData(i, 1)) And Not IsEmpty(sourceData(i, 2)) Then
+            employeeId = CStr(sourceData(i, 1))
+            serviceDate = CDate(sourceData(i, 2))
+            
+            ' Create 6 salary records per employee (columns D-I)
+            For j = 0 To 5
+                ' Calculate month date (j months before service start)
+                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6-j), 1)
+                
+                ' Create unique key
+                dictKey = employeeId & "_" & Format(monthDate, "yyyy-mm")
+                
+               ' Get bruto value from appropriate column (D=0, E=1, F=2...)
+                brutoValue = 0
+                If j + 4 <= UBound(sourceData, 2) Then
+                    If Not IsEmpty(sourceData(i, j + 4)) Then
+                        brutoValue = CDbl(sourceData(i, j + 4))
+                    End If
+                End If
+                
+                ' Only process if value > 0
+                If brutoValue > 0 Then
+                    ' Check if record doesn't exist
+                    If Not salaryDict.exists(dictKey) Then
+                        ' First occurrence - add to main dictionary
+                        salaryDict(dictKey) = Array(employeeId, monthDate, brutoValue, i)
+                    Else
+                        ' DUPLICATE FOUND! Add to duplicates dictionary
+                        Dim existingData As Variant
+                        existingData = salaryDict(dictKey)
+                        
+                        ' Store: Employee, Month, First Value, First Row, Second Value, Second Row
+                        duplicatesDict(dictKey) = Array(employeeId, monthDate, _
+                                                        existingData(2), existingData(3), _
+                                                        brutoValue, i)
+                    End If
+                End If
+            Next j
+        End If
+    Next i
+    
+    ' Write data from dictionary to sheet
+    rowCount = 1
+    Dim key As Variant
+    Dim recordData As Variant
+    
+   For Each key In salaryDict.Keys
+        recordData = salaryDict(key)
+        rowCount = rowCount + 1
+        
+        ws.Cells(rowCount, 1) = recordData(0)  ' Employee ID
+        ws.Cells(rowCount, 2) = recordData(1)  ' Month Date
+        ws.Cells(rowCount, 3) = recordData(2)  ' Bruto Value (index 2, not 3)
+    Next key
+    
+    ' Format columns
+    ws.Columns("A:C").AutoFit
+    ws.Range("B:B").NumberFormat = "mm/yyyy"
+    ws.Range("C:C").NumberFormat = "#,##0"
+    
+    ' Sort by employee and date
+    If rowCount > 1 Then
+        ws.Range("A1:C" & rowCount).Sort Key1:=ws.Range("A1"), Order1:=xlAscending, _
+                                          Key2:=ws.Range("B1"), Order2:=xlAscending, _
+                                          Header:=xlYes
+    End If
+End Sub
+
+' Creates attendance data sheet (1857) with no duplicates
+Sub CreateAttendanceSheet(wb As Workbook, sourceData As Variant)
+    Dim ws As Worksheet
+    Dim rowCount As Long, i As Long, j As Long
+    Dim employeeId As String
+    Dim serviceDate As Date
+    Dim monthDate As Date
+    Dim dictKey As String
+    Dim workDays As Long
+    
+    Set ws = wb.Worksheets.Add
+    ws.Name = SHEET_NAME_ATTENDANCE
+    
+    ' Headers
+    ws.Cells(1, 1) = "Employee ID"
+    ws.Cells(1, 2) = "Month/Year"
+    ws.Cells(1, 3) = "Work Days"
+    
+    ' Format headers
+    With ws.Range("A1:C1")
+        .Font.Bold = True
+        .Interior.Color = RGB(255, 192, 0)
+        .Font.Color = RGB(0, 0, 0)
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    ' Process data with dictionary to prevent duplicates
+    For i = 2 To UBound(sourceData, 1)
+        If Not IsEmpty(sourceData(i, 1)) And Not IsEmpty(sourceData(i, 2)) Then
+            employeeId = CStr(sourceData(i, 1))
+            serviceDate = CDate(sourceData(i, 2))
+            
+            ' Create 6 attendance records per employee (columns J-O)
+            For j = 0 To 5
+                ' Calculate month date (j months before service start)
+                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6-j), 1)
+                
+                ' Create unique key
+                dictKey = employeeId & "_" & Format(monthDate, "yyyy-mm")
+                
+                ' Check if record doesn't exist
+                If Not attendanceDict.exists(dictKey) Then
+                    ' Get work days value from appropriate column (J=9, K=10, L=11...)
+                    workDays = 0
+                    If j + 10 <= UBound(sourceData, 2) Then
+                        If Not IsEmpty(sourceData(i, j + 10)) Then
+                            workDays = CLng(sourceData(i, j + 10))
+                        End If
+                    End If
+                    
+                    ' Add to dictionary if value > 0
+                    If workDays > 0 Then
+                        attendanceDict(dictKey) = Array(employeeId, monthDate, workDays)
+                    End If
+                End If
+            Next j
+        End If
+    Next i
+    
+    ' Write data from dictionary to sheet
+    rowCount = 1
+    Dim key As Variant
+    Dim recordData As Variant
+    
+    For Each key In attendanceDict.Keys
+        recordData = attendanceDict(key)
+        rowCount = rowCount + 1
+        
+        ws.Cells(rowCount, 1) = recordData(0)  ' Employee ID
+        ws.Cells(rowCount, 2) = recordData(1)  ' Month Date
+        ws.Cells(rowCount, 3) = recordData(2)  ' Work Days
+    Next key
+    
+    ' Format columns
+    ws.Columns("A:C").AutoFit
+    ws.Range("B:B").NumberFormat = "mm/yyyy"
+    ws.Range("C:C").NumberFormat = "0"
+    
+    ' Sort by employee and date
+    If rowCount > 1 Then
+        ws.Range("A1:C" & rowCount).Sort Key1:=ws.Range("A1"), Order1:=xlAscending, _
+                                          Key2:=ws.Range("B1"), Order2:=xlAscending, _
+                                          Header:=xlYes
+    End If
+End Sub
+' Creates error sheet for duplicate records in salary data
+Sub CreateErrorSheet(wb As Workbook)
+    Dim ws As Worksheet
+    Dim rowCount As Long
+    Dim key As Variant
+    Dim dupData As Variant
+    
+    Set ws = wb.Worksheets.Add
+    ws.Name = "Errors"
+    
+    ' Headers
+    ws.Cells(1, 1) = "Employee ID"
+    ws.Cells(1, 2) = "Month/Year"
+    ws.Cells(1, 3) = "First Bruto"
+    ws.Cells(1, 4) = "First Source Row"
+    ws.Cells(1, 5) = "Second Bruto"
+    ws.Cells(1, 6) = "Second Source Row"
+    ws.Cells(1, 7) = "Difference"
+    
+    ' Format headers
+    With ws.Range("A1:G1")
+        .Font.Bold = True
+        .Interior.Color = RGB(255, 0, 0)
+        .Font.Color = RGB(255, 255, 255)
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    ' Write duplicate data
+    rowCount = 1
+    For Each key In duplicatesDict.Keys
+        dupData = duplicatesDict(key)
+        rowCount = rowCount + 1
+        
+        ws.Cells(rowCount, 1) = dupData(0)  ' Employee ID
+        ws.Cells(rowCount, 2) = dupData(1)  ' Month Date
+        ws.Cells(rowCount, 3) = dupData(2)  ' First Bruto
+        ws.Cells(rowCount, 4) = dupData(3)  ' First Source Row
+        ws.Cells(rowCount, 5) = dupData(4)  ' Second Bruto
+        ws.Cells(rowCount, 6) = dupData(5)  ' Second Source Row
+        ws.Cells(rowCount, 7) = dupData(4) - dupData(2)  ' Difference
+    Next key
+    
+    ' Format columns
+    ws.Columns("A:G").AutoFit
+    ws.Range("B:B").NumberFormat = "mm/yyyy"
+    ws.Range("C:C,E:E,G:G").NumberFormat = "#,##0"
+    
+    ' Add conditional formatting for differences
+    If rowCount > 1 Then
+        With ws.Range("G2:G" & rowCount)
+            .FormatConditions.Add Type:=xlCellValue, Operator:=xlNotEqual, Formula1:="0"
+            .FormatConditions(1).Interior.Color = RGB(255, 255, 0)
+            .FormatConditions(1).Font.Bold = True
+        End With
+    End If
+    
+    ' Sort by employee and date
+    If rowCount > 1 Then
+        ws.Range("A1:G" & rowCount).Sort Key1:=ws.Range("A1"), Order1:=xlAscending, _
+                                          Key2:=ws.Range("B1"), Order2:=xlAscending, _
+                                          Header:=xlYes
+    End If
+    
+    ' Message about errors found
+    MsgBox "Warning: " & duplicatesDict.Count & " duplicate salary records found!" & vbCrLf & _
+           "Check the 'Errors' sheet for details.", vbExclamation, "Duplicates Detected"
+End Sub
+
+' Saves new workbook with user-selected location
+Sub SaveNewWorkbook(wb As Workbook)
+    Dim fileName As String
+    Dim filePath As String
+    
+    fileName = "Miluim_3_Sheets_" & Format(Now, "dd-mm-yyyy_hh-mm") & ".xlsx"
+    
+    filePath = Application.GetSaveAsFilename( _
+        InitialFileName:=fileName, _
+        FileFilter:="Excel Files (*.xlsx), *.xlsx", _
+        Title:="Save New Miluim File")
+    
+    If filePath <> "False" Then
+        wb.SaveAs fileName:=filePath, FileFormat:=xlOpenXMLWorkbook
+        MsgBox "File saved successfully at: " & vbCrLf & filePath, vbInformation, "Saved"
+    Else
+        MsgBox "Save cancelled by user", vbExclamation, "Cancelled"
+    End If
+End Sub
+
