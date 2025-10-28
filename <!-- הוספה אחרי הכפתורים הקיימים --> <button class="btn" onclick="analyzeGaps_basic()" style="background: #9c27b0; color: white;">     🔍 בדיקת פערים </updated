@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מחשבון מילואים מתקדם - גרסה 2.0</title>
+    <title>מחשבון מילואים מתקדם </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
 /* אפקט hover עדין - רק שינוי צבע גבול */
@@ -755,10 +755,12 @@ td[onclick*="showGapDetails"]:hover {
 <div class="upload-section">
     <h2>📂 טעינת נתונים</h2>
     
-    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+   <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
         <!-- הכפתור הקיים -->
         <input type="file" id="fileInput" accept=".xlsx,.xls" 
                onchange="loadExcelFile(this.files)" multiple>
+
+
         
         <!-- 🆕 כפתור חדש: נקה הכל -->
         <button onclick="clearAllDataConfirm()" 
@@ -1022,7 +1024,9 @@ td[onclick*="showGapDetails"]:hover {
         crossMonth: r.crossMonth,
         emergencyCompulsion4405: r.emergencyCompulsion4405,
         emergency40percentage: r.emergency40percentage,
-        passportNum: r.passportNum
+        passportNum: r.passportNum,
+        maamad: r.maamad
+
     };
     return acc;
 }, {})
@@ -1783,7 +1787,8 @@ async function appendRecords() {
             crossMonth: r.crossMonth,
             emergencyCompulsion4405: r.emergencyCompulsion4405,
             emergency40percentage: r.emergency40percentage,
-            passportNum: r.passportNum
+            passportNum: r.passportNum,
+            maamad: r.maamad
         }));
         
         // שלב 2: חבר את הישן והחדש
@@ -2189,7 +2194,8 @@ class MiluimCalculatorCache {
         compulsion: originalMiluim ? originalMiluim.compulsion || 0 : 0,
         compulsionContinuous: 0 ,
         emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 ,
-        emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined
+        emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined,
+        maamad: originalMiluim ? originalMiluim.maamad : null
     };
 }
     getStats() {
@@ -3468,8 +3474,8 @@ function dateToExcelNumber(date) {
                         crossMonth:row[13],
                         emergencyCompulsion4405: parseFloat(row[14]),
                         emergency40percentage:row[15],
-                        passportNum:row[16]
-
+                        passportNum:row[16],
+                        maamad:row[17]
                     })).filter(item => item.employeeId);
                     break;
                     
@@ -3878,6 +3884,8 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>סה"כ כולל תוספת חירום</th>
                         <th>נדרש מביטל</th>
                         <th>אושר מביטל</th>
+                        <th>מעמד</th>
+
                     </tr>
                 </thead>
                 <tbody>
@@ -3939,6 +3947,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${totalWithEmergencySupplement.toFixed(2)}</strong></td>
                 <td>${result.requiredFromBituach || '-'}</td>
                 <td>${result.approvedFromBituach || '-'}</td>
+                <td><strong>${result.maamad}</strong></td>
             </tr>
         `;
     });
@@ -4017,6 +4026,9 @@ function displayResults(data = calculationResults, options = {}) {
     
     addTopScroll();
 }
+
+
+
 // 🔧 הוסף 3 פונקציות קטנות אלה:
 function navigateToPage(newPage) {
     const newOptions = { ...currentDisplayOptions, page: newPage };
