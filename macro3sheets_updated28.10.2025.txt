@@ -2,13 +2,14 @@ Option Explicit
 
 ' Constants for sheet names
 Const SHEET_NAME_MILUIM = "90291"
-Const SHEET_NAME_SALARY = "94010"  
+Const SHEET_NAME_SALARY = "94010"
 Const SHEET_NAME_ATTENDANCE = "1857"
 
 ' Global variables
 Dim salaryDict As Object
 Dim attendanceDict As Object
 Dim duplicatesDict As Object
+Dim statusChangeDict As Object
 
 ' Creates conversion button in active sheet
 Sub CreateConvertButton()
@@ -84,17 +85,27 @@ Sub ConvertToThreeSheets()
     Set salaryDict = CreateObject("Scripting.Dictionary")
     Set attendanceDict = CreateObject("Scripting.Dictionary")
     Set duplicatesDict = CreateObject("Scripting.Dictionary")
+    Set statusChangeDict = CreateObject("Scripting.Dictionary")
+    
     
     ' Read all source data
     sourceData = sourceWs.Range("A1:V" & lastRow).Value
-    
-    ' Create the 3 sheets
+   ' Create the 3 sheets
     Call CreateMiluimSheet(newWb, sourceData)
     Call CreateSalarySheet(newWb, sourceData)
     Call CreateAttendanceSheet(newWb, sourceData)
+    
+    ' ? הוסיפי את השורה הזו - סריקה למעברי מעמד
+    Call ScanForStatusChanges(sourceData)
+    
     ' Create error sheet if duplicates found
     If duplicatesDict.Count > 0 Then
         Call CreateErrorSheet(newWb)
+    End If
+    
+    ' Create status change sheet if found
+    If statusChangeDict.Count > 0 Then
+        Call CreateStatusChangeSheet(newWb, sourceData)
     End If
     
     ' Delete default sheet
@@ -134,7 +145,7 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
     
     ' Headers
     ws.Cells(1, 1) = "Employee ID"
-    ws.Cells(1, 2) = "Start Date"  
+    ws.Cells(1, 2) = "Start Date"
     ws.Cells(1, 3) = "End Date"
     ws.Cells(1, 4) = "Miluim Days"
     ws.Cells(1, 12) = "Amount Paid"           ' L - paidAmount
@@ -176,7 +187,7 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
                 ws.Cells(rowCount, 14) = "0"   ' Cross Month = No
             End If
 
-          ' ✅ החלף בבלוק הזה:
+          ' ? החלף בבלוק הזה:
             ' Map columns P- from source to output
             If UBound(sourceData, 2) >= 16 Then
                 ws.Cells(rowCount, 12) = sourceData(i, 16)  ' P - Amount Paid
@@ -186,7 +197,7 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
             End If
            
             If UBound(sourceData, 2) >= 19 Then
-                ws.Cells(rowCount, 15) = sourceData(i,19)  ' S - Emergency Comp 4405
+                ws.Cells(rowCount, 15) = sourceData(i, 19) ' S - Emergency Comp 4405
             End If
             If UBound(sourceData, 2) >= 20 Then
                 ws.Cells(rowCount, 16) = sourceData(i, 20)  ' T - Emergency 40%
@@ -199,14 +210,16 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
             End If
         End If
     Next i
+
+
     
     ' Format columns
 ws.Columns("A:D").AutoFit
 ws.Columns("L:Q").AutoFit
 ws.Range("B:C").NumberFormat = "dd/mm/yyyy"
-ws.Range("L:L,M:M,O:O").NumberFormat = "#,##0"  
-ws.Range("N:N,P:P").NumberFormat = "@"          
-ws.Range("Q:R").NumberFormat = "@"   
+ws.Range("L:L,M:M,O:O").NumberFormat = "#,##0"
+ws.Range("N:N,P:P").NumberFormat = "@"
+ws.Range("Q:V").NumberFormat = "@"
 ' Optional: Highlight "Yes" in Cross Month column
 Dim lastMiluimRow As Long
 lastMiluimRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
@@ -218,6 +231,60 @@ If lastMiluimRow > 1 Then
     End With
 End If
 
+End Sub
+
+    ' Scans data for status changes (employees with both 4410 and 1309)
+Sub ScanForStatusChanges(sourceData As Variant)
+    Dim i As Long
+    Dim employeeId As String
+    Dim statusCode As Variant
+    Dim employeeStatusDict As Object
+    
+    ' Dictionary to track all status codes per employee
+    Set employeeStatusDict = CreateObject("Scripting.Dictionary")
+    
+    ' Scan all rows
+    For i = 2 To UBound(sourceData, 1)
+        If Not IsEmpty(sourceData(i, 1)) Then
+            employeeId = CStr(sourceData(i, 1))
+            
+            ' Check if column V (22) has a value
+            If UBound(sourceData, 2) >= 22 Then
+                If Not IsEmpty(sourceData(i, 22)) Then
+                    statusCode = sourceData(i, 22)
+                    
+                    ' If employee not in dict, create new collection
+                    If Not employeeStatusDict.exists(employeeId) Then
+                        Set employeeStatusDict(employeeId) = CreateObject("Scripting.Dictionary")
+                    End If
+                    
+                    ' Add status code and row number
+                    Dim empDict As Object
+                    Set empDict = employeeStatusDict(employeeId)
+                    
+                    If Not empDict.exists(CStr(statusCode)) Then
+                        empDict(CStr(statusCode)) = i  ' Store row number
+                    End If
+                End If
+            End If
+        End If
+    Next i
+    
+    ' Now check which employees have BOTH 4410 AND 1309
+    Dim empKey As Variant
+    Dim empStatusDict As Object
+    
+    For Each empKey In employeeStatusDict.Keys
+        Set empStatusDict = employeeStatusDict(empKey)
+        
+        ' Check if employee has both status codes
+        If empStatusDict.exists("4410") And empStatusDict.exists("1309") Then
+            ' Add to status change dictionary
+            statusChangeDict(empKey) = Array(empKey, _
+                                             empStatusDict("4410"), _
+                                             empStatusDict("1309"))
+        End If
+    Next empKey
 End Sub
 
 ' Creates salary data sheet (94010) with no duplicates
@@ -255,7 +322,7 @@ Sub CreateSalarySheet(wb As Workbook, sourceData As Variant)
             ' Create 6 salary records per employee (columns D-I)
             For j = 0 To 5
                 ' Calculate month date (j months before service start)
-                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6-j), 1)
+                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6 - j), 1)
                 
                 ' Create unique key
                 dictKey = employeeId & "_" & Format(monthDate, "yyyy-mm")
@@ -351,7 +418,7 @@ Sub CreateAttendanceSheet(wb As Workbook, sourceData As Variant)
             ' Create 6 attendance records per employee (columns J-O)
             For j = 0 To 5
                 ' Calculate month date (j months before service start)
-                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6-j), 1)
+                monthDate = DateSerial(Year(serviceDate), Month(serviceDate) - (6 - j), 1)
                 
                 ' Create unique key
                 dictKey = employeeId & "_" & Format(monthDate, "yyyy-mm")
@@ -468,6 +535,81 @@ Sub CreateErrorSheet(wb As Workbook)
     MsgBox "Warning: " & duplicatesDict.Count & " duplicate salary records found!" & vbCrLf & _
            "Check the 'Errors' sheet for details.", vbExclamation, "Duplicates Detected"
 End Sub
+' Creates status change sheet for employees with both 4410 and 1309
+Sub CreateStatusChangeSheet(wb As Workbook, sourceData As Variant)
+    Dim ws As Worksheet
+    Dim rowCount As Long
+    Dim key As Variant
+    Dim statusData As Variant
+    Dim row4410 As Long
+    Dim row1309 As Long
+    
+    Set ws = wb.Worksheets.Add
+    ws.Name = "STATUS CHANGE"
+    
+    ' Headers
+    ws.Cells(1, 1) = "Employee ID"
+    ws.Cells(1, 2) = "Status 4410 - Start Date"
+    ws.Cells(1, 3) = "Status 4410 - End Date"
+    ws.Cells(1, 4) = "Status 4410 - Source Row"
+    ws.Cells(1, 5) = "Status 1309 - Start Date"
+    ws.Cells(1, 6) = "Status 1309 - End Date"
+    ws.Cells(1, 7) = "Status 1309 - Source Row"
+    ws.Cells(1, 8) = "Notes"
+    
+    ' Format headers
+    With ws.Range("A1:H1")
+        .Font.Bold = True
+        .Interior.Color = RGB(0, 176, 240)
+        .Font.Color = RGB(255, 255, 255)
+        .HorizontalAlignment = xlCenter
+    End With
+    
+    ' Write status change data
+    rowCount = 1
+    For Each key In statusChangeDict.Keys
+        statusData = statusChangeDict(key)
+        row4410 = statusData(1)
+        row1309 = statusData(2)
+        rowCount = rowCount + 1
+        
+        ws.Cells(rowCount, 1) = statusData(0)  ' Employee ID
+        
+        ' Data from 4410 row
+        ws.Cells(rowCount, 2) = sourceData(row4410, 2)  ' Start Date
+        ws.Cells(rowCount, 3) = sourceData(row4410, 3)  ' End Date
+        ws.Cells(rowCount, 4) = row4410  ' Source Row
+        
+        ' Data from 1309 row
+        ws.Cells(rowCount, 5) = sourceData(row1309, 2)  ' Start Date
+        ws.Cells(rowCount, 6) = sourceData(row1309, 3)  ' End Date
+        ws.Cells(rowCount, 7) = row1309  ' Source Row
+        
+        ws.Cells(rowCount, 8) = "Status change detected"
+    Next key
+    
+    ' Format columns
+    ws.Columns("A:H").AutoFit
+    ws.Range("B:C,E:F").NumberFormat = "dd/mm/yyyy"
+    
+    ' Add conditional formatting for visual distinction
+    If rowCount > 1 Then
+        With ws.Range("A2:H" & rowCount)
+            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+            .Borders(xlEdgeTop).LineStyle = xlContinuous
+            .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+        End With
+    End If
+    
+    ' Sort by employee ID
+    If rowCount > 1 Then
+        ws.Range("A1:H" & rowCount).Sort Key1:=ws.Range("A1"), Order1:=xlAscending, Header:=xlYes
+    End If
+    
+    ' Message about status changes found
+    MsgBox "Info: " & statusChangeDict.Count & " employees with status change detected!" & vbCrLf & _
+           "Check the 'STATUS CHANGE' sheet for details.", vbInformation, "Status Changes Found"
+End Sub
 
 ' Saves new workbook with user-selected location
 Sub SaveNewWorkbook(wb As Workbook)
@@ -488,4 +630,6 @@ Sub SaveNewWorkbook(wb As Workbook)
         MsgBox "Save cancelled by user", vbExclamation, "Cancelled"
     End If
 End Sub
+
+
 
