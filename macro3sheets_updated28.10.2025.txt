@@ -86,7 +86,7 @@ Sub ConvertToThreeSheets()
     Set duplicatesDict = CreateObject("Scripting.Dictionary")
     
     ' Read all source data
-    sourceData = sourceWs.Range("A1:R" & lastRow).Value
+    sourceData = sourceWs.Range("A1:V" & lastRow).Value
     
     ' Create the 3 sheets
     Call CreateMiluimSheet(newWb, sourceData)
@@ -179,25 +179,23 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
           ' ✅ החלף בבלוק הזה:
             ' Map columns P- from source to output
             If UBound(sourceData, 2) >= 16 Then
-                ws.Cells(rowCount, 16) = sourceData(i, 16)  ' P - Amount Paid
+                ws.Cells(rowCount, 12) = sourceData(i, 16)  ' P - Amount Paid
             End If
             If UBound(sourceData, 2) >= 17 Then
-                ws.Cells(rowCount, 17) = sourceData(i, 17)  ' Q - Compulsion
+                ws.Cells(rowCount, 13) = sourceData(i, 17)  ' Q - Compulsion
             End If
-            If UBound(sourceData, 2) >= 18 Then
-                ws.Cells(rowCount, 18) = sourceData(i, 18)  ' R - Cross Month
-            End If
+           
             If UBound(sourceData, 2) >= 19 Then
-                ws.Cells(rowCount, 19) = sourceData(i,19)  ' S - Emergency Comp 4405
+                ws.Cells(rowCount, 15) = sourceData(i,19)  ' S - Emergency Comp 4405
             End If
             If UBound(sourceData, 2) >= 20 Then
-                ws.Cells(rowCount, 20) = sourceData(i, 20)  ' T - Emergency 40%
+                ws.Cells(rowCount, 16) = sourceData(i, 20)  ' T - Emergency 40%
             End If
             If UBound(sourceData, 2) >= 21 Then
-                ws.Cells(rowCount, 21) = sourceData(i, 21)  ' U - Passport Number
+                ws.Cells(rowCount, 17) = sourceData(i, 21)  ' U - Passport Number
             End If
             If UBound(sourceData, 2) >= 22 Then
-                ws.Cells(rowCount, 22) = sourceData(i, 22)  ' V- Maamad
+                ws.Cells(rowCount, 18) = sourceData(i, 22)  ' V- Maamad
             End If
         End If
     Next i
@@ -490,5 +488,4 @@ Sub SaveNewWorkbook(wb As Workbook)
         MsgBox "Save cancelled by user", vbExclamation, "Cancelled"
     End If
 End Sub
-
 
