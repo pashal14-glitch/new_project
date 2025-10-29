@@ -176,8 +176,7 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
                 ws.Cells(rowCount, 14) = "0"   ' Cross Month = No
             End If
 
-            
-            ' ✅ החלף בבלוק הזה:
+          ' ✅ החלף בבלוק הזה:
             ' Map columns P- from source to output
             If UBound(sourceData, 2) >= 16 Then
                 ws.Cells(rowCount, 16) = sourceData(i, 16)  ' P - Amount Paid
@@ -185,20 +184,20 @@ Sub CreateMiluimSheet(wb As Workbook, sourceData As Variant)
             If UBound(sourceData, 2) >= 17 Then
                 ws.Cells(rowCount, 17) = sourceData(i, 17)  ' Q - Compulsion
             End If
-            If UBound(sourceData, 2) >= 14 Then
+            If UBound(sourceData, 2) >= 18 Then
                 ws.Cells(rowCount, 18) = sourceData(i, 18)  ' R - Cross Month
             End If
-            If UBound(sourceData, 2) >= 15 Then
-                ws.Cells(rowCount, 15) = sourceData(i, 15)  ' O - Emergency Comp 4405
+            If UBound(sourceData, 2) >= 19 Then
+                ws.Cells(rowCount, 19) = sourceData(i,19)  ' S - Emergency Comp 4405
             End If
-            If UBound(sourceData, 2) >= 16 Then
-                ws.Cells(rowCount, 16) = sourceData(i, 16)  ' P - Emergency 40%
+            If UBound(sourceData, 2) >= 20 Then
+                ws.Cells(rowCount, 20) = sourceData(i, 20)  ' T - Emergency 40%
             End If
-            If UBound(sourceData, 2) >= 17 Then
-                ws.Cells(rowCount, 17) = sourceData(i, 17)  ' Q - Passport Number
+            If UBound(sourceData, 2) >= 21 Then
+                ws.Cells(rowCount, 21) = sourceData(i, 21)  ' U - Passport Number
             End If
-            If UBound(sourceData, 2) >= 18 Then
-                ws.Cells(rowCount, 18) = sourceData(i, 18)  ' R - Maamad
+            If UBound(sourceData, 2) >= 22 Then
+                ws.Cells(rowCount, 22) = sourceData(i, 22)  ' V- Maamad
             End If
         End If
     Next i
@@ -491,4 +490,5 @@ Sub SaveNewWorkbook(wb As Workbook)
         MsgBox "Save cancelled by user", vbExclamation, "Cancelled"
     End If
 End Sub
+
 
