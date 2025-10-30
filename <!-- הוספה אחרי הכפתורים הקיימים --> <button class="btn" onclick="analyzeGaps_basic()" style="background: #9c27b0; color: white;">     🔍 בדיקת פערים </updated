@@ -3283,7 +3283,10 @@ function processMainFile(workbook) {
     for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
         const sheetName = workbook.SheetNames[i];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        raw: true
+        });
         
         if (jsonData.length > 1) {
             if (i === 0) {
@@ -3307,7 +3310,10 @@ function processPaymentFile(workbook, fileName, paymentData) {
     // קח את הגליון הראשון
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        raw: true
+        });
     
     // דלג על 8 שורות ראשונות (1 כותרת + 7 שורות נוספות)
     for (let i = 8; i < jsonData.length; i++) {
