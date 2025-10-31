@@ -835,9 +835,34 @@ td[onclick*="showGapDetails"]:hover {
                          <option value="crossMonth">מילואים גולשים</option>
                     </select>
                 </div>
+                </div>
+                
+                <!-- 🆕 סינון לפי מעמד עובד -->
+                <div class="filter-group">
+                    <label for="statusFilter">מעמד עובד:</label>
+                    <select id="statusFilter">
+                        <option value="">כל המעמדים</option>
+                        <option value="4410">4410</option>
+                        <option value="1309">1309</option>
+                        <option value="status-change">🔄 שינוי מעמד</option>
+                    </select>
+                </div>
                 <div class="filter-group">
                     <button class="btn" onclick="clearFilters()" style="margin-top: 25px; background: #95a5a6;">🗑️ נקה סינון</button>
                 </div>
+                </div>
+            </div>
+            <!-- 🆕 הוסף את זה אחרי סגירת filter-grid -->
+            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="orModeFilter" style="width: auto; cursor: pointer;">
+                    <span style="font-weight: bold;">⚡ מצב OR - הצג שורות שעונות לפחות לאחד מהתנאים</span>
+                </label>
+                <div id="orModeIndicator" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; border-right: 4px solid #ffc107; font-size: 0.9em;">
+                    <strong>🔥 מצב OR פעיל:</strong> מוצגות שורות שעונות <u>לפחות לאחד</u> מהפילטרים שבחרת
+                </div>
+            </div>
+        </div>
             </div>
         </div>
 <div class="filter-group">
@@ -1025,7 +1050,7 @@ td[onclick*="showGapDetails"]:hover {
         emergencyCompulsion4405: r.emergencyCompulsion4405,
         emergency40percentage: r.emergency40percentage,
         passportNum: r.passportNum,
-        maamad: r.maamad
+        employeeStatus: r.employeeStatus
 
     };
     return acc;
@@ -1788,7 +1813,7 @@ async function appendRecords() {
             emergencyCompulsion4405: r.emergencyCompulsion4405,
             emergency40percentage: r.emergency40percentage,
             passportNum: r.passportNum,
-            maamad: r.maamad
+            employeeStatus: r.employeeStatus
         }));
         
         // שלב 2: חבר את הישן והחדש
@@ -2195,7 +2220,7 @@ class MiluimCalculatorCache {
         compulsionContinuous: 0 ,
         emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 ,
         emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined,
-        maamad: originalMiluim ? originalMiluim.maamad : null
+        employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null
     };
 }
     getStats() {
@@ -3481,7 +3506,7 @@ function dateToExcelNumber(date) {
                         emergencyCompulsion4405: parseFloat(row[14]),
                         emergency40percentage:row[15],
                         passportNum:row[16],
-                        maamad:row[17]
+                        employeeStatus:row[17]
                     })).filter(item => item.employeeId);
                     break;
                     
@@ -3953,7 +3978,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${totalWithEmergencySupplement.toFixed(2)}</strong></td>
                 <td>${result.requiredFromBituach || '-'}</td>
                 <td>${result.approvedFromBituach || '-'}</td>
-                <td><strong>${result.maamad}</strong></td>
+                <td><strong>${result.employeeStatus}</strong></td>
             </tr>
         `;
     });
@@ -4441,82 +4466,163 @@ if (document.getElementById('employeeInput')) {
             
             // Filters - עם פונקציה גלובלית
             document.getElementById('employeeFilter').addEventListener('input', applyFilters);
-            document.getElementById('yearFilter').addEventListener('change', applyFilters);
-            document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
-            
+document.getElementById('yearFilter').addEventListener('change', applyFilters);
+document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+
+// 🆕 הוסף את 2 האלה:
+if (document.getElementById('statusFilter')) {
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+}
+if (document.getElementById('orModeFilter')) {
+    document.getElementById('orModeFilter').addEventListener('change', function() {
+        const indicator = document.getElementById('orModeIndicator');
+        if (indicator) {
+            indicator.style.display = this.checked ? 'block' : 'none';
+        }
+        applyFilters();
+    });
+}
+           
             // הוספת פונקציה גלובלית
             window.clearFilters = clearFilters;
         });
 // משתנה גלובלי
 let filterWorker = null;
 
-// יצירת Inline Worker
 function createInlineWorker() {
      const workerCode = `
-        // 🔥 פונקציה פשוטה לחישוב תאריך מ-Excel
         function simpleExcelToDate(serialNumber) {
             if (typeof serialNumber !== 'number') return null;
-            
             const resultDate = new Date(1900, 0, 1);
             resultDate.setDate(resultDate.getDate() + serialNumber - 2);
             return new Date(resultDate.getFullYear(), resultDate.getMonth(), resultDate.getDate());
         }
 
         self.onmessage = function(e) {
-            const { results, filters, miluimData } = e.data;
-            self.miluimData = miluimData;
-                
-            // הסינון
-            let filteredResults = results.filter(result => {
-                // סינון עובד
-                if (filters.employee && !result.employeeId.toString().includes(filters.employee)) {
-                    return false;
-                }
-                
-                // סינון שנה
-                if (filters.year && result.startDate.getFullYear().toString() !== filters.year) {
-                    return false;
-                }
-                
-                // סינון סוג מילואים
-                if (filters.miluimType) {
-                    switch (filters.miluimType) {
-                        case 'new':
-                            if (!result.isNewMiluim) return false;
-                            break;
-                        case 'locked':
-                            if (!(result.limitedByNewMiluim || result.isValueLocked)) return false;
-                            break;
-                        case 'gap':
-                            if (Math.abs(result.paidAmount - result.continuousValue) <= 1) return false;
-                            break;
-                        case 'crossMonth':
-                       if (!result.isCrossMonth) return false;
-                      break;
-                        case 'regular':
-                            // צריך להעביר קבועים
-                            const EMERGENCY_START = new Date('2023-10-07');
-                            if (result.startDate >= EMERGENCY_START) return false;
-                            break;
-                        case 'emergency':
-                            const EMERGENCY_START2 = new Date('2023-10-07');
-                            const NEW_MILUIM_START = new Date('2025-05-01');
-                            if (!(result.startDate >= EMERGENCY_START2 && result.startDate < NEW_MILUIM_START)) return false;
-                            break;
-                    }
-                }
-                
-                return true;
-            });
+            const { results, filters, miluimData, orMode } = e.data;
+           
             
-            self.postMessage(filteredResults);
+            // 🆕 תמיכה במצב OR
+            if (orMode) {
+                // מצב OR - מספיק תנאי אחד
+                const filteredResults = results.filter(result => {
+                    // בדיקת עובד
+                    if (filters.employee && result.employeeId.toString().includes(filters.employee)) {
+                        return true;
+                    }
+                    
+                    // בדיקת שנה
+                    if (filters.year && result.startDate.getFullYear().toString() === filters.year) {
+                        return true;
+                    }
+                    
+                    // בדיקת סוג מילואים
+                    if (filters.miluimType) {
+                        let matches = false;
+                        switch (filters.miluimType) {
+                            case 'new':
+                                matches = result.isNewMiluim;
+                                break;
+                            case 'locked':
+                                matches = result.limitedByNewMiluim || result.isValueLocked;
+                                break;
+                            case 'gap':
+                                matches = Math.abs(result.paidAmount - result.continuousValue) > 1;
+                                break;
+                            case 'crossMonth':
+                                matches = result.isCrossMonth;
+                                break;
+                            case 'regular':
+                                matches = result.startDate < new Date('2023-10-07');
+                                break;
+                            case 'emergency':
+                                matches = result.startDate >= new Date('2023-10-07') && result.startDate < new Date('2025-05-01');
+                                break;
+                        }
+                        if (matches) return true;
+                    }
+                    
+                    // בדיקת מעמד
+                    if (filters.employeeStatus) {
+                        if (filters.employeeStatus === 'status-change') {
+                            const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);  // ✅ שורה חדשה
+                            const statuses = [...new Set(employeeRecords.map(m => m.employeeStatus))].filter(s => s);
+                            if (statuses.length > 1) return true;
+                        } else {
+                            const miluimRecord = miluimData.find(m => 
+                                m.employeeId == result.employeeId && m.startDate === result.startDate
+                            );
+                            if (result.employeeStatus == filters.employeeStatus) {  // ✅ שורה אחת פשוטה
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    return false;
+                });
+                
+                self.postMessage(filteredResults);
+                
+            } else {
+                // מצב AND - כל התנאים
+                let filteredResults = results.filter(result => {
+                    if (filters.employee && !result.employeeId.toString().includes(filters.employee)) {
+                        return false;
+                    }
+                    
+                    if (filters.year && result.startDate.getFullYear().toString() !== filters.year) {
+                        return false;
+                    }
+                    
+                    if (filters.miluimType) {
+                        switch (filters.miluimType) {
+                            case 'new':
+                                if (!result.isNewMiluim) return false;
+                                break;
+                            case 'locked':
+                                if (!(result.limitedByNewMiluim || result.isValueLocked)) return false;
+                                break;
+                            case 'gap':
+                                if (Math.abs(result.paidAmount - result.continuousValue) <= 1) return false;
+                                break;
+                            case 'crossMonth':
+                                if (!result.isCrossMonth) return false;
+                                break;
+                            case 'regular':
+                                if (result.startDate >= new Date('2023-10-07')) return false;
+                                break;
+                            case 'emergency':
+                                if (!(result.startDate >= new Date('2023-10-07') && result.startDate < new Date('2025-05-01'))) return false;
+                                break;
+                        }
+                    }
+                    
+                 // 🆕 סינון מעמד
+if (filters.employeeStatus) {
+    if (filters.employeeStatus === 'status-change') {
+        const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);  // ✅
+        const statuses = [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s);
+        if (statuses.length <= 1) return false;
+    } else {
+        // ✅ שימוש ישיר ב-result.employeeStatus
+        if (!result.employeeStatus || result.employeeStatus != filters.employeeStatus) {
+            return false;
+        }
+    }
+}
+                   
+                    
+                    return true;
+                });
+                
+                self.postMessage(filteredResults);
+            }
         };
     `;
     
     const blob = new Blob([workerCode], { type: 'application/javascript' });
     return new Worker(URL.createObjectURL(blob));
 }
-
 // אתחול Worker
 function initFilterWorker() {
     if (!filterWorker) {
@@ -4530,73 +4636,46 @@ function initFilterWorker() {
     }
     return true;
 }
-
 function applyFilters() {
     if (calculationResults.length === 0) return;
     
-    // נסה ליצור Worker
     if (!initFilterWorker()) {
         console.log('נחזור לסינון רגיל');
         applyFiltersRegular();
         return;
     }
     
-    // הכן פילטרים
+    const orMode = document.getElementById('orModeFilter')?.checked || false;
+    
     const filters = {
         employee: document.getElementById('employeeFilter').value.trim(),
         year: document.getElementById('yearFilter').value,
-        miluimType: document.getElementById('miluimTypeFilter').value
+        miluimType: document.getElementById('miluimTypeFilter').value,
+        employeeStatus: document.getElementById('statusFilter')?.value || ''  // 🆕
     };
     
-    // הצג Loading
     document.getElementById('resultsContainer').innerHTML = `
         <div class="loading" style="padding: 40px; text-align: center;">
             🔄 מסנן ${calculationResults.length} תוצאות ברקע...
         </div>
     `;  
-      
-    // שלח לWorker
-      filterWorker.postMessage({
-        results: calculationResults,
-        filters: filters,
-        miluimData: miluimData  // 🔥 הוסף את הנתונים המקוריים
-    });
+    filterWorker.postMessage({
+    results: calculationResults,
+    filters: filters,
+    calculationResults: calculationResults,  // ✅ הוסף את זה
+    orMode: orMode
+});
     
-    // קבל תוצאות
     filterWorker.onmessage = function(e) {
         const filteredResults = e.data;
         console.log(`סינון הסתיים: ${filteredResults.length} מתוך ${calculationResults.length}`);
         
-        // ✅ תיקון: השתמש בפונקציה החדשה במקום הקוד המסוכן הישן
-        if (filteredResults.length > 200) {
-            // ❌ קוד ישן מסוכן:
-            // const originalResults = calculationResults;
-            // calculationResults = filteredResults;
-            // displayResultsPaginated(1, 50);
-            // calculationResults = originalResults;
-            
-            // ✅ קוד חדש בטוח:
-            displayResults(filteredResults, { 
-                isFiltered: true, 
-                sourceData: calculationResults,
-                itemsPerPage: 50,
-                page: 1,
-                title: '🔍 תוצאות מסוננות (עם עמודים)'
-            });
-        } else {
-            // ❌ קוד ישן:
-            // displayFilteredResults(filteredResults);
-            
-            // ✅ קוד חדש:
-            displayResults(filteredResults, { 
-                isFiltered: true, 
-                sourceData: calculationResults,
-                title: '🔍 תוצאות מסוננות'
-            });
-        }
-        
-        // ❌ זה לא נדרש יותר - הפונקציה החדשה עושה זאת אוטומטית:
-        // updateFilteredStats(filteredResults);
+        displayResults(filteredResults, { 
+            isFiltered: true, 
+            sourceData: calculationResults,
+            itemsPerPage: filteredResults.length > 200 ? 50 : null,
+            title: `🔍 תוצאות מסוננות (${orMode ? 'OR' : 'AND'})`
+        });
     };
     
     filterWorker.onerror = function(error) {
@@ -4605,67 +4684,186 @@ function applyFilters() {
     };
 }
 
-// ✅ גם תקני את applyFiltersRegular (אם יש לך):
 function applyFiltersRegular() {
     if (calculationResults.length === 0) return;
+    
+    // בדיקת מצב OR
+    const orMode = document.getElementById('orModeFilter')?.checked || false;
     
     // הכן פילטרים
     const filters = {
         employee: document.getElementById('employeeFilter').value.trim(),
         year: document.getElementById('yearFilter').value,
-        miluimType: document.getElementById('miluimTypeFilter').value
+        miluimType: document.getElementById('miluimTypeFilter').value,
+        employeeStatus: document.getElementById('statusFilter')?.value || ''
     };
     
-    // סנן את הנתונים
-    let filteredResults = [...calculationResults];
+    console.log('🔍 פילטרים:', filters);
+    console.log('⚡ מצב OR:', orMode);
     
-    // סינון לפי מספר עובד
-    if (filters.employee) {
-        filteredResults = filteredResults.filter(result => 
-            result.employeeId.toString().includes(filters.employee)
-        );
-    }
+    // ספירת פילטרים פעילים
+    const hasEmployeeFilter = filters.employee !== '';
+    const hasYearFilter = filters.year !== '';
+    const hasMiluimTypeFilter = filters.miluimType !== '';
+    const hasStatusFilter = filters.employeeStatus !== '';
     
-    // סינון לפי שנה
-    if (filters.year) {
-        filteredResults = filteredResults.filter(result => 
-            result.startDate.getFullYear().toString() === filters.year
-        );
-    }
+    const activeFiltersCount = [hasEmployeeFilter, hasYearFilter, hasMiluimTypeFilter, hasStatusFilter].filter(Boolean).length;
     
-    // סינון לפי סוג מילואים
-    if (filters.miluimType) {
-        filteredResults = filteredResults.filter(result => {
-            switch (filters.miluimType) {
-                case 'regular':
-                    const EMERGENCY_START = new Date('2023-10-07');
-                    return result.startDate < EMERGENCY_START;
-                case 'emergency':
-                    const EMERGENCY_START2 = new Date('2023-10-07');
-                    const NEW_MILUIM_START = new Date('2025-05-01');
-                    return result.startDate >= EMERGENCY_START2 && result.startDate < NEW_MILUIM_START;
-                case 'new':
-                    return result.isNewMiluim;
-                case 'locked':
-                    return result.limitedByNewMiluim || result.isValueLocked;
-                case 'gap':
-                    return Math.abs((result.paidAmount || 0) - result.continuousValue) > 0.01;
-                case 'crossMonth':
-                    const startDate = new Date(result.startDate);
-                    const endDate = new Date(result.endDate);
-                    return (startDate.getMonth() !== endDate.getMonth() || 
-                            startDate.getFullYear() !== endDate.getFullYear());
-                default:
-                    return true;
-            }
+    console.log('📊 פילטרים פעילים:', activeFiltersCount);
+    
+    // אם אין פילטרים פעילים - הצג הכל
+    if (activeFiltersCount === 0) {
+        displayResults(calculationResults, { 
+            isFiltered: false, 
+            sourceData: calculationResults
         });
+        return;
     }
     
-    // ✅ השתמש בפונקציה החדשה
+    let filteredResults;
+    
+    if (orMode) {
+        // ===== מצב OR: מספיק שתנאי אחד יתקיים =====
+        console.log('🔥 מפעיל סינון במצב OR');
+        
+        filteredResults = calculationResults.filter(result => {
+            // בדיקה 1: מספר עובד
+            if (hasEmployeeFilter && result.employeeId.toString().includes(filters.employee)) {
+                return true;
+            }
+            
+            // בדיקה 2: שנה
+            if (hasYearFilter && result.startDate.getFullYear().toString() === filters.year) {
+                return true;
+            }
+            
+            // בדיקה 3: סוג מילואים
+            if (hasMiluimTypeFilter) {
+                let matches = false;
+                switch (filters.miluimType) {
+                    case 'regular':
+                        matches = result.startDate < new Date('2023-10-07');
+                        break;
+                    case 'emergency':
+                        matches = result.startDate >= new Date('2023-10-07') && result.startDate < new Date('2025-05-01');
+                        break;
+                    case 'new':
+                        matches = result.isNewMiluim;
+                        break;
+                    case 'locked':
+                        matches = result.limitedByNewMiluim || result.isValueLocked;
+                        break;
+                    case 'gap':
+                        matches = Math.abs((result.paidAmount || 0) - result.continuousValue) > 0.01;
+                        break;
+                    case 'crossMonth':
+                        const startDate = new Date(result.startDate);
+                        const endDate = new Date(result.endDate);
+                        matches = (startDate.getMonth() !== endDate.getMonth() || 
+                                startDate.getFullYear() !== endDate.getFullYear());
+                        break;
+                }
+                if (matches) return true;
+            }
+            
+            // בדיקה 4: מעמד עובד
+            if (hasStatusFilter) {
+                if (filters.employeeStatus === 'status-change') {
+                    // ✅ השתמש ב-calculationResults
+                    const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);
+                    const statuses = [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s);
+                    if (statuses.length > 1) {
+                        console.log('✅ עובד', result.employeeId, 'שינה מעמד:', statuses);
+                        return true;
+                    }
+                } else {
+                    // ✅ בדיקה פשוטה
+                    if (result.employeeStatus == filters.employeeStatus) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        });
+        
+    } else {
+        // ===== מצב AND: כל התנאים חייבים להתקיים =====
+        console.log('🔒 מפעיל סינון במצב AND');
+        
+        filteredResults = [...calculationResults];
+        
+        // סינון לפי מספר עובד
+        if (hasEmployeeFilter) {
+            filteredResults = filteredResults.filter(result => 
+                result.employeeId.toString().includes(filters.employee)
+            );
+        }
+        
+        // סינון לפי שנה
+        if (hasYearFilter) {
+            filteredResults = filteredResults.filter(result => 
+                result.startDate.getFullYear().toString() === filters.year
+            );
+        }
+        
+        // סינון לפי סוג מילואים
+        if (hasMiluimTypeFilter) {
+            filteredResults = filteredResults.filter(result => {
+                switch (filters.miluimType) {
+                    case 'regular':
+                        return result.startDate < new Date('2023-10-07');
+                    case 'emergency':
+                        return result.startDate >= new Date('2023-10-07') && result.startDate < new Date('2025-05-01');
+                    case 'new':
+                        return result.isNewMiluim;
+                    case 'locked':
+                        return result.limitedByNewMiluim || result.isValueLocked;
+                    case 'gap':
+                        return Math.abs((result.paidAmount || 0) - result.continuousValue) > 0.01;
+                    case 'crossMonth':
+                        const startDate = new Date(result.startDate);
+                        const endDate = new Date(result.endDate);
+                        return (startDate.getMonth() !== endDate.getMonth() || 
+                                startDate.getFullYear() !== endDate.getFullYear());
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        // סינון לפי מעמד עובד
+        if (hasStatusFilter) {
+            if (filters.employeeStatus === 'status-change') {
+                filteredResults = filteredResults.filter(result => {
+                    // ✅ השתמש ב-calculationResults
+                    const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);
+                    const statuses = [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s);
+                    const hasChange = statuses.length > 1;
+                    
+                    if (hasChange) {
+                        console.log('✅ עובד', result.employeeId, 'שינה מעמד:', statuses);
+                    }
+                    
+                    return hasChange;
+                });
+            } else {
+                // ✅ בדיקה פשוטה
+                filteredResults = filteredResults.filter(result => {
+                    return result.employeeStatus == filters.employeeStatus;
+                });
+            }
+        }
+    }
+    
+    console.log('📈 תוצאות סינון:', filteredResults.length, 'מתוך', calculationResults.length);
+    
+    // הצג תוצאות
     displayResults(filteredResults, { 
         isFiltered: true, 
         sourceData: calculationResults,
-        title: filteredResults.length < calculationResults.length ? '🔍 תוצאות מסוננות' : null
+        title: filteredResults.length < calculationResults.length ? 
+            `🔍 תוצאות מסוננות (${orMode ? 'OR' : 'AND'}) - ${filteredResults.length} מתוך ${calculationResults.length}` : null
     });
 }
       
@@ -4681,14 +4879,191 @@ function applyFiltersRegular() {
             document.getElementById('totalPayment').textContent = formatCurrency(totalPayment);
         }
 
-        function clearFilters() {
-            document.getElementById('employeeFilter').value = '';
-            document.getElementById('yearFilter').value = '';
-            document.getElementById('miluimTypeFilter').value = '';
-            displayResults(calculationResults, { 
-            itemsPerPage: calculationResults.length > 500 ? 100 : null });
-            updateSummaryStats();
+       function clearFilters() {
+    document.getElementById('employeeFilter').value = '';
+    document.getElementById('yearFilter').value = '';
+    document.getElementById('miluimTypeFilter').value = '';
+    
+    // 🆕 הוסף את 3 השורות האלה:
+    if (document.getElementById('statusFilter')) {
+        document.getElementById('statusFilter').value = '';
+    }
+    if (document.getElementById('orModeFilter')) {
+        document.getElementById('orModeFilter').checked = false;
+        document.getElementById('orModeIndicator').style.display = 'none';
+    }
+    
+    displayResults(calculationResults, { 
+    itemsPerPage: calculationResults.length > 500 ? 100 : null });
+    updateSummaryStats();
+}
+
+// 🆕 ========== פונקציות עזר למעמד עובד - הוסף מכאן ==========
+
+/**
+ * בדיקה האם עובד שינה מעמד במהלך תקופות המילואים שלו
+ * @param {string|number} employeeId - מספר זהות העובד
+ * @returns {boolean} true אם יש שינוי מעמד, false אחרת
+ */
+function hasStatusChange(employeeId) {
+    if (!miluimData || miluimData.length === 0) {
+        return false;
+    }
+    
+    // מצא את כל הרשומות של העובד
+    const employeeRecords = miluimData.filter(m => m.employeeId == employeeId);
+    
+    if (employeeRecords.length === 0) {
+        return false;
+    }
+    
+    // אסוף את כל המעמדים השונים (סנן ערכים ריקים)
+    const statuses = [...new Set(employeeRecords.map(m => m.employeeStatus))].filter(s => s);
+    
+    // אם יש יותר ממעמד אחד - יש שינוי
+    return statuses.length > 1;
+}
+
+/**
+ * מחזיר את כל המעמדים של עובד
+ * @param {string|number} employeeId - מספר זהות העובד
+ * @returns {Array} מערך של מעמדים ייחודיים
+ */
+function getEmployeeStatuses(employeeId) {
+    if (!miluimData || miluimData.length === 0) {
+        return [];
+    }
+    
+    const employeeRecords = miluimData.filter(m => m.employeeId == employeeId);
+    const statuses = [...new Set(employeeRecords.map(m => m.employeeStatus))].filter(s => s);
+    
+    return statuses;
+}
+
+/**
+ * מחזיר את המעמד של עובד בתאריך ספציפי
+ * @param {string|number} employeeId - מספר זהות העובד
+ * @param {Date|string|number} date - תאריך (Date object או string או Excel number)
+ * @returns {string|null} המעמד או null אם לא נמצא
+ */
+function getEmployeeStatusAtDate(employeeId, date) {
+    if (!miluimData || miluimData.length === 0) {
+        return null;
+    }
+    
+    // המר את התאריך לאובייקט Date אם צריך
+    let searchDate;
+    if (date instanceof Date) {
+        searchDate = date;
+    } else if (typeof date === 'number') {
+        searchDate = parseExcelDate(date);
+    } else {
+        searchDate = new Date(date);
+    }
+    
+    // מצא רשומה שהתאריך נמצא בטווח שלה
+    const record = miluimData.find(m => {
+        if (m.employeeId != employeeId) return false;
+        
+        const startDate = parseExcelDate(m.startDate);
+        const endDate = parseExcelDate(m.endDate);
+        
+        return searchDate >= startDate && searchDate <= endDate;
+    });
+    
+    return record ? record.employeeStatus : null;
+}
+
+/**
+ * מחזיר מידע מפורט על שינויי מעמד של עובד
+ * @param {string|number} employeeId - מספר זהות העובד
+ * @returns {Object} אובייקט עם פרטי השינויים
+ */
+function getStatusChangeDetails(employeeId) {
+    if (!miluimData || miluimData.length === 0) {
+        return { hasChange: false, changes: [] };
+    }
+    
+    // מיין את הרשומות לפי תאריך התחלה
+    const employeeRecords = miluimData
+        .filter(m => m.employeeId == employeeId)
+        .map(m => ({
+            ...m,
+            startDate: parseExcelDate(m.startDate),
+            endDate: parseExcelDate(m.endDate)
+        }))
+        .sort((a, b) => a.startDate - b.startDate);
+    
+    if (employeeRecords.length === 0) {
+        return { hasChange: false, changes: [] };
+    }
+    
+    const changes = [];
+    let previousStatus = null;
+    
+    employeeRecords.forEach((record, index) => {
+        if (record.employeeStatus && record.employeeStatus !== previousStatus) {
+            changes.push({
+                changeNumber: changes.length + 1,
+                date: record.startDate,
+                fromStatus: previousStatus,
+                toStatus: record.employeeStatus,
+                period: `${formatDate(record.startDate)} - ${formatDate(record.endDate)}`
+            });
+            previousStatus = record.employeeStatus;
         }
+    });
+    
+    return {
+        hasChange: changes.length > 1, // יותר משינוי אחד = יש שינוי ממשי
+        totalChanges: changes.length - 1, // מספר השינויים (בלי המעמד הראשוני)
+        changes: changes,
+        allStatuses: [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s)
+    };
+}
+
+/**
+ * מחזיר רשימת עובדים ששינו מעמד
+ * @returns {Array} מערך של מזהי עובדים
+ */
+function getEmployeesWithStatusChange() {
+    if (!miluimData || miluimData.length === 0) {
+        return [];
+    }
+    
+    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
+    
+    return uniqueEmployees.filter(employeeId => hasStatusChange(employeeId));
+}
+
+/**
+ * מציג פרטי שינוי מעמד בצורה ידידותית
+ * @param {string|number} employeeId - מספר זהות העובד
+ */
+function showStatusChangeInfo(employeeId) {
+    const details = getStatusChangeDetails(employeeId);
+    
+    if (!details.hasChange) {
+        console.log(`עובד ${employeeId}: אין שינויי מעמד`);
+        return;
+    }
+    
+    console.log(`\n📊 עובד ${employeeId} - שינויי מעמד:`);
+    console.log(`סה"כ שינויים: ${details.totalChanges}`);
+    console.log(`כל המעמדים: ${details.allStatuses.join(' → ')}\n`);
+    
+    details.changes.forEach(change => {
+        if (change.fromStatus) {
+            console.log(`${change.changeNumber}. ${change.date.toLocaleDateString('he-IL')}: ${change.fromStatus} → ${change.toStatus}`);
+            console.log(`   תקופה: ${change.period}`);
+        } else {
+            console.log(`${change.changeNumber}. מעמד ראשוני: ${change.toStatus}`);
+            console.log(`   תקופה: ${change.period}`);
+        }
+    });
+}
+
+// 🆕 ========== סוף פונקציות עזר למעמד עובד ==========
 function calculateSupplement40(days) {
     const quotient = Math.floor(days / 7);
     const remainder = days % 7;
