@@ -1020,6 +1020,8 @@ td[onclick*="showGapDetails"]:hover {
             timestamp: new Date().toISOString(),
             results: data,
             totalRecords: data.length,
+             salaryData: salaryData,
+             miluimData: miluimData,
             
             // 🆕 1. שמירת סטטוסי הפערים
             gapStatuses: gapStatuses,
@@ -2103,6 +2105,15 @@ await loadGapDetailsFromIndexedDB();
                             startDate: new Date(r.startDate),
                             endDate: new Date(r.endDate)
                         }));
+                        // 🆕 טעינת נתוני שכר ומילואים מהשמירה
+if (savedData.salaryData) {
+    salaryData = savedData.salaryData;
+    console.log('✅ נטענו נתוני שכר:', salaryData.length, 'רשומות');
+}
+if (savedData.miluimData) {
+    miluimData = savedData.miluimData;
+    console.log('✅ נטענו נתוני מילואים:', miluimData.length, 'רשומות');
+}
                         
                         console.log('✅ נתונים נטענו:', calculationResults.length);
                         
