@@ -2672,6 +2672,15 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                isLocked: true // òøê ðòåì áâìì òøê âáåä
            };
        }
+
+// NEW: Prevent value from going below cluster start value for new miluim
+const clusterStartValue = clusterJValue / 1.2; // חזרה לערך המקורי (100%)
+if (recommendedValue < clusterStartValue && isNewMiluim) {
+    return {
+        value: clusterStartValue,
+        isLocked: true // ערך נעול בגלל ערך נמוך
+    };
+}
    }
    
    return {
