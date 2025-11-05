@@ -397,6 +397,7 @@
             </div>
             <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
             <button class="export-btn" onclick="exportToExcel()">📥 ייצא ל-Excel</button>
+            <button class="export-btn" onclick="exportDetailedExcel()">📊 ייצא דוח מפורט (3 גליונות)</button>
         </div>
 
         <!-- טבלת תוצאות -->
@@ -428,6 +429,8 @@
         let btlData = {};
         let matchedData = [];
         let allYears = new Set();
+        let detailedSalaryData = {}; // לשמירת נתוני חודשים מפורטים
+        let salaryFilesDates = {};   // לשמירת תאריכי קבצים
 
         // הגדרות קבועות לקובץ Salary - לפי אותיות עמודות
         const SALARY_SETTINGS = {
@@ -503,75 +506,98 @@
             el.innerHTML = `<div class="message ${type} fade-in">${text}</div>`;
         }
 
-        // עיבוד קובץ Salary
-        function processSalaryFile(workbook, fileName) {
-            const firstSheet = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheet];
-            
-            // קריאת הנתונים כ-JSON עם שמות עמודות
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
-            const startRow = SALARY_SETTINGS.startRow - 1; // המרה למבוסס-0
-            
-            console.log(`📋 ${fileName}: טווח: ${worksheet['!ref']}`);
-            console.log(`📋 מתחיל משורה: ${SALARY_SETTINGS.startRow}`);
+       // עיבוד קובץ Salary
+function processSalaryFile(workbook, fileName) {
+    const firstSheet = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheet];
+    
+    // וידוא שיש טווח תקין
+    if (!worksheet['!ref'] || worksheet['!ref'] === 'A1') {
+        console.warn('⚠️ קובץ ריק או לא תקין:', fileName);
+        return 0;
+    }
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    const startRow = SALARY_SETTINGS.startRow - 1;
+    
+    // חילוץ תאריך מהקובץ (למשל Salary_202501 -> 202501)
+    const dateMatch = fileName.match(/(\d{6})/);
+    const fileDate = dateMatch ? dateMatch[1] : '000000';
+    
+    console.log(`📋 ${fileName}: טווח: ${worksheet['!ref']}, תאריך: ${fileDate}`);
 
-            let count = 0;
-            
-            // עבור על כל שורה
-            for (let rowNum = startRow; rowNum <= range.e.r; rowNum++) {
-                // קריאת תאים ספציפיים לפי אות עמודה
-                const empIdCell = worksheet[SALARY_SETTINGS.colId + (rowNum + 1)];
-const startDateCell = worksheet[SALARY_SETTINGS.colStart + (rowNum + 1)];
-const endDateCell = worksheet[SALARY_SETTINGS.colEnd + (rowNum + 1)];
-const amountCell = worksheet[SALARY_SETTINGS.colAmount + (rowNum + 1)];
-const signCell = worksheet['P' + (rowNum + 1)];  // 👈 הוספה: קריאת עמודה P
+    let count = 0;
+    
+    for (let rowNum = startRow; rowNum <= range.e.r; rowNum++) {
+        const empIdCell = worksheet[SALARY_SETTINGS.colId + (rowNum + 1)];
+        const startDateCell = worksheet[SALARY_SETTINGS.colStart + (rowNum + 1)];
+        const endDateCell = worksheet[SALARY_SETTINGS.colEnd + (rowNum + 1)];
+        const amountCell = worksheet[SALARY_SETTINGS.colAmount + (rowNum + 1)];
+        const signCell = worksheet['P' + (rowNum + 1)];
+        
+        const empId = empIdCell ? empIdCell.v : null;
+        const startDateRaw = startDateCell ? startDateCell.v : null;
+        const endDateRaw = endDateCell ? endDateCell.v : null;
+        let amount = amountCell ? parseFloat(amountCell.v) : 0;
 
-const empId = empIdCell ? empIdCell.v : null;
-const startDateRaw = startDateCell ? startDateCell.v : null;
-const endDateRaw = endDateCell ? endDateCell.v : null;
-let amount = amountCell ? parseFloat(amountCell.v) : 0;
-
-// 👈 הוספה: התחשבות בסימן מעמודה P
-if (signCell && signCell.v === '-') {
-    amount = -amount;
-}
-
-                console.log(`🔍 שורה ${rowNum + 1}: empId=${empId}, start=${startDateRaw}, end=${endDateRaw}, amount=${amount}`);
-
-                // המרת תאריכים
-                const startDate = convertDate(startDateRaw);
-                const endDate = convertDate(endDateRaw);
-
-                console.log(`📅 אחרי המרה: start=${startDate}, end=${endDate}`);
-
-                if (empId && startDate && endDate) {
-                    const key = createKey(empId, startDate, endDate);
-                    
-                    console.log(`✅ רשומה תקינה! מפתח: ${key}, סכום: ${amount}`);
-                    
-                    if (!salaryData[key]) {
-                        salaryData[key] = {
-                            empId: empId,
-                            startDate: startDate,
-                            endDate: endDate,
-                            amount: 0
-                        };
-                    }
-                    salaryData[key].amount += amount;
-                    count++;
-
-                    // הוספת שנה לרשימה
-                    const year = startDate.split('/')[2];
-                    if (year) allYears.add(year);
-                } else {
-                    console.warn(`⚠️ שורה ${rowNum + 1} נדחתה: empId=${!!empId}, startDate=${!!startDate}, endDate=${!!endDate}`);
-                }
-            }
-            
-            console.log(`✅ Salary: ${fileName} - ${count} רשומות נטענו`);
-            return count;
+        // התחשבות בסימן
+        if (signCell && signCell.v === '-') {
+            amount = -amount;
         }
 
+        const startDate = convertDate(startDateRaw);
+        const endDate = convertDate(endDateRaw);
+
+        if (empId && startDate && endDate) {
+            const key = createKey(empId, startDate, endDate);
+            
+            // עדכון סכום Q
+            if (!salaryData[key]) {
+                salaryData[key] = {
+                    empId: empId,
+                    startDate: startDate,
+                    endDate: endDate,
+                    amount: 0
+                };
+            }
+            salaryData[key].amount += amount;
+            count++;
+
+            // שמירת נתוני חודשים מפורטים - רק מהקובץ האחרון
+            if (!salaryFilesDates[key] || fileDate > salaryFilesDates[key]) {
+                salaryFilesDates[key] = fileDate;
+                
+                // חילוץ 6 חודשים (R,T,U -> V,X,Y -> ...)
+                const months = [];
+                const cols = ['R','V','Z','AD','AH','AL']; // עמודות חודש
+                const daysCols = ['T','X','AB','AF','AJ','AN']; // עמודות ימים
+                const brutoCols = ['U','Y','AC','AG','AK','AO']; // עמודות ברוטו
+                
+                for (let i = 0; i < 6; i++) {
+                    const monthCell = worksheet[cols[i] + (rowNum + 1)];
+                    const daysCell = worksheet[daysCols[i] + (rowNum + 1)];
+                    const brutoCell = worksheet[brutoCols[i] + (rowNum + 1)];
+                    
+                    if (monthCell && monthCell.v) {
+                        months.push({
+                            month: monthCell.v,
+                            days: daysCell ? daysCell.v : 0,
+                            bruto: brutoCell ? parseFloat(brutoCell.v) : 0
+                        });
+                    }
+                }
+                
+                detailedSalaryData[key] = months;
+            }
+
+            const year = startDate.split('/')[2];
+            if (year) allYears.add(year);
+        }
+    }
+    
+    console.log(`✅ Salary: ${fileName} - ${count} רשומות נטענו`);
+    return count;
+}
         // עיבוד קובץ BTL (בדיוק כמו במחשבון)
         function processBTLFile(workbook, fileName) {
             const firstSheet = workbook.SheetNames[0];
@@ -926,7 +952,49 @@ if (file.name.match(/\.csv$/i)) {
             const fileName = `miluim_report_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
         }
-
+// ייצוא דוח מפורט ל-3 גליונות
+function exportDetailedExcel() {
+    const wb = XLSX.utils.book_new();
+    
+    // גיליון 90291 - מספר עובד, תאריך מ, תאריך עד
+    const sheet1Data = [['מספר עובד', 'תאריך התחלה', 'תאריך סיום']];
+    Object.keys(salaryData).forEach(key => {
+        const rec = salaryData[key];
+        sheet1Data.push([rec.empId, rec.startDate, rec.endDate]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+    XLSX.utils.book_append_sheet(wb, ws1, '90291');
+    
+    // גיליון 94010 - מספר עובד, חודש ערך, ברוטו ביטוח לאומי
+    const sheet2Data = [['מספר עובד', 'חודש ערך', 'ברוטו ביטוח לאומי']];
+    Object.keys(detailedSalaryData).forEach(key => {
+        const rec = salaryData[key];
+        const months = detailedSalaryData[key];
+        months.forEach(m => {
+            sheet2Data.push([rec.empId, m.month, m.bruto]);
+        });
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+    XLSX.utils.book_append_sheet(wb, ws2, '94010');
+    
+    // גיליון 1857 - מספר עובד, חודש ערך, מספר ימים
+    const sheet3Data = [['מספר עובד', 'חודש ערך', 'מספר ימים']];
+    Object.keys(detailedSalaryData).forEach(key => {
+        const rec = salaryData[key];
+        const months = detailedSalaryData[key];
+        months.forEach(m => {
+            sheet3Data.push([rec.empId, m.month, m.days]);
+        });
+    });
+    const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+    XLSX.utils.book_append_sheet(wb, ws3, '1857');
+    
+    // הורדה
+    const fileName = `miluim_detailed_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    console.log('✅ ייצוא מפורט הושלם!');
+}
         // אין צורך בטעינת הגדרות - הן קבועות בקוד
     </script>
 </body>
