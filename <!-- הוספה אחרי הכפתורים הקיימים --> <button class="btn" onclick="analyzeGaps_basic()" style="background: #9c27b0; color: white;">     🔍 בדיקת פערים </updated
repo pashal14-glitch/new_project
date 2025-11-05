@@ -3996,8 +3996,8 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${emergencySupplementDays}</td>
                 <td>${emergencySupplementAmount.toFixed(2)}</td>
                 <td><strong>${totalWithEmergencySupplement.toFixed(2)}</strong></td>
-                <td>${result.requiredFromBituach || '-'}</td>
-                <td>${result.approvedFromBituach || '-'}</td>
+                <td>${getPaymentAmount(result, 'requested')}</td>
+                <td>${getPaymentAmount(result, 'approved')}</td>
                 <td><strong>${result.employeeStatus}</strong></td>
             </tr>
         `;
