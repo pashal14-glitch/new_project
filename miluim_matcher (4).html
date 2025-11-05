@@ -521,14 +521,20 @@
             for (let rowNum = startRow; rowNum <= range.e.r; rowNum++) {
                 // קריאת תאים ספציפיים לפי אות עמודה
                 const empIdCell = worksheet[SALARY_SETTINGS.colId + (rowNum + 1)];
-                const startDateCell = worksheet[SALARY_SETTINGS.colStart + (rowNum + 1)];
-                const endDateCell = worksheet[SALARY_SETTINGS.colEnd + (rowNum + 1)];
-                const amountCell = worksheet[SALARY_SETTINGS.colAmount + (rowNum + 1)];
-                
-                const empId = empIdCell ? empIdCell.v : null;
-                const startDateRaw = startDateCell ? startDateCell.v : null;
-                const endDateRaw = endDateCell ? endDateCell.v : null;
-                const amount = amountCell ? parseFloat(amountCell.v) : 0;
+const startDateCell = worksheet[SALARY_SETTINGS.colStart + (rowNum + 1)];
+const endDateCell = worksheet[SALARY_SETTINGS.colEnd + (rowNum + 1)];
+const amountCell = worksheet[SALARY_SETTINGS.colAmount + (rowNum + 1)];
+const signCell = worksheet['P' + (rowNum + 1)];  // 👈 הוספה: קריאת עמודה P
+
+const empId = empIdCell ? empIdCell.v : null;
+const startDateRaw = startDateCell ? startDateCell.v : null;
+const endDateRaw = endDateCell ? endDateCell.v : null;
+let amount = amountCell ? parseFloat(amountCell.v) : 0;
+
+// 👈 הוספה: התחשבות בסימן מעמודה P
+if (signCell && signCell.v === '-') {
+    amount = -amount;
+}
 
                 console.log(`🔍 שורה ${rowNum + 1}: empId=${empId}, start=${startDateRaw}, end=${endDateRaw}, amount=${amount}`);
 
