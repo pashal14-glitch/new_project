@@ -1025,6 +1025,7 @@ td[onclick*="showGapDetails"]:hover {
             
             // 🆕 1. שמירת סטטוסי הפערים
             gapStatuses: gapStatuses,
+            paymentData: window.paymentData || [],  // שמור את המערך כמו שהוא 
             
             // 🆕 2. מטא-דאטה לזיהוי מהיר
             metadata: {
@@ -1089,7 +1090,17 @@ td[onclick*="showGapDetails"]:hover {
                             const savedData = data[0];
                             console.log('✅ נטען מ-IndexedDB:', savedData.totalRecords, 'רשומות');
                             console.log('📅 תאריך שמירה:', savedData.timestamp);
-                            resolve(savedData);
+                            // 🆕 הוסיפי כאן:
+                   if (savedData.paymentData) {
+    // וודאי שזה מערך
+    window.paymentData = Array.isArray(savedData.paymentData) ? 
+                         savedData.paymentData : 
+                         Object.values(savedData.paymentData);
+    console.log('✅ נטענו נתוני תשלומים:', window.paymentData.length);
+    console.log('🔍 דוגמת נתון:', window.paymentData[0]); // הוסיפי לדיבוג
+}     
+                    
+                    resolve(savedData);
                         } else {
                             console.log('ℹ️ אין נתונים שמורים');
                             resolve(null);
@@ -3430,7 +3441,6 @@ function finishProcessing(mainFileProcessed, paymentData) {
     
     document.getElementById('sheetsStatus').style.display = 'block';
 }
-// פונקציה לחיבור נתוני תשלומים לפי מפתח
 function getPaymentAmount(result, type) {
     if (!window.paymentData || window.paymentData.length === 0) {
         return '-';
@@ -3440,25 +3450,46 @@ function getPaymentAmount(result, type) {
     const startExcel = dateToExcelNumber(result.startDate);
     const endExcel = dateToExcelNumber(result.endDate);
     
-    // יצירת מפתח לחיפוש
-  const key = `${result.passportNum}|${startExcel}|${endExcel}`;
+    // השתמש ב-employeeId אם passportNum לא קיים
+    const identifier = result.passportNum || result.employeeId;
     
-    console.log('מחפש מפתח:', key);
+    // נסה שני פורמטים של מפתחות
+    const keyWithPipe = `${identifier}|${startExcel}|${endExcel}`;
+    const keyWithUnderscore = `${identifier}_${formatDate(result.startDate)}_${formatDate(result.endDate)}`;
     
-    // חיפוש ברשימת התשלומים
-    const payment = window.paymentData.find(p => p.key === key);
+    console.log('מחפש מפתחות:', keyWithPipe, 'או', keyWithUnderscore);
+    
+    // חיפוש ברשימת התשלומים - נסה את שני הפורמטים
+    let payment = window.paymentData.find(p => p.key === keyWithPipe);
+    
+    if (!payment) {
+        payment = window.paymentData.find(p => p.key === keyWithUnderscore);
+    }
     
     if (payment) {
-    console.log('נמצא תשלום:', payment);
-    
-    // החזר את הסכום הנכון לפי הסוג
-    if (type === 'approved') {
-        return formatCurrency(payment.totalAmount);   // סכום מאושר
-    } else if (type === 'requested') {
-        return formatCurrency(payment.totalAmount2);  // תגמול נדרש
+        console.log('נמצא תשלום:', payment);
+        
+        // בדוק אם יש ערכים ממשיים
+        const approvedValue = payment.totalAmount;
+        const requestedValue = payment.totalAmount2;
+        
+        // החזר את הסכום הנכון לפי הסוג
+        if (type === 'approved') {
+            // אם הערך הוא '-' או לא קיים, החזר '-'
+            if (approvedValue === '-' || approvedValue === undefined || approvedValue === null) {
+                return '-';
+            }
+            return formatCurrency(approvedValue);
+        } else if (type === 'requested') {
+            // אם הערך הוא '-' או לא קיים, החזר '-'
+            if (requestedValue === '-' || requestedValue === undefined || requestedValue === null) {
+                return '-';
+            }
+            return formatCurrency(requestedValue);
+        }
     }
-}
     
+    console.log('לא נמצא תשלום עבור:', identifier, startExcel, endExcel);
     return '-';
 }
 
