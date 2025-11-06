@@ -110,22 +110,22 @@
         }
 
         .btn-primary {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        }
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
 
-        .btn-primary:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
 
         .btn-success {
             background: #27ae60;
@@ -333,16 +333,29 @@
         </div>
 
         <!-- בחירת תיקייה -->
-        <div class="section">
-            <h2>📁 בחירת תיקיה</h2>
-            <div class="folder-select-area" id="folderArea" onclick="document.getElementById('folderInput').click()">
-                <div class="folder-icon">📂</div>
-                <h3>לחץ לבחירת תיקייה</h3>
-                <p>התיקייה צריכה להכיל תתי-תיקיות עם קבצי Salary ו-BTL</p>
-                <input type="file" id="folderInput" webkitdirectory multiple style="display: none;">
-            </div>
-            <div id="loadMessage"></div>
-        </div>
+       <div class="section">
+    <h2>📁 בחירת תיקייה</h2>
+    <div class="folder-select-area" id="folderArea" onclick="document.getElementById('folderInput').click()">
+        <div class="folder-icon">📂</div>
+        <h3>לחץ לבחירת תיקייה</h3>
+        <p>התיקייה צריכה להכיל תתי-תיקיות עם קבצי Salary ו-BTL</p>
+        <input type="file" id="folderInput" webkitdirectory multiple style="display: none;">
+    </div>
+    <div id="loadMessage"></div>
+    
+    <!-- 👇 הוספה חדשה -->
+    <div style="text-align: center; margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn-primary" onclick="loadFromIndexedDB()">
+            📥 טען נתונים שמורים
+        </button>
+        <button class="btn-primary" onclick="saveToIndexedDB()" style="background: #9b59b6;">
+            💾 שמור נתונים
+        </button>
+        <button class="btn-primary" onclick="clearIndexedDB()" style="background: #e74c3c;">
+            🗑️ מחק נתונים שמורים
+        </button>
+    </div>
+</div>
 
         <!-- סטטיסטיקות -->
         <div class="section hidden" id="statsSection">
@@ -398,6 +411,7 @@
             <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
             <button class="export-btn" onclick="exportToExcel()">📥 ייצא ל-Excel</button>
             <button class="export-btn" onclick="exportDetailedExcel()">📊 ייצא דוח מפורט (3 גליונות)</button>
+            <button class="export-btn" style="background: #9b59b6;" onclick="saveToIndexedDB()">💾 שמור נתונים למחשבון</button>
         </div>
 
         <!-- טבלת תוצאות -->
@@ -440,6 +454,76 @@
             colAmount: 'Q',    // עמודה Q - סכום
             startRow: 1        // שורה 1
         };
+        // ========== IndexedDB - שמירה וקריאה ==========
+
+// פתיחת/יצירת מסד נתונים
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('miluimDB', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // יצירת טבלאות אם לא קיימות
+            if (!db.objectStoreNames.contains('matchedData')) {
+                db.createObjectStore('matchedData', { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains('salaryData')) {
+                db.createObjectStore('salaryData', { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains('btlData')) {
+                db.createObjectStore('btlData', { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains('detailedSalaryData')) {
+                db.createObjectStore('detailedSalaryData', { keyPath: 'key' });
+            }
+        };
+    });
+}
+
+// שמירת נתונים ל-IndexedDB
+async function saveToIndexedDB() {
+    try {
+        const db = await openDatabase();
+        const tx = db.transaction(['matchedData', 'salaryData', 'btlData', 'detailedSalaryData'], 'readwrite');
+        
+        // שמירת matchedData
+        const matchedStore = tx.objectStore('matchedData');
+        matchedData.forEach(item => {
+            matchedStore.put(item);
+        });
+        
+        // שמירת salaryData
+        const salaryStore = tx.objectStore('salaryData');
+        Object.keys(salaryData).forEach(key => {
+            salaryStore.put({ key, ...salaryData[key] });
+        });
+        
+        // שמירת btlData
+        const btlStore = tx.objectStore('btlData');
+        Object.keys(btlData).forEach(key => {
+            btlStore.put({ key, ...btlData[key] });
+        });
+        
+        // שמירת detailedSalaryData (אם קיים)
+        if (typeof detailedSalaryData !== 'undefined') {
+            const detailedStore = tx.objectStore('detailedSalaryData');
+            Object.keys(detailedSalaryData).forEach(key => {
+                detailedStore.put({ key, months: detailedSalaryData[key] });
+            });
+        }
+        
+        await tx.complete;
+        console.log('✅ נתונים נשמרו ב-IndexedDB');
+        showMessage('loadMessage', '✅ הנתונים נשמרו בהצלחה!', 'success');
+    } catch (error) {
+        console.error('❌ שגיאה בשמירה:', error);
+        showMessage('loadMessage', '❌ שגיאה בשמירת הנתונים', 'error');
+    }
+}
 
         // המרת אות עמודה למספר (A=1, B=2, ..., Z=26, AA=27, etc.)
         function columnToIndex(col) {
@@ -758,6 +842,9 @@ if (file.name.match(/\.csv$/i)) {
             // ביצוע הצלבה
             performMatching();
 
+// שמירה אוטומטית ל-IndexedDB
+saveToIndexedDB();
+
             // עדכון UI
             document.getElementById('folderArea').classList.add('loaded');
             document.getElementById('folderArea').innerHTML = `
@@ -782,7 +869,129 @@ if (file.name.match(/\.csv$/i)) {
             document.getElementById('statsSection').classList.remove('hidden');
             document.getElementById('filtersSection').classList.remove('hidden');
             document.getElementById('resultsSection').classList.remove('hidden');
+            saveToIndexedDB();
         });
+        // טעינת נתונים מ-IndexedDB
+async function loadFromIndexedDB() {
+    try {
+        const db = await openDatabase();
+        
+        // קריאת כל הנתונים
+        const matchedDataFromDB = await getAllFromStore(db, 'matchedData');
+        const salaryDataFromDB = await getAllFromStore(db, 'salaryData');
+        const btlDataFromDB = await getAllFromStore(db, 'btlData');
+        
+        console.log('📊 נתונים נטענו מ-IndexedDB:', {
+            matched: matchedDataFromDB.length,
+            salary: salaryDataFromDB.length,
+            btl: btlDataFromDB.length
+        });
+        
+        // המרה למבנה המקורי
+        matchedData = matchedDataFromDB;
+        
+        salaryData = {};
+        salaryDataFromDB.forEach(item => {
+            const { key, ...data } = item;
+            salaryData[key] = data;
+        });
+        
+        btlData = {};
+        btlDataFromDB.forEach(item => {
+            const { key, ...data } = item;
+            btlData[key] = data;
+        });
+        
+        // טעינת detailedSalaryData אם קיים
+        try {
+            const detailedDataFromDB = await getAllFromStore(db, 'detailedSalaryData');
+            if (typeof detailedSalaryData !== 'undefined') {
+                detailedSalaryData = {};
+                detailedDataFromDB.forEach(item => {
+                    detailedSalaryData[item.key] = item.months;
+                });
+            }
+            console.log('✅ נתונים מפורטים נטענו:', detailedDataFromDB.length);
+        } catch (e) {
+            console.log('ℹ️ אין נתונים מפורטים');
+        }
+        
+        // עדכון שנים
+        allYears.clear();
+        matchedData.forEach(row => {
+            const year = row.startDate.split('/')[2];
+            if (year) allYears.add(year);
+        });
+        
+        // עדכון UI
+        document.getElementById('folderArea').classList.add('loaded');
+        document.getElementById('folderArea').innerHTML = `
+            <div class="folder-icon">💾</div>
+            <h3>נתונים נטענו מ-IndexedDB!</h3>
+            <p>Matched: ${matchedData.length} | Salary: ${Object.keys(salaryData).length} | BTL: ${Object.keys(btlData).length}</p>
+        `;
+        
+        showMessage('loadMessage', `✅ נטענו ${matchedData.length} רשומות מ-IndexedDB!`, 'success');
+        
+        // הצגת תוצאות
+        populateYearFilter();
+        updateStats();
+        displayResults();
+        
+        document.getElementById('statsSection').classList.remove('hidden');
+        document.getElementById('filtersSection').classList.remove('hidden');
+        document.getElementById('resultsSection').classList.remove('hidden');
+        
+        return true;
+    } catch (error) {
+        console.error('❌ שגיאה בטעינה:', error);
+        showMessage('loadMessage', '❌ אין נתונים שמורים ב-IndexedDB', 'error');
+        return false;
+    }
+}
+
+// פונקציית עזר - קריאת כל הנתונים מטבלה
+function getAllFromStore(db, storeName) {
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        } catch (error) {
+            // אם הטבלה לא קיימת, מחזירים מערך ריק
+            resolve([]);
+        }
+    });
+}
+
+// מחיקת כל הנתונים מ-IndexedDB
+async function clearIndexedDB() {
+    if (!confirm('❓ האם למחוק את כל הנתונים השמורים?')) {
+        return;
+    }
+    
+    try {
+        const db = await openDatabase();
+        const tx = db.transaction(['matchedData', 'salaryData', 'btlData', 'detailedSalaryData'], 'readwrite');
+        
+        tx.objectStore('matchedData').clear();
+        tx.objectStore('salaryData').clear();
+        tx.objectStore('btlData').clear();
+        try {
+            tx.objectStore('detailedSalaryData').clear();
+        } catch (e) {}
+        
+        await tx.complete;
+        
+        console.log('🗑️ IndexedDB נוקה');
+        showMessage('loadMessage', '✅ הנתונים נמחקו מ-IndexedDB', 'success');
+    } catch (error) {
+        console.error('❌ שגיאה במחיקה:', error);
+    }
+}
 
         // ביצוע הצלבה
         function performMatching() {
