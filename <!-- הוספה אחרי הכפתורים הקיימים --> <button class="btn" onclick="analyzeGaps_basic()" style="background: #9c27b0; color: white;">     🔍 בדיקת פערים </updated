@@ -2427,23 +2427,44 @@ function getServiceMonthStart(serviceStartDate) {
             return ApplyBrutoMinimumFromCSV(bestBruto, monthDate);
         }
 
-        function GetWorkDaysForMonth(employeeId, monthDate, serviceStartDate) {
+       function GetWorkDaysForMonth(employeeId, monthDate, serviceStartDate) {
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
     
     let totalDays = 0;
     
-    // קביעה איזה עמודה להשתמש בה לפי תאריך השירות
-    const isNewMiluim = serviceStartDate >= new Date(2025, 4, 1); // 1 במאי 2025
-    
+    // מצא את מעמד העובד מנתוני המילואים
+   // ✅ הקוד החדש - לוקח את הסטטוס לפי תאריך השירות
+const employeeRecord = miluimData.find(m => {
+    if (m.employeeId != employeeId) return false;
+    const recStart = parseExcelDate(m.startDate);
+    const recEnd = parseExcelDate(m.endDate);
+    // בדוק אם תאריך השירות נמצא בטווח של הרשומה הזו
+    return serviceStartDate >= recStart && serviceStartDate <= recEnd;
+});
+const employeeStatus = employeeRecord ? employeeRecord.employeeStatus : null;
     for (let attendance of attendanceData) {
         if (attendance.employeeId == employeeId) {
             const attendanceDate = parseExcelDate(attendance.monthYear);
             if (attendanceDate >= monthStart && attendanceDate <= monthEnd) {
-                // בחר את העמודה הנכונה לפי סוג המילואים
-                const workDays = isNewMiluim ? 
-                    (attendance.workDaysNew || 0) :  // עמודה D למילואים חדשים
-                    (attendance.workDays || 0);      // עמודה C למילואים רגילים
+                // בחר את השדה הנכון לפי מעמד ותאריך
+                let workDays = 0;
+                
+                if (employeeStatus == '1309') {
+                    workDays = attendance.workDays1930 || 0;
+                } else if (employeeStatus == '4410') {
+                    if (serviceStartDate < new Date(2025, 4, 1)) {
+                        workDays = attendance.workDays1857 || 0;
+                    } else {
+                        workDays = attendance.workDays166 || 0;
+                    }
+                } else {
+                    // ברירת מחדל - נסה את כל השדות
+                    workDays = attendance.workDays1857 || 
+                               attendance.workDays166 || 
+                               attendance.workDays1930 || 0;
+                }
+                
                 totalDays += workDays;
             }
         }
@@ -3336,12 +3357,13 @@ function loadExcelFile(files) {
 function processMainFile(workbook) {
     let sheetsLoaded = 0;
     
-    for (let i = 0; i < Math.min(3, workbook.SheetNames.length); i++) {
+    // טען 5 גיליונות במקום 3
+    for (let i = 0; i < Math.min(5, workbook.SheetNames.length); i++) {
         const sheetName = workbook.SheetNames[i];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-        raw: true
+            header: 1,
+            raw: true
         });
         
         if (jsonData.length > 1) {
@@ -3352,13 +3374,17 @@ function processMainFile(workbook) {
                 parseData(jsonData, 'salary');
                 sheetsLoaded++;
             } else if (i === 2) {
-                parseData(jsonData, 'attendance');
+                parseData(jsonData, 'attendance1857');  // גיליון 1857
+                sheetsLoaded++;
+            } else if (i === 3) {
+                parseData(jsonData, 'attendance166');   // גיליון 166
+                sheetsLoaded++;
+            } else if (i === 4) {
+                parseData(jsonData, 'attendance1930');  // גיליון 1930
                 sheetsLoaded++;
             }
         }
     }
-    
-    console.log(`קובץ ראשי: נטענו ${sheetsLoaded} גליונות`);
 }
 
 // עיבוד קובץ תשלומים (לפי הסקריפט BTL המעודכן)
@@ -3569,14 +3595,67 @@ function dateToExcelNumber(date) {
                     })).filter(item => item.employeeId);
                     break;
                     
-               case 'attendance':
-                    attendanceData = dataRows.map(row => ({
-                    employeeId: row[0],
-                    monthYear: row[1],
-                    workDays: row[2],      // עמודה C - מילואים רגילים  
-                    workDaysNew: row[3]    // עמודה D - מילואים חדשים
-                 })).filter(item => item.employeeId);
-                break;
+              case 'attendance1857':
+    // מוסיף לאותו attendanceData
+    const data1857 = dataRows.map(row => ({
+        employeeId: row[0],
+        monthYear: row[1],
+        workDays1857: row[2]  // עמודה C מגיליון 1857
+    })).filter(item => item.employeeId);
+    
+    // מיזוג עם הנתונים הקיימים או יצירת רשומות חדשות
+    data1857.forEach(newRow => {
+        const existing = attendanceData.find(a => 
+            a.employeeId == newRow.employeeId && 
+            a.monthYear == newRow.monthYear
+        );
+        if (existing) {
+            existing.workDays1857 = newRow.workDays1857;
+        } else {
+            attendanceData.push(newRow);
+        }
+    });
+    break;
+
+case 'attendance166':
+    const data166 = dataRows.map(row => ({
+        employeeId: row[0],
+        monthYear: row[1],
+        workDays166: row[2]  // עמודה C מגיליון 166
+    })).filter(item => item.employeeId);
+    
+    data166.forEach(newRow => {
+        const existing = attendanceData.find(a => 
+            a.employeeId == newRow.employeeId && 
+            a.monthYear == newRow.monthYear
+        );
+        if (existing) {
+            existing.workDays166 = newRow.workDays166;
+        } else {
+            attendanceData.push(newRow);
+        }
+    });
+    break;
+
+case 'attendance1930':
+    const data1930 = dataRows.map(row => ({
+        employeeId: row[0],
+        monthYear: row[1],
+        workDays1930: row[2]  // עמודה C מגיליון 1930
+    })).filter(item => item.employeeId);
+    
+    data1930.forEach(newRow => {
+        const existing = attendanceData.find(a => 
+            a.employeeId == newRow.employeeId && 
+            a.monthYear == newRow.monthYear
+        );
+        if (existing) {
+            existing.workDays1930 = newRow.workDays1930;
+        } else {
+            attendanceData.push(newRow);
+        }
+    });
+    break;
             }
         }
 
