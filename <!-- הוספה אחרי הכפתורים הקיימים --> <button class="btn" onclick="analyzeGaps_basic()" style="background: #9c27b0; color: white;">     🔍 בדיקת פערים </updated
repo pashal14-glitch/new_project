@@ -2603,9 +2603,36 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
 }
 function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
     // For new miluim (after 01.05.2025) - don't consider previous service
-    if (serviceStartDate >= NEW_MILUIM_START) {
+   if (serviceStartDate >= NEW_MILUIM_START) {
+    // ðŸ†• בדיקת רצף - מצא מילואים שמסתיימים יום לפני או פחות
+    const employeeMiluim = miluimData
+        .filter(m => m.employeeId === employeeId)
+        .map(m => ({
+            startDate: parseExcelDate(m.startDate), 
+            endDate: parseExcelDate(m.endDate)
+        }))
+        .filter(m => m.endDate < serviceStartDate)
+        .sort((a, b) => b.endDate - a.endDate);
+    
+    // אם יש מילואים קודמים
+    if (employeeMiluim.length > 0) {
+        const mostRecentMiluim = employeeMiluim[0];
+        const daysDiff = (serviceStartDate - mostRecentMiluim.endDate) / (1000 * 60 * 60 * 24);
+        
+        // אם זה רצף (פער של יום אחד או פחות)
+        if (daysDiff <= 1) {
+            // ðŸ"„ אל תחזיר basicValue! המשך לשורות 2611-2641
+            // כדי לבדוק מילואים קודמים ב-60 ימים
+            // (כלומר: אל תעשה return כאן!)
+        } else {
+            // אין רצף - החזר basicValue
+            return basicValue;
+        }
+    } else {
+        // אין מילואים קודמים בכלל - החזר basicValue
         return basicValue;
     }
+}
 
     // For regular miluim - check previous service in 60 days before
     const checkDate = new Date(serviceStartDate);
