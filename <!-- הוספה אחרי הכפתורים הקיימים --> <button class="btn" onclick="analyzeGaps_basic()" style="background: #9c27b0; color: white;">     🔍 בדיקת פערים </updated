@@ -2228,14 +2228,17 @@ class MiluimCalculatorCache {
         m.employeeId == employeeId && 
         parseExcelDate(m.startDate).getTime() === serviceStartDate.getTime()
     );
+    
+
 
     return {
         passportNum: originalMiluim ? originalMiluim.passportNum : null, // 👈 ✅ הוסיפי את השורה הזו!
         employeeId,
         startDate: serviceStartDate,
         basicValue: basicResult.dailyValue,
+        basicValueBeforeLimits: basicResult.dailyValueBeforeLimits,  // 🆕 זה!
         recommendedValue,
-        continuousValue: continuousResult.value,
+      continuousValue: ApplyFinalLimitsFromCSV(continuousResult.value, serviceStartDate),
         isValueLocked: continuousResult.isLocked,
         emergencyValue: emergencyValues.emergencyValue,
         maxEmergencyValue: emergencyValues.maxEmergencyValue,
@@ -2247,7 +2250,8 @@ class MiluimCalculatorCache {
         compulsionContinuous: 0 ,
         emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 ,
         emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined,
-        employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null
+        employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null,
+     
     };
 }
     getStats() {
@@ -2333,10 +2337,14 @@ const cacheSystem = new MiluimCalculatorCache();
             
             // 🔥 תיקון: שינוי מ-value-2 ל-value-1 לפתרון הבעיה של יום אחד לפני
             if (typeof value === 'number') {
-                const excelEpoch = new Date(1900, 0, 1);
-                const days = value - 1; // ✅ תוקן! השתמש ב-1 במקום 2
-                return new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
-            }
+    const excelEpoch = new Date(1900, 0, 1);
+    const days = value - 1;
+    const result = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+    
+    // תיקון timezone - adjustment כמו formatDate
+    const adjusted = new Date(result.getTime() + (result.getTimezoneOffset() * 60000));
+    return adjusted;
+}
             
             // תמיכה בפורמטי תאריכים שונים
             if (typeof value === 'string') {
@@ -2477,7 +2485,6 @@ const employeeStatus = employeeRecord ? employeeRecord.employeeStatus : null;
     
     return totalDays;
 }
-
 function calculateBasicDailyValue(employeeId, serviceStartDate) {
     // חישוב 3 החודשים שלפני תחילת חודש השירות
     const serviceMonth = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), 1);
@@ -2534,36 +2541,48 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
         const daysDiff = (serviceStartDate - mostRecentMiluim.endDate) / (1000 * 60 * 60 * 24);
                  
         if (daysDiff <= 1) {
+            // מצא את תחילת הרצף - לך אחורה עד שלא נמצא עוד רצף
+            let clusterStartDate = mostRecentMiluim.startDate;
+            let currentCheck = mostRecentMiluim;
+            
+            while (true) {
+                const evenEarlier = employeeMiluim.find(m => {
+                    const diff = (currentCheck.startDate - m.endDate) / (1000 * 60 * 60 * 24);
+                    return diff <= 1 && m.endDate < currentCheck.startDate;
+                });
+                
+                if (evenEarlier) {
+                    clusterStartDate = evenEarlier.startDate;
+                    currentCheck = evenEarlier;
+                } else {
+                    break; // מצאנו את תחילת הרצף!
+                }
+            }
+            
             const minimumDaily = getMinimumDailyForDate(serviceStartDate);
             
             // הכרזה על המשתנים
-            let prevUnlimited, prevLimited;
+            let clusterStartValueUnlimited;
             
-            // תיקון: חיפוש בcache במקום חישוב מחדש
-            const prevKey = cacheSystem.createKey(employeeId, mostRecentMiluim.startDate);
+            // חיפוש בcache של תחילת הרצף
+            const clusterKey = cacheSystem.createKey(employeeId, clusterStartDate);
             
-            if (cacheSystem.cache.has(prevKey)) {
-                // נמצא בcache - השתמש בערך שכבר חושב
-                const cachedResult = cacheSystem.cache.get(prevKey);
-                prevLimited = cachedResult.basicValue;
-                prevUnlimited = cachedResult.basicValue; // אין dailyValueBeforeLimits בcache
+            if (cacheSystem.cache.has(clusterKey)) {
+                // נמצא בcache - השתמש בערך הנקי מתחילת הרצף
+                const cachedResult = cacheSystem.cache.get(clusterKey);
+                clusterStartValueUnlimited = cachedResult.basicValueBeforeLimits || cachedResult.basicValue;
             } else {
-                // לא נמצא בcache - fallback לחישוב מחדש
-                const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
-                prevUnlimited = prevBasicResult.dailyValueBeforeLimits || prevBasicResult.dailyValue;
-                prevLimited = prevBasicResult.dailyValue;
+                // לא נמצא בcache - חשב את תחילת הרצף
+                const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
+                clusterStartValueUnlimited = clusterStartCalc.dailyValueBeforeLimits || clusterStartCalc.dailyValue;
             }
             
-            const wasCappedByMax = prevUnlimited > prevLimited;
+            // 🆕 הלוגיקה החדשה: השתמש רק בערך תחילת הרצף עם מינימום
+            const baseValue = Math.max(clusterStartValueUnlimited, minimumDaily);
             
-            if (wasCappedByMax) {
-                // הערך הקודם נחתך - השתמש בערך הלא מוגבל עם הגבלות חדשות
-                const unlimitedValue = Math.max(prevUnlimited, minimumDaily);
-                finalValue = ApplyFinalLimitsFromCSV(unlimitedValue, serviceStartDate);
-            } else {
-                // הערך הקודם לא נחתך - השתמש בערך הקודם כפי שהוא
-                finalValue = Math.max(prevLimited, minimumDaily);
-            }
+            // החל את ההגבלות של השנה הנוכחית
+            finalValue = ApplyFinalLimitsFromCSV(baseValue, serviceStartDate);
+            
         } else {
             // אין מילואים רציפים - החל הגבלות רגילות
             finalValue = ApplyFinalLimitsFromCSV(dailyValue, serviceStartDate);
@@ -2583,16 +2602,14 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
     };
 }
 function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
-                 // For new miluim (after 01.05.2025) - don't consider previous service
+    // For new miluim (after 01.05.2025) - don't consider previous service
     if (serviceStartDate >= NEW_MILUIM_START) {
         return basicValue;
     }
 
     // For regular miluim - check previous service in 60 days before
-    
     const checkDate = new Date(serviceStartDate);
     checkDate.setDate(checkDate.getDate() - 60);
-    
     
     let previousValue = 0;
     
@@ -2602,26 +2619,30 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
             const miluimStart = parseExcelDate(miluim.startDate);
             
             if (miluimEnd >= checkDate && miluimEnd < serviceStartDate) {
-                // ?? ëàï äùéîåù á-CACHE!
+                // קח את הערך של המילואים הזה (לא תחילת הרצף!)
                 const prevKey = cacheSystem.createKey(employeeId, miluimStart);
                 
                 if (cacheSystem.cache.has(prevKey)) {
-                    // ? ìå÷ç òøê îåîìõ îäîèîåï
                     const cachedResult = cacheSystem.cache.get(prevKey);
-                    previousValue = Math.max(previousValue, cachedResult.recommendedValue);
+                    
+                    // קח את הערך אחרי נעילת אשכול אבל לפני מקסימום שנתי
+                    const valueToUse = cachedResult.continuousValueBeforeLimits || 
+                                      cachedResult.recommendedValue;
+                    
+                    previousValue = Math.max(previousValue, valueToUse);
                 } else {
-                    // àí àéï áîèîåï, çùá ø÷ áñéñé (fallback)
+                    // fallback - חשב מחדש
                     const prevBasic = calculateBasicDailyValue(employeeId, miluimStart);
-                    previousValue = Math.max(previousValue, prevBasic.dailyValue);
-                }         
-                    }
+                    const prevRecommended = calculateRecommendedValue(employeeId, miluimStart, prevBasic.dailyValue);
+                    previousValue = Math.max(previousValue, prevRecommended);
                 }
             }
-            
-            return Math.max(basicValue, previousValue);
         }
-
-            function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
+    }
+    
+    return Math.max(basicValue, previousValue);
+}
+function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue, isNewMiluim = null) {
    // For miluim before emergency period
    if (serviceStartDate < EMERGENCY_START) {
        return {
@@ -2630,7 +2651,7 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
        };
    } 
 
-   // àí ìà ÷éáìðå isNewMiluim, çùá àåúå
+   // אם לא קיבלנו isNewMiluim, חשב אותו
    if (isNewMiluim === null) {
        const allEmployeeRecords = miluimData
            .filter(m => m.employeeId == employeeId)
@@ -2679,45 +2700,79 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
            const gap = (checkDate - prevMiluim.endDate) / (1000 * 60 * 60 * 24);
            if (gap <= 90) {
                clusterStartDate = prevMiluim.startDate;
-              checkDate = getServiceMonthStart(prevMiluim.startDate);
+               checkDate = getServiceMonthStart(prevMiluim.startDate);
            } else {
                break;
            }
        }
     
-       // ?? ùéîåù á-CACHE ìçéùåá òøê J ùì úçéìú äàùëåì
+       // שימוש ב-CACHE לחישוב ערך של תחילת האשכול
+       let clusterStartValue;
        let clusterJValue;
        const clusterKey = cacheSystem.createKey(employeeId, clusterStartDate);
        
        if (cacheSystem.cache.has(clusterKey)) {
-           // ? ÷ç îäîèîåï
            const cachedClusterResult = cacheSystem.cache.get(clusterKey);
-           clusterJValue = cachedClusterResult.recommendedValue * 1.2;
-           console.log(`? CACHE HIT ìúçéìú àùëåì: ${clusterKey}`);
+           
+           // קבל את הערכים
+           const clusterUnlimited = cachedClusterResult.recommendedValueBeforeLimits || 
+                                   cachedClusterResult.basicValueBeforeLimits || 
+                                   cachedClusterResult.recommendedValue;
+           const clusterLimited = cachedClusterResult.recommendedValue;
+           
+           // בדוק אם נחתך על ידי מקסימום
+           const wasCappedByMax = clusterUnlimited > clusterLimited;
+           
+           if (wasCappedByMax) {
+               // נחתך - קח את המינימום מבין: נקי, מקס נוכחי
+               const currentMaxLimits = DAILY_LIMITS.find(l => 
+                   serviceStartDate >= l.start && serviceStartDate <= l.end
+               );
+               const currentMax = currentMaxLimits ? currentMaxLimits.max : clusterLimited;
+               
+               clusterStartValue = Math.min(clusterUnlimited, currentMax);
+               
+               console.log(`✓ נחתך: נקי ${clusterUnlimited} → מוגבל ${clusterLimited}, מקס נוכחי ${currentMax}, נבחר: ${clusterStartValue}`);
+           } else {
+               // לא נחתך - קח את המוגבל (כולל מינימום)
+               clusterStartValue = clusterLimited;
+               console.log(`✓ לא נחתך: ${clusterLimited}`);
+           }
+           
+           clusterJValue = clusterStartValue * 1.2;
+           console.log(`✓ CACHE: תחילה ${clusterStartValue}, 120% = ${clusterJValue}`);
+           
        } else {
-           // fallback - çéùåá øâéì
+           // fallback - חישוב רגיל
            const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
-           const clusterRecommendedValue = calculateRecommendedValue(employeeId, clusterStartDate, clusterStartCalc.dailyValue);
-           clusterJValue = clusterRecommendedValue * 1.2;
-           console.log(`?? çéùåá fallback ìúçéìú àùëåì: ${clusterKey}`);
+           const clusterStartRecommended = calculateRecommendedValue(employeeId, clusterStartDate, clusterStartCalc.dailyValue);
+           clusterStartValue = clusterStartRecommended;
+           clusterJValue = clusterStartValue * 1.2;
+           console.log(`⚠ fallback: ${clusterKey}`);
        }
       
-       // Only limit if current value is higher than cluster J value AND it's new miluim
-       if (recommendedValue > clusterJValue && isNewMiluim) {
-           return {
-               value: clusterJValue,
-               isLocked: true // òøê ðòåì áâìì òøê âáåä
-           };
+       // נעילה עבור מילואים חדשים באשכול
+       if (isNewMiluim) {
+           // קבל את המינימום של השנה הנוכחית
+           const currentMinimum = getMinimumDailyForDate(serviceStartDate);
+           
+           // שלב 1: קבע ערך בסיסי (מקסימום מבין: תחילת אשכול, ערך שוטף, מינימום)
+           let lockedValue = Math.max(clusterStartValue, recommendedValue, currentMinimum);
+           
+           // שלב 2: הגבל ל-120% אם צריך (אבל לא פחות מהמינימום!)
+           if (lockedValue > clusterJValue) {
+               lockedValue = Math.max(clusterJValue, currentMinimum);
+           }
+           
+           // אם יש נעילה
+           if (lockedValue !== recommendedValue) {
+               console.log(`🔒 נעילה: ${recommendedValue} → ${lockedValue} (תחילה: ${clusterStartValue}, 120%: ${clusterJValue}, מינימום: ${currentMinimum})`);
+               return {
+                   value: lockedValue,
+                   isLocked: true
+               };
+           }
        }
-
-// NEW: Prevent value from going below cluster start value for new miluim
-const clusterStartValue = clusterJValue / 1.2; // חזרה לערך המקורי (100%)
-if (recommendedValue < clusterStartValue && isNewMiluim) {
-    return {
-        value: clusterStartValue,
-        isLocked: true // ערך נעול בגלל ערך נמוך
-    };
-}
    }
    
    return {
