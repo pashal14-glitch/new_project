@@ -2466,7 +2466,7 @@ const employeeStatus = employeeRecord ? employeeRecord.employeeStatus : null;
                 if (employeeStatus == '1309') {
                     workDays = attendance.workDays1930 || 0;
                 } else if (employeeStatus == '4410') {
-                    if (serviceStartDate < new Date(2025, 4, 1)) {
+                    if (serviceStartDate < new Date(2025, 3, 1)) {
                         workDays = attendance.workDays1857 || 0;
                     } else {
                         workDays = attendance.workDays166 || 0;
