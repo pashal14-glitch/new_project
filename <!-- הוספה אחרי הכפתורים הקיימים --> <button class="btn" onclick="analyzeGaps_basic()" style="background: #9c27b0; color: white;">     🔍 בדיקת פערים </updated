@@ -1,4 +1,3 @@
-
         
 
 <!DOCTYPE html>
@@ -2640,55 +2639,6 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
         isCrossingYear = mostRecentMiluim.endDate.getFullYear() !== serviceStartDate.getFullYear();
     }
     
-    // ðŸ†• אם יש מעבר שנים - לוגיקה מיוחדת (לא משנה אם יש רצף!)
-    if (isCrossingYear) {
-        // בדוק 60 ימים אחורה
-        const checkDate = new Date(serviceStartDate);
-        checkDate.setDate(checkDate.getDate() - 60);
-        
-        let maxValueBeforeLimits = 0;
-        let wasCappedInPrevYear = false;
-        
-        for (let miluim of miluimData) {
-            if (miluim.employeeId === employeeId) {
-                const miluimEnd = parseExcelDate(miluim.endDate);
-                const miluimStart = parseExcelDate(miluim.startDate);
-                
-                if (miluimEnd >= checkDate && miluimEnd < serviceStartDate) {
-                    const prevKey = cacheSystem.createKey(employeeId, miluimStart);
-                    
-                    if (cacheSystem.cache.has(prevKey)) {
-                        const cachedResult = cacheSystem.cache.get(prevKey);
-                        
-                        // שלוף ערך לפני הגבלה
-                        const beforeLimits = cachedResult.recommendedValueBeforeLimits || 
-                                           cachedResult.basicValueBeforeLimits || 
-                                           cachedResult.recommendedValue;
-                        
-                        // מצא תקרת השנה של המילואים
-                        const prevYearLimit = DAILY_LIMITS.find(l => 
-                            miluimEnd >= l.start && miluimEnd <= l.end
-                        );
-                        
-                        // בדוק אם נחתך בתקרה
-                        if (prevYearLimit && beforeLimits > prevYearLimit.max) {
-                            wasCappedInPrevYear = true;
-                        }
-                        
-                        maxValueBeforeLimits = Math.max(maxValueBeforeLimits, beforeLimits);
-                    }
-                }
-            }
-        }
-        
-        // אם נחתך בתקרת שנה קודמת - החזר ערך לפני הגבלה
-        if (wasCappedInPrevYear && maxValueBeforeLimits > 0) {
-            return Math.max(basicValue, maxValueBeforeLimits);
-        }
-        
-        // אם לא נחתך - המשך לבדיקה רגילה
-    }
-    
     // ðŸ†• בדיקת רצף - רק אם אין מעבר שנים!
     if (!isCrossingYear && employeeMiluim.length > 0) {
         const mostRecentMiluim = employeeMiluim[0];
@@ -2708,7 +2658,7 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
         return basicValue;
     }
 
-    // בדיקת 60 ימים רגילה (אם אין רצף ואין מעבר שנים מיוחד)
+    // בדיקת 60 ימים
     const checkDate = new Date(serviceStartDate);
     checkDate.setDate(checkDate.getDate() - 60);
     
@@ -2720,17 +2670,64 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
             const miluimStart = parseExcelDate(miluim.startDate);
             
             if (miluimEnd >= checkDate && miluimEnd < serviceStartDate) {
-                const prevKey = cacheSystem.createKey(employeeId, miluimStart);
+                // ðŸ†• עקוב אחורה ברצף של המילואים הזה עד תחילת הרצף
+                let clusterStartDate = miluimStart;
                 
-                if (cacheSystem.cache.has(prevKey)) {
-                    const cachedResult = cacheSystem.cache.get(prevKey);
+                // מצא את תחילת הרצף
+                while (true) {
+                    const allMiluim = miluimData
+                        .filter(m => m.employeeId === employeeId)
+                        .map(m => ({
+                            startDate: parseExcelDate(m.startDate),
+                            endDate: parseExcelDate(m.endDate)
+                        }));
                     
-                    const valueToUse = cachedResult.recommendedValue;
+                    const evenEarlier = allMiluim.find(m => {
+                        const diff = (clusterStartDate - m.endDate) / (1000 * 60 * 60 * 24);
+                        return diff <= 1 && m.endDate < clusterStartDate;
+                    });
                     
-                    previousValue = Math.max(previousValue, valueToUse);
+                    if (evenEarlier) {
+                        clusterStartDate = evenEarlier.startDate;
+                    } else {
+                        break; // מצאנו את תחילת הרצף!
+                    }
+                }
+                
+                // עכשיו קח את הערך מתחילת הרצף
+                const clusterKey = cacheSystem.createKey(employeeId, clusterStartDate);
+                
+                if (cacheSystem.cache.has(clusterKey)) {
+                    const cachedResult = cacheSystem.cache.get(clusterKey);
+                    
+                    // ðŸ†• אם יש מעבר שנים - קח beforeLimits, אחרת recommendedValue
+                    let valueToUse;
+                    
+                    if (isCrossingYear) {
+                        // מעבר שנים - קח ערך לפני הגבלה
+                        valueToUse = cachedResult.recommendedValueBeforeLimits || 
+                                    cachedResult.basicValueBeforeLimits || 
+                                    cachedResult.recommendedValue;
+                        
+                        // בדוק אם נחתך בתקרת השנה הקודמת
+                        const miluimEndDate = parseExcelDate(miluim.endDate);
+                        const prevYearLimit = DAILY_LIMITS.find(l => 
+                            miluimEndDate >= l.start && miluimEndDate <= l.end
+                        );
+                        
+                        // אם נחתך - נשתמש בערך הזה
+                        if (prevYearLimit && valueToUse > prevYearLimit.max) {
+                            previousValue = Math.max(previousValue, valueToUse);
+                        }
+                    } else {
+                        // אין מעבר שנים - קח recommendedValue בלבד
+                        valueToUse = cachedResult.recommendedValue;
+                        previousValue = Math.max(previousValue, valueToUse);
+                    }
                 } else {
-                    const prevBasic = calculateBasicDailyValue(employeeId, miluimStart);
-                    const prevRecommended = calculateRecommendedValue(employeeId, miluimStart, prevBasic.dailyValue);
+                    // fallback - חשב מחדש
+                    const prevBasic = calculateBasicDailyValue(employeeId, clusterStartDate);
+                    const prevRecommended = calculateRecommendedValue(employeeId, clusterStartDate, prevBasic.dailyValue);
                     previousValue = Math.max(previousValue, prevRecommended);
                 }
             }
