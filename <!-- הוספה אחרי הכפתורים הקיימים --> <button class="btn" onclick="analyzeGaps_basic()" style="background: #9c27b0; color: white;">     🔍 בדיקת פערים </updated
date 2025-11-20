@@ -2253,7 +2253,9 @@ const recommendedValue = calculateRecommendedValue(
         basicValueBeforeLimits: basicResult.dailyValueBeforeLimits,  // 🆕 זה!
         recommendedValue,
          recommendedValueBeforeLimits,  
-      continuousValue: ApplyFinalLimitsFromCSV(continuousResult.value, serviceStartDate),
+        continuousValue: ApplyFinalLimitsFromCSV(continuousResult.value, serviceStartDate),
+        continuousValueBeforeLimits: recommendedValueBeforeLimits,  // ✅ שנה לזה במקום continuousResult.value!
+        isValueLocked: continuousResult.isLocked,
         isValueLocked: continuousResult.isLocked,
         emergencyValue: emergencyValues.emergencyValue,
         maxEmergencyValue: emergencyValues.maxEmergencyValue,
@@ -2604,8 +2606,8 @@ function calculateBasicDailyValue(employeeId, serviceStartDate) {
                 clusterStartValueUnlimited = cachedResult.basicValueBeforeLimits || cachedResult.basicValue;
             } else {
                 // לא נמצא בcache - חשב את תחילת הרצף
-                const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
-                clusterStartValueUnlimited = clusterStartCalc.dailyValueBeforeLimits || clusterStartCalc.dailyValue;
+            
+               clusterStartValueUnlimited = dailyValue;
             }
             
             // 🆕 הלוגיקה החדשה: השתמש רק בערך תחילת הרצף עם מינימום
@@ -2683,22 +2685,14 @@ function calculateRecommendedValue(employeeId, serviceStartDate, basicValue) {
                 // קח את הערך מתחילת הרצף
                 const prevKey = cacheSystem.createKey(employeeId, clusterStartDate);
                 
-                if (cacheSystem.cache.has(prevKey)) {
-                    const cachedResult = cacheSystem.cache.get(prevKey);
-                    
-                    // ðŸ†• שלוף ערך לפני הגבלה
-                    const valueToUse = cachedResult.recommendedValueBeforeLimits || 
-                                      cachedResult.basicValueBeforeLimits || 
-                                      cachedResult.continuousValueBeforeLimits || 
-                                      cachedResult.recommendedValue;
-                    
-                    previousValue = Math.max(previousValue, valueToUse);
-                } else {
-                    // fallback - חשב מחדש
-                    const prevBasic = calculateBasicDailyValue(employeeId, clusterStartDate);
-                    const prevRecommended = calculateRecommendedValue(employeeId, clusterStartDate, prevBasic.dailyValue);
-                    previousValue = Math.max(previousValue, prevRecommended);
-                }
+               if (cacheSystem.cache.has(prevKey)) {
+    const cachedResult = cacheSystem.cache.get(prevKey);
+    const valueToUse = cachedResult.continuousValueBeforeLimits || 
+                      cachedResult.recommendedValueBeforeLimits || 
+                      cachedResult.recommendedValue;
+    previousValue = Math.max(previousValue, valueToUse);
+}
+
             }
         }
     }
@@ -2778,9 +2772,11 @@ function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue
            const cachedClusterResult = cacheSystem.cache.get(clusterKey);
            
            // קבל את הערכים
-           const clusterUnlimited = cachedClusterResult.recommendedValueBeforeLimits || 
-                                   cachedClusterResult.basicValueBeforeLimits || 
-                                   cachedClusterResult.recommendedValue;
+          // ✅ קבל את הערכים - כולל continuousValueBeforeLimits!
+const clusterUnlimited = cachedClusterResult.continuousValueBeforeLimits || 
+                        cachedClusterResult.recommendedValueBeforeLimits || 
+                        cachedClusterResult.basicValueBeforeLimits || 
+                        cachedClusterResult.recommendedValue;
            const clusterLimited = cachedClusterResult.recommendedValue;
            
            // בדוק אם נחתך על ידי מקסימום
@@ -2806,13 +2802,11 @@ function calculateContinuousValue(employeeId, serviceStartDate, recommendedValue
            console.log(`✓ CACHE: תחילה ${clusterStartValue}, 120% = ${clusterJValue}`);
            
        } else {
-           // fallback - חישוב רגיל
-           const clusterStartCalc = calculateBasicDailyValue(employeeId, clusterStartDate);
-           const clusterStartRecommended = calculateRecommendedValue(employeeId, clusterStartDate, clusterStartCalc.dailyValue);
-           clusterStartValue = clusterStartRecommended;
-           clusterJValue = clusterStartValue * 1.2;
-           console.log(`⚠ fallback: ${clusterKey}`);
-       }
+    // ✅ אם אין במטמון - השתמש בערך נוכחי
+    clusterStartValue = recommendedValue;
+    clusterJValue = clusterStartValue * 1.2;
+    console.log(`⚠ אין במטמון, משתמש בערך נוכחי: ${clusterKey}`);
+}
       
        // נעילה עבור מילואים חדשים באשכול
        if (isNewMiluim) {
