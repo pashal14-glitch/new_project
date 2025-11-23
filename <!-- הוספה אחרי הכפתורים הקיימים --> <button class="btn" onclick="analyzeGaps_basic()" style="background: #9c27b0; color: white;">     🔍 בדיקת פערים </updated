@@ -5916,7 +5916,8 @@ if (condition1 && condition2 && condition3 && condition4) {
 function diagnoseNewMiluimHigherValue(result) {
     // תנאי 1: רק מילואים חדשים
     if (!result.isNewMiluim) return null;
-    
+    const columnE = result.basicValue || 0;         // ← הוסף את זה!
+    const columnF = result.recommendedValue || 0;   // ← הוסף את זה!
     const columnG = result.continuousValue || 0;      
     const columnL = result.paidAmount || 0;           
     const tolerance = 1.0;
@@ -5947,6 +5948,8 @@ function diagnoseNewMiluimHigherValue(result) {
                 return {
                     issue: "NewMiluimHigherValueGiven",
                     explanation: `מילואים חדשים - שולם ערך מתקופה קודמת (${prevG.toFixed(2)}₪) במקום ערך נוכחי (${columnG.toFixed(2)}₪)`,
+                    columnE: columnE,        // ← הוסף את זה!
+                    columnF: columnF,        // ← הוסף את זה!
                     columnG: columnG,
                     columnL: columnL,
                     prevG: prevG,
