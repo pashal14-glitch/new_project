@@ -5661,106 +5661,109 @@ function categorizeGaps() {
                                             details: matchesN ? `תואם עמודה N` : `תואם עמודה O`
                                         };
                                     }
-                                    // 🆕 בדיקה: פער ברצף רציף - השוואה לשירות קודם
-else if (prevPeriod && isConsecutive && gap > 1) {
-    const prevG = prevPeriod.continuousValue || 0;
-    const prevL = prevPeriod.paidAmount || 0;
-    
-    // מקרה 1: G זהה אבל L השתנה
-    const sameG = Math.abs(columnG - prevG) <= 0.01;
-    const differentL = Math.abs(columnL - prevL) > 1;
-    
-    // מקרה 2: L זהה אבל G השתנה
-    const sameL = Math.abs(columnL - prevL) <= 0.01;
-    const differentG = Math.abs(columnG - prevG) > 1;
-    
-    if ((sameG && differentL) || (sameL && differentG)) {
-        const explanation = sameG && differentL ? 
-            "המחשבון אומר ערך קבוע, אבל שולם ערך שונה" :
-            "שולם ערך קבוע, אבל החוקה נותנת ערך רציף - יש לבדוק במחשבון";
-        
-        const details = sameG && differentL ?
-            `G קודם: ${prevG.toFixed(2)}₪ = G נוכחי: ${columnG.toFixed(2)}₪ | אבל L קודם: ${prevL.toFixed(2)}₪ ≠ L נוכחי: ${columnL.toFixed(2)}₪` :
-            `L קודם: ${prevL.toFixed(2)}₪ = L נוכחי: ${columnL.toFixed(2)}₪ | אבל G קודם: ${prevG.toFixed(2)}₪ ≠ G נוכחי: ${columnG.toFixed(2)}₪`;
-        
-        categories.continuityMismatch.items.push({
-            employeeId: result.employeeId,
-            period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-            gap: gap.toFixed(2),
-            columnG: columnG.toFixed(2),
-            columnL: columnL.toFixed(2),
-            explanation: explanation,
-            details: details
-        });
-        categoryFound = true;
-        gapsFound++;
-        lastErrorType = 'continuityMismatch';
-        originalErrorDate = result.startDate;
-        
-        // 🆕 שמירה במאגר
-        const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
-        gapStatusData[key] = {
-            status: 'manual',
-            statusIcon: '🟡',
-            category: 'פער ברצף רציף',
-            explanation: explanation,
-            gap: gap.toFixed(2),
-            columnG: columnG.toFixed(2),
-            columnL: columnL.toFixed(2),
-            details: details
-        };
-    }
-}
-// 🆕 בדיקה: מעבר תקרות בין שנים
-else if (prevPeriod && gap > 1) {
-    const currentYear = result.startDate.getFullYear();
-    const prevYear = prevPeriod.startDate.getFullYear();
-    
-    // בדיקה אם יש מעבר שנה
-    if (currentYear > prevYear) {
-        const prevYearLimit = getAnnualLimit(prevYear);
-        const currentYearLimit = getAnnualLimit(currentYear);
-        
-        // בדיקה אם G הגיע לתקרה של השנה הקודמת
-        const isAtPrevYearCeiling = Math.abs(columnG - prevYearLimit) <= 100; // סובלנות של 100 ש"ח
-        
-        if (isAtPrevYearCeiling) {
-            const expectedIncrease = currentYearLimit - prevYearLimit;
-            const actualDiff = columnL - columnG;
-            
-            categories.yearTransitionCeiling.items.push({
-                employeeId: result.employeeId,
-                period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
-                gap: gap.toFixed(2),
-                columnG: columnG.toFixed(2),
-                columnL: columnL.toFixed(2),
-                explanation: actualDiff > 0 ? 
-                    "מעבר לשנה חדשה - תקרה עלתה" : 
-                    "מעבר לשנה חדשה - לא עודכן לתקרה החדשה",
-                details: `תקרת ${prevYear}: ${prevYearLimit.toFixed(2)}₪ | תקרת ${currentYear}: ${currentYearLimit.toFixed(2)}₪ | הפרש: ${expectedIncrease.toFixed(2)}₪`
-            });
-            categoryFound = true;
-            gapsFound++;
-            lastErrorType = 'yearTransitionCeiling';
-            originalErrorDate = result.startDate;
-            
-            // 🆕 שמירה במאגר
-            const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
-            gapStatusData[key] = {
-                status: actualDiff > 0 ? 'ok' : 'fix',
-                statusIcon: actualDiff > 0 ? '🟢' : '🔴',
-                category: 'מעבר תקרות בין שנים',
-                explanation: actualDiff > 0 ? 
-                    "מעבר לשנה חדשה - תקרה עלתה" : 
-                    "מעבר לשנה חדשה - לא עודכן",
-                gap: gap.toFixed(2),
-                columnG: columnG.toFixed(2),
-                columnL: columnL.toFixed(2),
-                details: `מעבר מ-${prevYear} ל-${currentYear}`
-            };
-        }
-    }
-}
+                                
+                                                                            
+                                                                            // 🆕 בדיקה: פער ברצף רציף - השוואה לשירות קודם
+                                        else if (prevPeriod && isConsecutive && gap > 1) {
+                                            const prevG = prevPeriod.continuousValue || 0;
+                                            const prevL = prevPeriod.paidAmount || 0;
+                                            
+                                            // מקרה 1: G זהה אבל L השתנה
+                                            const sameG = Math.abs(columnG - prevG) <= 0.01;
+                                            const differentL = Math.abs(columnL - prevL) > 1;
+                                            
+                                            // מקרה 2: L זהה אבל G השתנה
+                                            const sameL = Math.abs(columnL - prevL) <= 0.01;
+                                            const differentG = Math.abs(columnG - prevG) > 1;
+                                            
+                                            if ((sameG && differentL) || (sameL && differentG)) {
+                                                const explanation = sameG && differentL ? 
+                                                    "המחשבון אומר ערך קבוע, אבל שולם ערך שונה" :
+                                                    "שולם ערך קבוע, אבל החוקה נותנת ערך רציף - יש לבדוק במחשבון";
+                                                
+                                                const details = sameG && differentL ?
+                                                    `G קודם: ${prevG.toFixed(2)}₪ = G נוכחי: ${columnG.toFixed(2)}₪ | אבל L קודם: ${prevL.toFixed(2)}₪ ≠ L נוכחי: ${columnL.toFixed(2)}₪` :
+                                                    `L קודם: ${prevL.toFixed(2)}₪ = L נוכחי: ${columnL.toFixed(2)}₪ | אבל G קודם: ${prevG.toFixed(2)}₪ ≠ G נוכחי: ${columnG.toFixed(2)}₪`;
+                                                
+                                                categories.continuityMismatch.items.push({
+                                                    employeeId: result.employeeId,
+                                                    period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                                    gap: gap.toFixed(2),
+                                                    columnG: columnG.toFixed(2),
+                                                    columnL: columnL.toFixed(2),
+                                                    explanation: explanation,
+                                                    details: details
+                                                });
+                                                categoryFound = true;
+                                                gapsFound++;
+                                                lastErrorType = 'continuityMismatch';
+                                                originalErrorDate = result.startDate;
+                                                
+                                                // 🆕 שמירה במאגר
+                                                const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                                gapStatusData[key] = {
+                                                    status: 'manual',
+                                                    statusIcon: '🟡',
+                                                    category: 'פער ברצף רציף',
+                                                    explanation: explanation,
+                                                    gap: gap.toFixed(2),
+                                                    columnG: columnG.toFixed(2),
+                                                    columnL: columnL.toFixed(2),
+                                                    details: details
+                                                };
+                                            }
+                                        }
+                                      
+                                        // 🆕 בדיקה: מעבר תקרות בין שנים
+                                        else if (prevPeriod && gap > 1) {
+                                            const currentYear = result.startDate.getFullYear();
+                                            const prevYear = prevPeriod.startDate.getFullYear();
+                                            
+                                            // בדיקה אם יש מעבר שנה
+                                            if (currentYear > prevYear) {
+                                                const prevYearLimit = getAnnualLimit(prevYear);
+                                                const currentYearLimit = getAnnualLimit(currentYear);
+                                                
+                                                // בדיקה אם G הגיע לתקרה של השנה הקודמת
+                                                const isAtPrevYearCeiling = Math.abs(columnG - prevYearLimit) <= 100; // סובלנות של 100 ש"ח
+                                                
+                                                if (isAtPrevYearCeiling) {
+                                                    const expectedIncrease = currentYearLimit - prevYearLimit;
+                                                    const actualDiff = columnL - columnG;
+                                                    
+                                                    categories.yearTransitionCeiling.items.push({
+                                                        employeeId: result.employeeId,
+                                                        period: `${formatDate(result.startDate)} - ${formatDate(result.endDate)}`,
+                                                        gap: gap.toFixed(2),
+                                                        columnG: columnG.toFixed(2),
+                                                        columnL: columnL.toFixed(2),
+                                                        explanation: actualDiff > 0 ? 
+                                                            "מעבר לשנה חדשה - תקרה עלתה" : 
+                                                            "מעבר לשנה חדשה - לא עודכן לתקרה החדשה",
+                                                        details: `תקרת ${prevYear}: ${prevYearLimit.toFixed(2)}₪ | תקרת ${currentYear}: ${currentYearLimit.toFixed(2)}₪ | הפרש: ${expectedIncrease.toFixed(2)}₪`
+                                                    });
+                                                    categoryFound = true;
+                                                    gapsFound++;
+                                                    lastErrorType = 'yearTransitionCeiling';
+                                                    originalErrorDate = result.startDate;
+                                                    
+                                                    // 🆕 שמירה במאגר
+                                                    const key = `${result.employeeId}_${result.startDate}_${result.endDate}`;
+                                                    gapStatusData[key] = {
+                                                        status: actualDiff > 0 ? 'ok' : 'fix',
+                                                        statusIcon: actualDiff > 0 ? '🟢' : '🔴',
+                                                        category: 'מעבר תקרות בין שנים',
+                                                        explanation: actualDiff > 0 ? 
+                                                            "מעבר לשנה חדשה - תקרה עלתה" : 
+                                                            "מעבר לשנה חדשה - לא עודכן",
+                                                        gap: gap.toFixed(2),
+                                                        columnG: columnG.toFixed(2),
+                                                        columnL: columnL.toFixed(2),
+                                                        details: `מעבר מ-${prevYear} ל-${currentYear}`
+                                                    };
+                                                }
+                                            }
+                                        }
                                     // בדיקה אחרונה: ערך G נעול - לפני "לא מזוהה"
                                     else if (result.isValueLocked && Math.abs(columnG - columnL) > 1) {
                                         categories.lockedValue.items.push({
@@ -5827,6 +5830,8 @@ else if (prevPeriod && gap > 1) {
                 }
             }
             
+
+            
             // אם לא נמצא פער או הפער קטן מ-1 ש"ח
             if (!categoryFound) {
                 // איפוס מעקב תקלות
@@ -5847,7 +5852,7 @@ else if (prevPeriod && gap > 1) {
                     details: "הכל תקין"
                 };
             }
-        });
+       });   
     });
     
 
@@ -5909,31 +5914,52 @@ if (condition1 && condition2 && condition3 && condition4) {
     return null;
 }
 function diagnoseNewMiluimHigherValue(result) {
+    // תנאי 1: רק מילואים חדשים
     if (!result.isNewMiluim) return null;
     
-    const columnG = result.continuousValue || 0;
-    const columnL = result.paidAmount || 0;
+    const columnG = result.continuousValue || 0;      
+    const columnL = result.paidAmount || 0;           
     const tolerance = 1.0;
     
-    // חישוב ערך בסיסי
-    const basicResult = calculateBasicDailyValue(result.employeeId, result.startDate);
-    const columnE = basicResult.dailyValue;
-    
-    // בדיקה: האם שולם יותר מהערך הבסיסי?
-    if (Math.abs(columnL - columnE) <= tolerance) {
-        return null; // שולם ערך בסיסי - תקין
+    // תנאי 2: L חייב להיות גבוה מ-G
+    if (columnL <= columnG + tolerance) {
+        return null; // לא גבוה - אין פער
     }
     
-    if (columnL > columnE + tolerance) {
-        return {
-            issue: "NewMiluimHigherValueGiven",
-            explanation: "מילואים חדשים - שולם ערך גבוה במקום בסיסי",
-            columnE: columnE,
-            columnL: columnL,
-            shouldHavePaid: columnE
-        };
+    // תנאי 3: חיפוש בCACHE את השירות הקודם
+    const employeeMiluim = miluimData
+        .filter(m => m.employeeId === result.employeeId)
+        .map(m => ({...m, startDate: parseExcelDate(m.startDate), endDate: parseExcelDate(m.endDate)}))
+        .filter(m => m.startDate && m.endDate && m.startDate < result.startDate)
+        .sort((a, b) => b.startDate - a.startDate); // מהאחרון לראשון
+    
+    if (employeeMiluim.length > 0) {
+        const mostRecentMiluim = employeeMiluim[0];
+        const prevKey = cacheSystem.createKey(result.employeeId, mostRecentMiluim.startDate);
+        
+        // שליפה מה-CACHE
+        if (cacheSystem.cache.has(prevKey)) {
+            const cachedPrevService = cacheSystem.cache.get(prevKey);
+            const prevG = cachedPrevService.continuousValue || 0;
+            
+            // האם L = G קודם?
+            if (Math.abs(columnL - prevG) <= tolerance) {
+                return {
+                    issue: "NewMiluimHigherValueGiven",
+                    explanation: `מילואים חדשים - שולם ערך מתקופה קודמת (${prevG.toFixed(2)}₪) במקום ערך נוכחי (${columnG.toFixed(2)}₪)`,
+                    columnG: columnG,
+                    columnL: columnL,
+                    prevG: prevG,
+                    prevServiceDate: mostRecentMiluim.startDate,
+                    shouldHavePaid: columnG,
+                    paidInstead: `ערך מ-${formatDate(mostRecentMiluim.startDate)}: ${prevG.toFixed(2)}₪`,
+                    gap: columnL - columnG
+                };
+            }
+        }
     }
     
+    // לא מצאנו התאמה - לא מדווחים
     return null;
 }
 // ========================
