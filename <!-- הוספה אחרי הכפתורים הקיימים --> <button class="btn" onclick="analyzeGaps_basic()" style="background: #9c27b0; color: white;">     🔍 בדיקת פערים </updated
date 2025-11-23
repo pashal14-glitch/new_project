@@ -6069,9 +6069,14 @@ function checkMinimumValue(columnL, serviceStartDate) {
 }
 
 function getMinimumDailyForDate(serviceStartDate) {
-    // מציאת הערך המינימלי לפי תאריך השירות
+    // 🔥 תיקון קריטי: נרמול תאריך בלי שעה - בדיוק כמו ApplyFinalLimitsFromCSV
+    const dateOnly = new Date(serviceStartDate.getFullYear(), serviceStartDate.getMonth(), serviceStartDate.getDate());
+    
     for (let limit of DAILY_LIMITS) {
-        if (serviceStartDate >= limit.start && serviceStartDate <= limit.end) {
+        const limitStart = new Date(limit.start.getFullYear(), limit.start.getMonth(), limit.start.getDate());
+        const limitEnd = new Date(limit.end.getFullYear(), limit.end.getMonth(), limit.end.getDate());
+        
+        if (dateOnly >= limitStart && dateOnly <= limitEnd) {
             return limit.min;
         }
     }
