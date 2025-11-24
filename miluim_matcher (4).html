@@ -563,21 +563,94 @@ async function saveToIndexedDB() {
             return '';
         }
 
-        // המרת תאריך Excel (מספר סידורי) לפורמט DD/MM/YYYY
-        function convertExcelDate(excelDate) {
-            if (!excelDate || isNaN(excelDate)) return '';
+        // המרת תאריך Excel (מספר סידורי) לפורמט DD/MM/YYYY - מתוקן!
+function convertExcelDate(excelDate) {
+    if (!excelDate || isNaN(excelDate)) return '';
+    
+    // 🔥 תיקון: value-1 במקום value-2
+    const excelEpoch = new Date(1900, 0, 1);
+    const days = excelDate - 1;
+    const result = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+    
+    // 🔥 תיקון timezone - adjustment לזמן ישראלי
+    const adjusted = new Date(result.getTime() + (result.getTimezoneOffset() * 60000));
+    
+    const day = String(adjusted.getDate()).padStart(2, '0');
+    const month = String(adjusted.getMonth() + 1).padStart(2, '0');
+    const year = adjusted.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+}
+
+// המרת תאריך מפורמט YYYYMMDD או Excel number ל-DD/MM/YYYY - מתוקן!
+function convertDate(dateStr) {
+    if (!dateStr) return '';
+    
+    // 🔥 אם זה Date object - המר ישירות
+    if (dateStr instanceof Date) {
+        const day = String(dateStr.getDate()).padStart(2, '0');
+        const month = String(dateStr.getMonth() + 1).padStart(2, '0');
+        const year = dateStr.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+    
+    // 🔥 קודם בודקים אם זה מספר Excel - לפני שהורסים את הטייפ!
+    if (typeof dateStr === 'number' && dateStr > 1 && dateStr < 100000) {
+        return convertExcelDate(dateStr);
+    }
+    
+    // עכשיו אפשר להמיר למחרוזת
+    const str = dateStr.toString().trim();
+    
+    // תמיכה בפורמטים שונים
+    const formats = [
+        { regex: /^(\d{4})-(\d{2})-(\d{2})$/, order: 'YMD' },        // YYYY-MM-DD
+        { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, order: 'DMY' },      // DD/MM/YYYY
+        { regex: /^(\d{2})-(\d{2})-(\d{4})$/, order: 'DMY' },        // DD-MM-YYYY
+        { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: 'DMY' },  // D/M/YYYY
+        { regex: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, order: 'DMY' }   // D.M.YYYY
+    ];
+    
+    for (let format of formats) {
+        const match = str.match(format.regex);
+        if (match) {
+            let day, month, year;
             
-            // Excel מתחיל מ-1/1/1900
-            const excelEpoch = new Date(1900, 0, 1);
-            const days = excelDate - 2; // תיקון ל-bug של Excel (1900 לא הייתה שנה מעוברת)
-            const date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+            if (format.order === 'YMD') {
+                year = match[1];
+                month = match[2];
+                day = match[3];
+            } else { // DMY
+                day = match[1].padStart(2, '0');
+                month = match[2].padStart(2, '0');
+                year = match[3];
+            }
             
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            
+            // בדיקת תקינות
+            if (parseInt(year) >= 1900 && parseInt(year) <= 2100 &&
+                parseInt(month) >= 1 && parseInt(month) <= 12 &&
+                parseInt(day) >= 1 && parseInt(day) <= 31) {
+                return `${day}/${month}/${year}`;
+            }
+        }
+    }
+    
+    // אם זה בדיוק 8 ספרות - זה YYYYMMDD
+    const numOnly = str.replace(/\D/g, '');
+    if (numOnly.length === 8) {
+        const year = numOnly.substring(0, 4);
+        const month = numOnly.substring(4, 6);
+        const day = numOnly.substring(6, 8);
+        
+        if (parseInt(year) >= 1900 && parseInt(year) <= 2100 &&
+            parseInt(month) >= 1 && parseInt(month) <= 12 &&
+            parseInt(day) >= 1 && parseInt(day) <= 31) {
             return `${day}/${month}/${year}`;
         }
+    }
+    
+    return '';
+}
 
         // יצירת מפתח ייחודי
         function createKey(empId, startDate, endDate) {
@@ -696,7 +769,7 @@ if (!worksheet['!ref'] || worksheet['!ref'] === 'A1') {
 
             let count = 0;
             // מתחילים משורה 8 (אינדקס 7)
-            for (let i = 7; i < jsonData.length; i++) {
+            for (let i = 8; i < jsonData.length; i++) {
                 const row = jsonData[i];
                 
                 const empId = row[2];          // עמודה 3
