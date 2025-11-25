@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת תביעות דמי לידה</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        /* כפתור בחירת תיקייה */
+        .folder-select-area {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .folder-select-area:hover {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+
+        .folder-select-area.loaded {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .folder-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            margin: 5px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        /* סטטיסטיקות */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        /* סינונים */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-item label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .filter-item input, .filter-item select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+
+        /* טבלה */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* סטטוס dropdown */
+        .status-select {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9em;
+            min-width: 150px;
+        }
+
+        .status-select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        /* הערות */
+        .notes-btn {
+            background: #9b59b6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .notes-btn:hover {
+            background: #8e44ad;
+        }
+
+        /* מודאל הערות */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        .message.success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 2px solid #27ae60;
+        }
+
+        .message.error {
+            background: #fadbd8;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+
+        .message.info {
+            background: #e3f2fd;
+            color: #3498db;
+            border: 2px solid #3498db;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <button class="back-btn" onclick="window.location.href='../index.html'">🏠 חזרה לתפריט</button>
+            <h1>👶 מערכת תביעות דמי לידה</h1>
+            <p>ניהול קבצי MASHOV ומעקב סטטוסים</p>
+        </div>
+
+        <!-- בחירת תיקייה -->
+        <div class="section">
+            <h2>📁 בחירת תיקייה</h2>
+            <div class="folder-select-area" id="folderArea" onclick="document.getElementById('folderInput').click()">
+                <div class="folder-icon">📂</div>
+                <h3>לחץ לבחירת תיקייה</h3>
+                <p>התיקייה צריכה להכיל קבצי MASHOV_SCHIR01_MMDD</p>
+                <input type="file" id="folderInput" webkitdirectory multiple style="display: none;">
+            </div>
+            <div id="loadMessage"></div>
+            
+            <div style="text-align: center; margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="loadFromIndexedDB()">
+                    📥 טען נתונים שמורים
+                </button>
+                <button class="btn-primary" onclick="saveToIndexedDB()" style="background: #9b59b6;">
+                    💾 שמור נתונים
+                </button>
+                <button class="btn-primary" onclick="clearIndexedDB()" style="background: #e74c3c;">
+                    🗑️ מחק נתונים שמורים
+                </button>
+            </div>
+        </div>
+
+        <!-- סטטיסטיקות -->
+        <div class="section hidden" id="statsSection">
+            <h2>📊 סטטיסטיקות</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRecords">0</div>
+                    <div class="stat-label">סך הכל רשומות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalFiles">0</div>
+                    <div class="stat-label">קבצים נטענו</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="uniqueEmployees">0</div>
+                    <div class="stat-label">עובדות ייחודיות</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- סינונים -->
+        <div class="section hidden" id="filtersSection">
+            <h2>🔍 סינונים</h2>
+            <div class="filters-grid">
+                <div class="filter-item">
+                    <label>מספר זהות</label>
+                    <input type="text" id="filterID" placeholder="הקלד מספר זהות">
+                </div>
+                <div class="filter-item">
+                    <label>תיק ניכויים</label>
+                    <input type="text" id="filterTik" placeholder="חפש תיק">
+                </div>
+                <div class="filter-item">
+                    <label>סטטוס נוכחי</label>
+                    <select id="filterCurrentStatus">
+                        <option value="">הכל</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>סטטוס עדכון</label>
+                    <select id="filterUserStatus">
+                        <option value="">הכל</option>
+                        <option value="חדש">חדש</option>
+                        <option value="בטיפול">בטיפול</option>
+                        <option value="תוקן">תוקן</option>
+                        <option value="סגור">סגור</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
+            <button class="btn-primary" onclick="exportToExcel()" style="background: #27ae60;">📥 ייצא ל-Excel</button>
+        </div>
+
+        <!-- טבלת תוצאות -->
+        <div class="section hidden" id="resultsSection">
+            <h2>📋 תוצאות</h2>
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>מספר זהות</th>
+                            <th>תיק ניכויים</th>
+                            <th>סטטוס מערכת</th>
+                            <th>סטטוס עדכון</th>
+                            <th>תאריך קובץ</th>
+                            <th>הערות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- מודאל הערות -->
+    <div class="modal" id="notesModal">
+        <div class="modal-content">
+            <h3>💬 הערות</h3>
+            <textarea id="notesText" placeholder="הקלד הערות כאן..."></textarea>
+            <div class="modal-buttons">
+                <button class="btn-primary" onclick="saveNotes()">💾 שמור</button>
+                <button class="btn-primary" onclick="closeNotesModal()" style="background: #95a5a6;">✖️ ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // משתנים גלובליים
+        let maternityData = [];
+        let allData = []; // כל הרשומות מכל הקבצים
+        let currentEditingKey = null;
+        let uniqueStatuses = new Set();
+
+        // IndexedDB
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('bituachLeumiDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('maternity')) {
+                        db.createObjectStore('maternity', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // שמירה ל-IndexedDB
+        async function saveToIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const tx = db.transaction(['maternity'], 'readwrite');
+                const store = tx.objectStore('maternity');
+                
+                // מחיקת נתונים ישנים
+                store.clear();
+                
+                // שמירת נתונים חדשים
+                maternityData.forEach(item => {
+                    store.put(item);
+                });
+                
+                await tx.complete;
+                console.log('✅ נתונים נשמרו ב-IndexedDB');
+                showMessage('loadMessage', '✅ הנתונים נשמרו בהצלחה!', 'success');
+            } catch (error) {
+                console.error('❌ שגיאה בשמירה:', error);
+                showMessage('loadMessage', '❌ שגיאה בשמירת הנתונים', 'error');
+            }
+        }
+
+        // טעינה מ-IndexedDB
+        async function loadFromIndexedDB() {
+            try {
+                const db = await openDatabase();
+                const tx = db.transaction('maternity', 'readonly');
+                const store = tx.objectStore('maternity');
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    const data = request.result || [];
+                    
+                    if (data.length === 0) {
+                        showMessage('loadMessage', '❌ אין נתונים שמורים ב-IndexedDB', 'error');
+                        return;
+                    }
+                    
+                    maternityData = data;
+                    
+                    // עדכון סטטוסים ייחודיים
+                    uniqueStatuses.clear();
+                    maternityData.forEach(item => {
+                        if (item.systemStatus) uniqueStatuses.add(item.systemStatus.trim());
+                    });
+                    
+                    // עדכון UI
+                    document.getElementById('folderArea').classList.add('loaded');
+                    document.getElementById('folderArea').innerHTML = `
+                        <div class="folder-icon">💾</div>
+                        <h3>נטענו נתונים מהמחשב!</h3>
+                        <p>${maternityData.length} רשומות</p>
+                    `;
+                    
+                    showMessage('loadMessage', `✅ נטענו ${maternityData.length} רשומות מ-IndexedDB!`, 'success');
+                    
+                    populateStatusFilters();
+                    updateStats();
+                    displayResults();
+                    
+                    document.getElementById('statsSection').classList.remove('hidden');
+                    document.getElementById('filtersSection').classList.remove('hidden');
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                };
+                
+                request.onerror = () => {
+                    showMessage('loadMessage', '❌ שגיאה בטעינת הנתונים', 'error');
+                };
+            } catch (error) {
+                console.error('❌ שגיאה בטעינה:', error);
+                showMessage('loadMessage', '❌ שגיאה בטעינת הנתונים', 'error');
+            }
+        }
+
+        // מחיקה מ-IndexedDB
+        async function clearIndexedDB() {
+            if (!confirm('❓ האם למחוק את כל הנתונים השמורים?')) {
+                return;
+            }
+            
+            try {
+                const db = await openDatabase();
+                const tx = db.transaction(['maternity'], 'readwrite');
+                tx.objectStore('maternity').clear();
+                await tx.complete;
+                
+                console.log('🗑️ IndexedDB נוקה');
+                showMessage('loadMessage', '✅ הנתונים נמחקו מ-IndexedDB', 'success');
+            } catch (error) {
+                console.error('❌ שגיאה במחיקה:', error);
+            }
+        }
+
+        // הצגת הודעה
+        function showMessage(elementId, text, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="message ${type} fade-in">${text}</div>`;
+        }
+
+     // טעינת קבצים - גרסה מתוקנת
+document.getElementById('folderInput').addEventListener('change', async function(e) {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) {
+        showMessage('loadMessage', 'לא נבחרו קבצים', 'error');
+        return;
+    }
+
+    console.log(`📁 סה"כ קבצים שנבחרו: ${files.length}`);
+
+    // סינון קבצים רלוונטיים
+    const mashovFiles = files.filter(f => 
+        f.name.toUpperCase().includes('MASHOV') || 
+        f.name.toUpperCase().includes('SCHIR')
+    );
+
+    console.log('🔍 קבצי MASHOV שנמצאו:', mashovFiles.map(f => f.name));
+
+    if (mashovFiles.length === 0) {
+        showMessage('loadMessage', '❌ לא נמצאו קבצי MASHOV', 'error');
+        return;
+    }
+
+    showMessage('loadMessage', `⏳ טוען ${mashovFiles.length} קבצים...`, 'info');
+
+    allData = [];
+    let processedFiles = 0;
+    let totalLines = 0;
+    let validRecords = 0;
+
+    for (const file of mashovFiles) {
+        try {
+            console.log(`\n📄 מעבד קובץ: ${file.name}`);
+            
+            // קריאת הקובץ כ-ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+            
+            // ניסיון עם קידודים שונים של עברית
+            let text = null;
+            const encodings = ['windows-1255', 'iso-8859-8', 'utf-8'];
+            
+            for (const encoding of encodings) {
+                try {
+                    const decoder = new TextDecoder(encoding);
+                    const decoded = decoder.decode(arrayBuffer);
+                    
+                    // בדיקה אם יש אותיות עבריות תקינות (א-ת)
+                    if (/[\u0590-\u05FF]/.test(decoded) || /[א-ת]/.test(decoded)) {
+                        text = decoded;
+                        console.log(`✅ קידוד מוצלח: ${encoding}`);
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`❌ קידוד ${encoding} נכשל`);
+                }
+            }
+            
+            // אם לא הצלחנו, נשתמש ב-UTF-8 כברירת מחדל
+            if (!text) {
+                console.log('⚠️ משתמש ב-UTF-8 כברירת מחדל');
+                const decoder = new TextDecoder('utf-8');
+                text = decoder.decode(arrayBuffer);
+            }
+            
+            // פיצול לשורות
+            const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+            const fileDate = new Date(file.lastModified);
+            
+            console.log(`📊 ${file.name}:`);
+            console.log(`   - ${lines.length} שורות (אחרי סינון ריקות)`);
+            console.log(`   - תאריך: ${fileDate.toLocaleDateString('he-IL')}`);
+            console.log(`   - גודל קובץ: ${file.size} bytes`);
+            
+            let fileValidRecords = 0;
+            
+            lines.forEach((line, index) => {
+                totalLines++;
+                
+                console.log(`\n   📝 שורה ${index + 1}:`);
+                console.log(`      אורך: ${line.length} תווים`);
+                console.log(`      תוכן: "${line}"`);
+                
+                // ⚠️ הורדנו את הדרישה - כעת מקבלים כל שורה מעל 60 תווים
+                if (line.length < 60) {
+                    console.log(`      ❌ שורה קצרה מדי (צריך לפחות 60)`);
+                    return;
+                }
+                
+                // חילוץ נתונים לפי פוזיציות
+                const id = line.substring(0, 9).trim();
+                const tik = line.substring(44, 55).trim();
+                const status = line.substring(55).trim(); // כל השאר
+                
+                console.log(`      🔍 מה חולץ:`);
+                console.log(`         מספר זהות (0-10): "${id}" (${id.length} תווים)`);
+                console.log(`         תיק ניכויים (45-56): "${tik}" (${tik.length} תווים)`);
+                console.log(`         סטטוס (56-סוף): "${status}" (${status.length} תווים)`);
+                
+                // ולידציה - רק בודקים שיש מספר זהות
+                if (id && id.length >= 5 && /^\d+$/.test(id)) {
+                    allData.push({
+                        id: id,
+                        tik: tik,
+                        systemStatus: status,
+                        fileDate: fileDate,
+                        fileName: file.name,
+                        userStatus: 'חדש',
+                        notes: ''
+                    });
+                    fileValidRecords++;
+                    validRecords++;
+                    console.log(`      ✅ רשומה תקינה!`);
+                } else {
+                    console.log(`      ❌ מספר זהות לא תקין:`, {
+                        id: id,
+                        length: id.length,
+                        isNumeric: /^\d+$/.test(id)
+                    });
+                }
+            });
+            
+            console.log(`\n   ✅ ${fileValidRecords} רשומות תקינות מהקובץ הזה`);
+            processedFiles++;
+            
+        } catch (error) {
+            console.error(`❌ שגיאה בעיבוד ${file.name}:`, error);
+        }
+    }
+
+    console.log(`\n📊 סיכום כללי:`);
+    console.log(`   - קבצים: ${processedFiles}`);
+    console.log(`   - שורות: ${totalLines}`);
+    console.log(`   - רשומות תקינות: ${validRecords}`);
+
+    if (validRecords === 0) {
+        showMessage('loadMessage', '❌ לא נמצאו רשומות תקינות! בדוק את הקונסול לפרטים', 'error');
+        return;
+    }
+
+    // קבלת הרשומה האחרונה לכל עובדת
+    processLatestRecords();
+
+    // שמירה אוטומטית
+    await saveToIndexedDB();
+
+    // עדכון UI
+    document.getElementById('folderArea').classList.add('loaded');
+    document.getElementById('folderArea').innerHTML = `
+        <div class="folder-icon">✅</div>
+        <h3>הקבצים נטענו בהצלחה!</h3>
+        <p>${processedFiles} קבצים | ${maternityData.length} רשומות ייחודיות</p>
+    `;
+
+    showMessage('loadMessage', `✅ נטענו ${processedFiles} קבצים בהצלחה! (${maternityData.length} עובדות)`, 'success');
+    
+    populateStatusFilters();
+    updateStats();
+    displayResults();
+    
+    document.getElementById('statsSection').classList.remove('hidden');
+    document.getElementById('filtersSection').classList.remove('hidden');
+    document.getElementById('resultsSection').classList.remove('hidden');
+});
+        // עיבוד - לקיחת הרשומה האחרונה לכל עובדת
+        function processLatestRecords() {
+            // קיבוץ לפי מספר זהות
+            const grouped = {};
+            
+            allData.forEach(record => {
+                if (!grouped[record.id]) {
+                    grouped[record.id] = [];
+                }
+                grouped[record.id].push(record);
+            });
+            
+            // לכל עובדת - לקיחת הרשומה עם התאריך האחרון
+            maternityData = [];
+            Object.keys(grouped).forEach(id => {
+                const records = grouped[id];
+                // מיון לפי תאריך קובץ - האחרון ראשון
+                records.sort((a, b) => b.fileDate - a.fileDate);
+                const latest = records[0];
+                
+                maternityData.push({
+                    id: latest.id,
+                    tik: latest.tik,
+                    systemStatus: latest.systemStatus,
+                    fileDate: latest.fileDate,
+                    fileName: latest.fileName,
+                    userStatus: 'חדש',
+                    notes: ''
+                });
+                
+                // שמירת סטטוסים ייחודיים
+                if (latest.systemStatus) uniqueStatuses.add(latest.systemStatus.trim());
+            });
+            
+            console.log(`✅ ${maternityData.length} עובדות ייחודיות`);
+        }
+
+        // מילוי סינון סטטוסים
+        function populateStatusFilters() {
+            const select = document.getElementById('filterCurrentStatus');
+            select.innerHTML = '<option value="">הכל</option>';
+            
+            Array.from(uniqueStatuses).sort().forEach(status => {
+                const option = document.createElement('option');
+                option.value = status;
+                option.textContent = status;
+                select.appendChild(option);
+            });
+        }
+
+        // עדכון סטטיסטיקות
+        function updateStats() {
+            document.getElementById('totalRecords').textContent = maternityData.length;
+            document.getElementById('totalFiles').textContent = new Set(maternityData.map(r => r.fileName)).size;
+            document.getElementById('uniqueEmployees').textContent = maternityData.length;
+        }
+
+        // הצגת תוצאות
+        function displayResults(filteredData = null) {
+            const data = filteredData || maternityData;
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td>${row.tik}</td>
+                    <td>${row.systemStatus}</td>
+                    <td>
+                        <select class="status-select" onchange="updateUserStatus('${row.id}', this.value)">
+                            <option value="חדש" ${row.userStatus === 'חדש' ? 'selected' : ''}>חדש</option>
+                            <option value="בטיפול" ${row.userStatus === 'בטיפול' ? 'selected' : ''}>בטיפול</option>
+                            <option value="תוקן" ${row.userStatus === 'תוקן' ? 'selected' : ''}>תוקן</option>
+                            <option value="סגור" ${row.userStatus === 'סגור' ? 'selected' : ''}>סגור</option>
+                        </select>
+                    </td>
+                    <td>${row.fileDate.toLocaleDateString('he-IL')}</td>
+                    <td>
+                        <button class="notes-btn" onclick="openNotesModal('${row.id}')">
+                            💬 ${row.notes ? 'ערוך' : 'הוסף'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // עדכון סטטוס משתמש
+        function updateUserStatus(id, status) {
+            const record = maternityData.find(r => r.id === id);
+            if (record) {
+                record.userStatus = status;
+                saveToIndexedDB();
+                console.log(`✅ עודכן סטטוס ל-${id}: ${status}`);
+            }
+        }
+
+        // פתיחת מודאל הערות
+        function openNotesModal(id) {
+            currentEditingKey = id;
+            const record = maternityData.find(r => r.id === id);
+            document.getElementById('notesText').value = record?.notes || '';
+            document.getElementById('notesModal').classList.add('show');
+        }
+
+        // סגירת מודאל
+        function closeNotesModal() {
+            document.getElementById('notesModal').classList.remove('show');
+            currentEditingKey = null;
+        }
+
+        // שמירת הערות
+        function saveNotes() {
+            const notes = document.getElementById('notesText').value;
+            const record = maternityData.find(r => r.id === currentEditingKey);
+            
+            if (record) {
+                record.notes = notes;
+                saveToIndexedDB();
+                displayResults();
+                closeNotesModal();
+                console.log(`✅ הערות נשמרו ל-${currentEditingKey}`);
+            }
+        }
+
+        // החלת סינונים
+        function applyFilters() {
+            const filterID = document.getElementById('filterID').value.trim();
+            const filterTik = document.getElementById('filterTik').value.trim();
+            const filterCurrentStatus = document.getElementById('filterCurrentStatus').value;
+            const filterUserStatus = document.getElementById('filterUserStatus').value;
+
+            let filtered = maternityData.filter(row => {
+                if (filterID && !row.id.includes(filterID)) return false;
+                if (filterTik && !row.tik.includes(filterTik)) return false;
+                if (filterCurrentStatus && row.systemStatus !== filterCurrentStatus) return false;
+                if (filterUserStatus && row.userStatus !== filterUserStatus) return false;
+                return true;
+            });
+
+            displayResults(filtered);
+            
+            // עדכון סטטיסטיקות מסוננות
+            document.getElementById('totalRecords').textContent = filtered.length;
+        }
+
+        // ייצוא ל-Excel
+        function exportToExcel() {
+            // נוסיף בהמשך עם ספריית XLSX
+            alert('ייצוא ל-Excel יתווסף בקרוב!');
+        }
+    </script>
+</body>
+</html>
