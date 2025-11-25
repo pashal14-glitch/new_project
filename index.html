@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת ביטוח לאומי מרכזית</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .module-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 35px 25px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .module-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        .module-card:active {
+            transform: translateY(-4px);
+        }
+
+        .module-icon {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .module-title {
+            font-size: 1.6em;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .module-desc {
+            opacity: 0.95;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .module-card.disabled {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .module-card.disabled:hover {
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-top: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .module-card {
+            animation: fadeIn 0.6s ease;
+        }
+
+        .module-card:nth-child(1) { animation-delay: 0.1s; }
+        .module-card:nth-child(2) { animation-delay: 0.2s; }
+        .module-card:nth-child(3) { animation-delay: 0.3s; }
+        .module-card:nth-child(4) { animation-delay: 0.4s; }
+        .module-card:nth-child(5) { animation-delay: 0.5s; }
+        .module-card:nth-child(6) { animation-delay: 0.6s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ מערכת ביטוח לאומי מרכזית</h1>
+            <p>ניהול מרוכז של כל תהליכי ההתחשבנות</p>
+        </div>
+
+        <div class="modules-grid">
+            <!-- מודול מילואים -->
+            <div class="module-card" onclick="openModule('modules/miluim_matcher.html')">
+                <span class="module-icon">🎯</span>
+                <div class="module-title">התאמת מילואים</div>
+                <div class="module-desc">
+                    התאמה בין קבצי Salary ו-BTL<br>
+                    זיהוי פערים ומאזנים
+                </div>
+            </div>
+
+            <!-- מחשבון מילואים מתקדם -->
+            <div class="module-card" onclick="openModule('modules/miluim_calculater.html')">
+                <span class="module-icon">🧮</span>
+                <div class="module-title">מחשבון מילואים</div>
+                <div class="module-desc">
+                    ניהול מתקדם ודיווחים<br>
+                    מערכת ניהול מלאה
+                </div>
+            </div>
+
+            <!-- טפסי 102 - עתידי -->
+            <div class="module-card disabled" onclick="showComingSoon('טפסי 102')">
+                <span class="module-icon">📊</span>
+                <div class="module-title">שגויי 102</div>
+                <div class="module-desc">
+                    טיפול בטפסי 102 שגויים<br>
+                    מעקב וסטטוסים
+                </div>
+                <span class="badge">בפיתוח</span>
+            </div>
+
+            <!-- טפסי 100 - עתידי -->
+            <div class="module-card disabled" onclick="showComingSoon('היזון 100')">
+                <span class="module-icon">📋</span>
+                <div class="module-title">היזון 100</div>
+                <div class="module-desc">
+                    טיפול בטפסי 100<br>
+                    תקינים ושגויים
+                </div>
+                <span class="badge">בפיתוח</span>
+            </div>
+
+            <!-- יולדות - עתידי -->
+            <div class="module-card disabled" onclick="showComingSoon('תביעות דמי לידה ')">
+                <span class="module-icon">👶</span>
+                <div class="module-title">תביעות דמי  לידה </div>
+                <div class="module-desc">
+                    ניהול קבצי יולדות<br>
+                    עיבוד קבצי טקסט
+                </div>
+                <span class="badge">בפיתוח</span>
+            </div>
+         <!-- 126 - עתידי -->
+            <div class="module-card disabled" onclick="showComingSoon('126')">
+                <span class="module-icon">📋</span>
+                <div class="module-title">126</div>
+                <div class="module-desc">
+                  היזון 126<br>
+                </div>
+                <span class="badge">בפיתוח</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>מערכת ביטוח לאומי מרכזית | גרסה 1.0</p>
+        </div>
+    </div>
+
+    <script>
+        // פתיחת מודול
+        function openModule(modulePath) {
+            window.location.href = modulePath;
+        }
+
+        // הודעה למודולים שעדיין לא מוכנים
+        function showComingSoon(moduleName) {
+            alert('🚧 המודול "' + moduleName + '" נמצא בפיתוח ויהיה זמין בקרוב!');
+        }
+
+        // הדפסת לוג לקונסול
+        console.log('🏛️ מערכת ביטוח לאומי מרכזית הופעלה');
+        console.log('📅 תאריך:', new Date().toLocaleDateString('he-IL'));
+    </script>
+</body>
+</html>
