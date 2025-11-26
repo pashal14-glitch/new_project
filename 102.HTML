@@ -200,7 +200,7 @@
             background: #fff5f5;
         }
 
-        .error-code {
+        .tik-badge {
             background: #fadbd8;
             color: #c0392b;
             padding: 4px 8px;
@@ -362,7 +362,7 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number" id="totalRecords">0</div>
-                    <div class="stat-label">סך הכל שגיאות</div>
+                    <div class="stat-label">סך הכל רשומות</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="totalFiles">0</div>
@@ -373,8 +373,8 @@
                     <div class="stat-label">עובדים ייחודיים</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="uniqueErrors">0</div>
-                    <div class="stat-label">סוגי שגיאות</div>
+                    <div class="stat-number" id="uniqueTiks">0</div>
+                    <div class="stat-label">תיקים שונים</div>
                 </div>
             </div>
         </div>
@@ -394,9 +394,9 @@
                     </select>
                 </div>
                 <div class="filter-item">
-                    <label>מספר שגיאה</label>
-                    <select id="filterError">
-                        <option value="">כל השגיאות</option>
+                    <label>תיק</label>
+                    <select id="filterTik">
+                        <option value="">כל התיקים</option>
                     </select>
                 </div>
                 <div class="filter-item">
@@ -428,13 +428,15 @@
                     <thead>
                         <tr>
                             <th>מספר זהות</th>
+                            <th> מספר עובד </th>
+                            <th>תיק</th>
                             <th>סוג דיווח</th>
-                            <th>תקופת מדווח</th>
-                            <th>מס' משפחה</th>
-                            <th>שם מלא</th>
-                            <th>מס' שגיאה</th>
+                            <th>תקופת דיווח</th>
+                            <th>שם משפחה</th>
+                            <th>שם פרטי</th>
                             <th>שם שדה</th>
-                            <th>תוכן שדה</th>
+                            <th>הנתון שדווח</th>
+                            <th>תיאור</th>
                             <th>תאריך הפקת משוב</th>
                             <th>סטטוס</th>
                             <th>הערות</th>
@@ -463,7 +465,7 @@
         // משתנים גלובליים
         let form102Data = [];
         let allDates = new Set();
-        let allErrors = new Set();
+        let allTiks = new Set();
         let allReportTypes = new Set();
         let currentEditingKey = null;
 
@@ -526,11 +528,11 @@
                     
                     // עדכון סטים
                     allDates.clear();
-                    allErrors.clear();
+                    allTiks.clear();
                     allReportTypes.clear();
                     form102Data.forEach(item => {
                         if (item.feedbackDate) allDates.add(item.feedbackDate);
-                        if (item.errorNumber) allErrors.add(item.errorNumber);
+                        if (item.tik) allTiks.add(item.tik);
                         if (item.reportType) allReportTypes.add(item.reportType);
                     });
                     
@@ -538,7 +540,7 @@
                     document.getElementById('folderArea').innerHTML = `
                         <div class="folder-icon">💾</div>
                         <h3>נטענו נתונים מהמחשב!</h3>
-                        <p>${form102Data.length} שגיאות</p>
+                        <p>${form102Data.length} רשומות</p>
                     `;
                     
                     showMessage('loadMessage', `✅ נטענו ${form102Data.length} רשומות מ-IndexedDB!`, 'success');
@@ -651,52 +653,66 @@
                     
                     console.log(`   ${jsonData.length} שורות בקובץ`);
                     
-                    // שורה ראשונה היא כותרות, נתחיל מ-row 1
+                    // שורה 0 היא כותרות, מתחילים מ-1
                     for (let i = 1; i < jsonData.length; i++) {
                         const row = jsonData[i];
                         
-                        if (!row || row.length === 0 || !row[0]) continue;
+                        // דילוג על שורות ריקות - בודקים מספר זהות (H = row[7])
+                        if (!row || row.length === 0 || !row[7]) continue;
                         
-                        const id = (row[0] || '').toString().trim();
-                        const reportType = (row[1] || '').toString().trim();
-                        const reportPeriod = (row[2] || '').toString().trim();
-                        const familyNumber = (row[3] || '').toString().trim();
-                        const recordNumber = (row[4] || '').toString().trim();
-                        const periodNumber = (row[5] || '').toString().trim();
-                        const errorNumber = (row[6] || '').toString().trim();
-                        const lastName = (row[7] || '').toString().trim();
-                        const firstName1 = (row[8] || '').toString().trim();
-                        const firstName2 = (row[9] || '').toString().trim();
-                        const fieldName = (row[10] || '').toString().trim();
-                        const fieldContent = (row[12] || '').toString().trim(); // עמודה M
-                        const feedbackDate = excelDateToJSDate(row[13]); // עמודה N
+                        // ⭐ מיפוי מדויק לפי טופס 102 ⭐
+                        const tik = (row[0] || '').toString().trim();              // A - תיק
+                        const contractType = (row[1] || '').toString().trim();     // B - חוזה דיווח
+                        const reportType = (row[2] || '').toString().trim();       // C - סוג דיווח
+                        const reportPeriod = (row[3] || '').toString().trim();     // D - תקופת הדיווח
+                        const recordNumber = (row[4] || '').toString().trim();     // E - מספר רשומה
+                        const factoryNumber = (row[5] || '').toString().trim();    // F - מספר מפעל
+                        const employeeNumber = (row[6] || '').toString().trim();   // G - מספר עובד
+                        const id = (row[7] || '').toString().trim();               // H - מספר זהות ⭐
+                        const lastName = (row[8] || '').toString().trim();         // I - שם משפחה
+                        const firstName = (row[9] || '').toString().trim();        // J - שמו פרטי
+                        const fieldName = (row[10] || '').toString().trim();       // K - שם שדה
+                        const reportedData = (row[11] || '').toString().trim();    // L - הנתון שדווח
+                        const description = (row[12] || '').toString().trim();     // M - תיאור
+                        const feedbackDate = excelDateToJSDate(row[13]);           // N - תאריך הפקת משוב ⭐
                         
-                        const fullName = `${lastName} ${firstName1} ${firstName2}`.trim();
+                        // בניית שם מלא
+                        const fullName = `${lastName} ${firstName}`.trim();
                         
-                        if (!id || id.length < 5) continue;
+                        // ולידציה - מספר זהות צריך להיות לפחות 5 תווים
+                        if (!id || id.length < 5) {
+                            console.log(`   ⚠️ שורה ${i}: מספר זהות לא תקין - "${id}"`);
+                            continue;
+                        }
                         
-                        const key = `${id}_${errorNumber}_${feedbackDate}_${i}`;
+                        // יצירת מפתח ייחודי
+                        const key = `${id}_${tik}_${feedbackDate}_${i}`;
                         
                         form102Data.push({
                             key: key,
-                            id: id,
+                            tik: tik,
+                            contractType: contractType,
                             reportType: reportType,
                             reportPeriod: reportPeriod,
-                            familyNumber: familyNumber,
                             recordNumber: recordNumber,
-                            periodNumber: periodNumber,
-                            errorNumber: errorNumber,
+                            factoryNumber: factoryNumber,
+                            employeeNumber: employeeNumber,
+                            id: id,
+                            lastName: lastName,
+                            firstName: firstName,
                             fullName: fullName,
                             fieldName: fieldName,
-                            fieldContent: fieldContent,
+                            reportedData: reportedData,
+                            description: description,
                             feedbackDate: feedbackDate,
                             fileName: file.name,
                             userStatus: 'חדש',
                             notes: ''
                         });
                         
+                        // עדכון סטים לסינונים
                         if (feedbackDate) allDates.add(feedbackDate);
-                        if (errorNumber) allErrors.add(errorNumber);
+                        if (tik) allTiks.add(tik);
                         if (reportType) allReportTypes.add(reportType);
                         
                         totalRecords++;
@@ -710,7 +726,7 @@
                 }
             }
 
-            console.log(`\n📊 סיכום: ${processedFiles} קבצים, ${totalRecords} שגיאות`);
+            console.log(`\n📊 סיכום: ${processedFiles} קבצים, ${totalRecords} רשומות`);
 
             if (totalRecords === 0) {
                 showMessage('loadMessage', '❌ לא נמצאו רשומות תקינות', 'error');
@@ -723,10 +739,10 @@
             document.getElementById('folderArea').innerHTML = `
                 <div class="folder-icon">✅</div>
                 <h3>הקבצים נטענו בהצלחה!</h3>
-                <p>${processedFiles} קבצים | ${totalRecords} שגיאות</p>
+                <p>${processedFiles} קבצים | ${totalRecords} רשומות</p>
             `;
 
-            showMessage('loadMessage', `✅ נטענו ${processedFiles} קבצים בהצלחה! (${totalRecords} שגיאות)`, 'success');
+            showMessage('loadMessage', `✅ נטענו ${processedFiles} קבצים בהצלחה! (${totalRecords} רשומות)`, 'success');
             
             populateFilters();
             updateStats();
@@ -739,7 +755,7 @@
 
         // מילוי סינונים
         function populateFilters() {
-            // תאריכים
+            // תאריכים - ממוין מהחדש לישן
             const dateSelect = document.getElementById('filterDate');
             dateSelect.innerHTML = '<option value="">כל התאריכים</option>';
             
@@ -758,16 +774,16 @@
                 dateSelect.appendChild(option);
             });
             
-            // מספרי שגיאה
-            const errorSelect = document.getElementById('filterError');
-            errorSelect.innerHTML = '<option value="">כל השגיאות</option>';
+            // תיקים
+            const tikSelect = document.getElementById('filterTik');
+            tikSelect.innerHTML = '<option value="">כל התיקים</option>';
             
-            Array.from(allErrors).sort().forEach(error => {
-                if (error) {
+            Array.from(allTiks).sort().forEach(tik => {
+                if (tik) {
                     const option = document.createElement('option');
-                    option.value = error;
-                    option.textContent = error;
-                    errorSelect.appendChild(option);
+                    option.value = tik;
+                    option.textContent = tik;
+                    tikSelect.appendChild(option);
                 }
             });
             
@@ -790,7 +806,7 @@
             document.getElementById('totalRecords').textContent = form102Data.length;
             document.getElementById('totalFiles').textContent = new Set(form102Data.map(r => r.fileName)).size;
             document.getElementById('uniqueEmployees').textContent = new Set(form102Data.map(r => r.id)).size;
-            document.getElementById('uniqueErrors').textContent = allErrors.size;
+            document.getElementById('uniqueTiks').textContent = allTiks.size;
         }
 
         // הצגת תוצאות
@@ -802,30 +818,32 @@
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                tr.innerHTML = `
-                    <td>${row.id}</td>
-                    <td>${row.reportType}</td>
-                    <td>${row.reportPeriod}</td>
-                    <td>${row.familyNumber}</td>
-                    <td>${row.fullName}</td>
-                    <td><span class="error-code">${row.errorNumber}</span></td>
-                    <td>${row.fieldName}</td>
-                    <td>${row.fieldContent}</td>
-                    <td><strong>${row.feedbackDate}</strong></td>
-                    <td>
-                        <select class="status-select" onchange="updateUserStatus('${row.key}', this.value)">
-                            <option value="חדש" ${row.userStatus === 'חדש' ? 'selected' : ''}>חדש</option>
-                            <option value="בטיפול" ${row.userStatus === 'בטיפול' ? 'selected' : ''}>בטיפול</option>
-                            <option value="תוקן" ${row.userStatus === 'תוקן' ? 'selected' : ''}>תוקן</option>
-                            <option value="סגור" ${row.userStatus === 'סגור' ? 'selected' : ''}>סגור</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button class="notes-btn" onclick="openNotesModal('${row.key}')">
-                            💬 ${row.notes ? 'ערוך' : 'הוסף'}
-                        </button>
-                    </td>
-                `;
+               tr.innerHTML = `
+    <td>${row.id}</td>
+    <td>${row.employeeNumber}</td>
+    <td><span class="tik-badge">${row.tik}</span></td>
+    <td>${row.reportType}</td>
+    <td>${row.reportPeriod}</td>
+    <td>${row.lastName}</td>
+    <td>${row.firstName}</td>
+    <td>${row.fieldName}</td>
+    <td>${row.reportedData}</td>
+    <td>${row.description}</td>
+    <td><strong>${row.feedbackDate}</strong></td>
+    <td>
+        <select class="status-select" onchange="updateUserStatus('${row.key}', this.value)">
+            <option value="חדש" ${row.userStatus === 'חדש' ? 'selected' : ''}>חדש</option>
+            <option value="בטיפול" ${row.userStatus === 'בטיפול' ? 'selected' : ''}>בטיפול</option>
+            <option value="תוקן" ${row.userStatus === 'תוקן' ? 'selected' : ''}>תוקן</option>
+            <option value="סגור" ${row.userStatus === 'סגור' ? 'selected' : ''}>סגור</option>
+        </select>
+    </td>
+    <td>
+        <button class="notes-btn" onclick="openNotesModal('${row.key}')">
+            💬 ${row.notes ? 'ערוך' : 'הוסף'}
+        </button>
+    </td>
+`;
                 tbody.appendChild(tr);
             });
         }
@@ -870,14 +888,14 @@
         function applyFilters() {
             const filterID = document.getElementById('filterID').value.trim();
             const filterDate = document.getElementById('filterDate').value;
-            const filterError = document.getElementById('filterError').value;
+            const filterTik = document.getElementById('filterTik').value;
             const filterReportType = document.getElementById('filterReportType').value;
             const filterUserStatus = document.getElementById('filterUserStatus').value;
 
             let filtered = form102Data.filter(row => {
                 if (filterID && !row.id.includes(filterID)) return false;
                 if (filterDate && row.feedbackDate !== filterDate) return false;
-                if (filterError && row.errorNumber !== filterError) return false;
+                if (filterTik && row.tik !== filterTik) return false;
                 if (filterReportType && row.reportType !== filterReportType) return false;
                 if (filterUserStatus && row.userStatus !== filterUserStatus) return false;
                 return true;
@@ -887,38 +905,42 @@
             document.getElementById('totalRecords').textContent = filtered.length;
         }
 
-        // ייצוא
         function exportToExcel() {
-            const data = [['מספר זהות', 'סוג דיווח', 'תקופת מדווח', 'מס\' משפחה', 'שם מלא', 'מס\' שגיאה', 'שם שדה', 'תוכן שדה', 'תאריך הפקת משוב', 'סטטוס', 'הערות']];
-            
-            const tbody = document.getElementById('resultsBody');
-            const rows = tbody.getElementsByTagName('tr');
-            
-            Array.from(rows).forEach(row => {
-                const cells = row.getElementsByTagName('td');
-                const rowData = [
-                    cells[0].textContent,
-                    cells[1].textContent,
-                    cells[2].textContent,
-                    cells[3].textContent,
-                    cells[4].textContent,
-                    cells[5].textContent,
-                    cells[6].textContent,
-                    cells[7].textContent,
-                    cells[8].textContent,
-                    cells[9].querySelector('select').value,
-                    form102Data.find(r => r.id === cells[0].textContent)?.notes || ''
-                ];
-                data.push(rowData);
-            });
-            
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'שגויי 102');
-            
-            const fileName = `form102_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
-        }
+    const data = [['מספר זהות', 'מספר עובד', 'תיק', 'סוג דיווח', 'תקופת דיווח', 'שם משפחה', 'שם פרטי', 'שם שדה', 'הנתון שדווח', 'תיאור', 'תאריך הפקת משוב', 'סטטוס', 'הערות']];
+    
+    const tbody = document.getElementById('resultsBody');
+    const rows = tbody.getElementsByTagName('tr');
+    
+    Array.from(rows).forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        const id = cells[0].textContent;
+        const record = form102Data.find(r => r.id === id);
+        
+        const rowData = [
+            cells[0].textContent,  // מספר זהות
+            cells[1].textContent,  // מספר עובד
+            cells[2].textContent,  // תיק
+            cells[3].textContent,  // סוג דיווח
+            cells[4].textContent,  // תקופת דיווח
+            cells[5].textContent,  // שם משפחה
+            cells[6].textContent,  // שם פרטי
+            cells[7].textContent,  // שם שדה
+            cells[8].textContent,  // הנתון שדווח
+            cells[9].textContent,  // תיאור
+            cells[10].textContent, // תאריך
+            cells[11].querySelector('select').value, // סטטוס
+            record?.notes || ''    // הערות
+        ];
+        data.push(rowData);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'שגויי 102');
+    
+    const fileName = `form102_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+}
     </script>
 </body>
 </html>
