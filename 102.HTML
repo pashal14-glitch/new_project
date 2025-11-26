@@ -732,6 +732,7 @@
                 showMessage('loadMessage', '❌ לא נמצאו רשומות תקינות', 'error');
                 return;
             }
+            processLatestFeedbacks();
 
             await saveToIndexedDB();
 
@@ -800,7 +801,46 @@
                 }
             });
         }
-
+// עיבוד - לקיחת הפידבק האחרון לכל תקופת דיווח
+function processLatestFeedbacks() {
+    console.log(`📊 מעבד ${form102Data.length} רשומות...`);
+    
+    // קיבוץ לפי מספר זהות + תקופת דיווח
+    const grouped = {};
+    
+    form102Data.forEach(record => {
+        const key = `${record.id}_${record.reportPeriod}`;
+        
+        if (!grouped[key]) {
+            grouped[key] = [];
+        }
+        grouped[key].push(record);
+    });
+    
+    // לכל קבוצה - לקיחת הרשומה עם התאריך האחרון
+    const latestRecords = [];
+    
+    Object.keys(grouped).forEach(key => {
+        const records = grouped[key];
+        
+        // מיון לפי תאריך פידבק - האחרון ראשון
+        records.sort((a, b) => {
+            const [dayA, monthA, yearA] = a.feedbackDate.split('/');
+            const [dayB, monthB, yearB] = b.feedbackDate.split('/');
+            const dateA = new Date(yearA, monthA - 1, dayA);
+            const dateB = new Date(yearB, monthB - 1, dayB);
+            return dateB - dateA; // האחרון ראשון
+        });
+        
+        // לוקחים את הראשון ברשימה (האחרון בזמן)
+        latestRecords.push(records[0]);
+    });
+    
+    console.log(`✅ ${latestRecords.length} פידבקים אחרונים (מתוך ${form102Data.length} כולל)`);
+    
+    // מחליפים את המערך
+    form102Data = latestRecords;
+}
         // עדכון סטטיסטיקות
         function updateStats() {
             document.getElementById('totalRecords').textContent = form102Data.length;
@@ -944,3 +984,4 @@
     </script>
 </body>
 </html>
+
