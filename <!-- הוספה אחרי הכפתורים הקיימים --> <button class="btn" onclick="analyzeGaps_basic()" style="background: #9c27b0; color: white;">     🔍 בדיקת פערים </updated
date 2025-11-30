@@ -2580,20 +2580,20 @@ if (employeeMiluim.length > 0) {
         
         if (cacheSystem.cache.has(prevKey)) {
             const cachedResult = cacheSystem.cache.get(prevKey);
-            finalValue = Math.max(cachedResult.basicValue, minimumDaily);
+            finalValue = cachedResult.basicValue;
         } else {
             const prevBasicResult = calculateBasicDailyValue(employeeId, mostRecentMiluim.startDate);
-            finalValue = Math.max(prevBasicResult.dailyValue, minimumDaily);
+            finalValue = prevBasicResult.dailyValue;
         }
     } else {
         // לא רצף - חישוב רגיל ללא הגבלת תקרה
         const minimumDaily = getMinimumDailyForDate(serviceStartDate);
-        finalValue = Math.max(dailyValue, minimumDaily);
+        finalValue = dailyValue;
     }
 } else {
     // אין שירות קודם - חישוב רגיל ללא הגבלת תקרה
     const minimumDaily = getMinimumDailyForDate(serviceStartDate);
-    finalValue = Math.max(dailyValue, minimumDaily);
+    finalValue = dailyValue;
 }
                                    
     return {
