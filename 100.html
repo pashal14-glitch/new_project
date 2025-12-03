@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 1800px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
@@ -144,7 +144,7 @@
 
         .filters-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -158,6 +158,7 @@
             font-weight: bold;
             color: #555;
             margin-bottom: 5px;
+            font-size: 0.9em;
         }
 
         .filter-item input, .filter-item select {
@@ -180,20 +181,20 @@
         th {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            padding: 15px;
+            padding: 15px 8px;
             text-align: center;
             font-weight: bold;
             position: sticky;
             top: 0;
             z-index: 10;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
 
         td {
-            padding: 12px;
+            padding: 10px 8px;
             text-align: center;
             border-bottom: 1px solid #e9ecef;
-            font-size: 0.85em;
+            font-size: 0.8em;
         }
 
         tr:hover {
@@ -206,8 +207,8 @@
             border-radius: 5px;
             background: white;
             cursor: pointer;
-            font-size: 0.9em;
-            min-width: 120px;
+            font-size: 0.85em;
+            min-width: 110px;
         }
 
         .status-select:focus {
@@ -219,10 +220,10 @@
             background: #9b59b6;
             color: white;
             border: none;
-            padding: 6px 12px;
+            padding: 5px 10px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.8em;
         }
 
         .notes-btn:hover {
@@ -376,15 +377,25 @@
                     <input type="text" id="filterID" placeholder="הקלד מספר זהות">
                 </div>
                 <div class="filter-item">
+                    <label>מספר עובד</label>
+                    <input type="text" id="filterEmployee" placeholder="הקלד מספר עובד">
+                </div>
+                <div class="filter-item">
                     <label>תאריך הפקת משוב</label>
                     <select id="filterDate">
                         <option value="">כל התאריכים</option>
                     </select>
                 </div>
                 <div class="filter-item">
-                    <label>תוצאת דיווח</label>
-                    <select id="filterResult">
-                        <option value="">הכל</option>
+                    <label>חודש דיווח</label>
+                    <select id="filterMonth">
+                        <option value="">כל החודשים</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>תיק</label>
+                    <select id="filterTik">
+                        <option value="">כל התיקים</option>
                     </select>
                 </div>
                 <div class="filter-item">
@@ -410,12 +421,16 @@
                     <thead>
                         <tr>
                             <th>מספר זהות</th>
-                            <th>תוצאת דיווח</th>
-                            <th>תקופת מדווח</th>
-                            <th>מדריך דיווח</th>
-                            <th>תוכן שדה</th>
+                            <th>מספר עובד</th>
+                            <th>תיק</th>
+                            <th>חוזה דיווח</th>
+                            <th>תקופת דיווח</th>
+                            <th>חודש דיווח</th>
+                            <th>שם השדה</th>
+                            <th>הנתון שדווח</th>
+                            <th>תיאור</th>
                             <th>תאריך הפקת משוב</th>
-                            <th>סטטוס עדכון</th>
+                            <th>סטטוס</th>
                             <th>הערות</th>
                         </tr>
                     </thead>
@@ -442,7 +457,8 @@
         // משתנים גלובליים
         let form100Data = [];
         let allDates = new Set();
-        let allResults = new Set();
+        let allReportMonths = new Set();
+        let allTiks = new Set();
         let currentEditingKey = null;
 
         // IndexedDB
@@ -502,12 +518,14 @@
                     
                     form100Data = data;
                     
-                    // עדכון תאריכים ותוצאות ייחודיות
+                    // עדכון סטים
                     allDates.clear();
-                    allResults.clear();
+                    allReportMonths.clear();
+                    allTiks.clear();
                     form100Data.forEach(item => {
                         if (item.feedbackDate) allDates.add(item.feedbackDate);
-                        if (item.reportResult) allResults.add(item.reportResult);
+                        if (item.reportMonth) allReportMonths.add(item.reportMonth);
+                        if (item.tik) allTiks.add(item.tik);
                     });
                     
                     document.getElementById('folderArea').classList.add('loaded');
@@ -562,16 +580,14 @@
             el.innerHTML = `<div class="message ${type} fade-in">${text}</div>`;
         }
 
-        // המרת תאריך Excel לפורמט DD/MM/YYYY
+        // המרת תאריך Excel
         function excelDateToJSDate(excelDate) {
             if (!excelDate) return '';
             
-            // אם זה כבר תאריך בפורמט DD/MM/YYYY
             if (typeof excelDate === 'string' && excelDate.includes('/')) {
                 return excelDate;
             }
             
-            // אם זה מספר סידורי של Excel
             if (typeof excelDate === 'number') {
                 const date = new Date((excelDate - 25569) * 86400 * 1000);
                 const day = String(date.getDate()).padStart(2, '0');
@@ -594,7 +610,6 @@
 
             console.log(`📁 סה"כ קבצים שנבחרו: ${files.length}`);
 
-            // סינון קבצי Excel בלבד
             const excelFiles = files.filter(f => 
                 f.name.match(/\.(xlsx|xls)$/i)
             );
@@ -622,7 +637,6 @@
                     const firstSheet = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheet];
                     
-                    // המרה ל-JSON עם headers
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
                         header: 1,
                         raw: false,
@@ -631,37 +645,43 @@
                     
                     console.log(`   ${jsonData.length} שורות בקובץ`);
                     
-                    // שורה ראשונה היא כותרות (row 0), נתחיל מ-row 1
+                    // שורה 0 היא כותרות, מתחילים מ-1
                     for (let i = 1; i < jsonData.length; i++) {
                         const row = jsonData[i];
                         
-                        // בדיקה שהשורה לא ריקה
-                        if (!row || row.length === 0 || !row[0]) continue;
+                        // דילוג על שורות ריקות - בודקים זהות או מספר עובד
+                        if (!row || row.length === 0 || (!row[4] && !row[5])) continue;
                         
-                        const id = (row[0] || '').toString().trim();
-                        const reportResult = (row[1] || '').toString().trim();
-                        const reportPeriod = (row[2] || '').toString().trim();
-                        const reportGuide = (row[3] || '').toString().trim();
-                        const toz = (row[4] || '').toString().trim();
-                        const fieldName = (row[5] || '').toString().trim();
-                        const fieldContent = (row[6] || '').toString().trim();
-                        const description = (row[7] || '').toString().trim();
-                        const feedbackDate = excelDateToJSDate(row[8]);
+                        // ⭐ מיפוי מדויק לפי טופס 100 ⭐
+                        const tik = (row[0] || '').toString().trim();              // A - תיק
+                        const contractType = (row[1] || '').toString().trim();     // B - חוזה דיווח
+                        const reportPeriod = (row[2] || '').toString().trim();     // C - תקופת הדיווח
+                        const reportMonth = (row[3] || '').toString().trim();      // D - חודש דיווח
+                        const employeeNumber = (row[4] || '').toString().trim();   // E - מספר עובד
+                        const id = (row[5] || '').toString().trim();               // F - זהות
+                        const fieldName = (row[6] || '').toString().trim();        // G - שם השדה
+                        const reportedData = (row[7] || '').toString().trim();     // H - הנתון שדווח
+                        const description = (row[8] || '').toString().trim();      // I - תיאור
+                        const feedbackDate = excelDateToJSDate(row[9]);            // J - תאריך הפקת משוב ⭐
                         
-                        // ולידציה בסיסית
-                        if (!id || id.length < 5) continue;
+                        // ולידציה - בודקים שיש זהות או מספר עובד
+                        if (!id && !employeeNumber) {
+                            console.log(`   ⚠️ שורה ${i}: אין זהות או מספר עובד`);
+                            continue;
+                        }
                         
-                        const key = `${id}_${feedbackDate}_${i}`;
+                        const key = `${id}_${employeeNumber}_${feedbackDate}_${i}`;
                         
                         form100Data.push({
                             key: key,
-                            id: id,
-                            reportResult: reportResult,
+                            tik: tik,
+                            contractType: contractType,
                             reportPeriod: reportPeriod,
-                            reportGuide: reportGuide,
-                            toz: toz,
+                            reportMonth: reportMonth,
+                            employeeNumber: employeeNumber,
+                            id: id,
                             fieldName: fieldName,
-                            fieldContent: fieldContent,
+                            reportedData: reportedData,
                             description: description,
                             feedbackDate: feedbackDate,
                             fileName: file.name,
@@ -669,9 +689,10 @@
                             notes: ''
                         });
                         
-                        // שמירת תאריכים ותוצאות ייחודיות
+                        // עדכון סטים לסינונים
                         if (feedbackDate) allDates.add(feedbackDate);
-                        if (reportResult) allResults.add(reportResult);
+                        if (reportMonth) allReportMonths.add(reportMonth);
+                        if (tik) allTiks.add(tik);
                         
                         totalRecords++;
                     }
@@ -691,10 +712,8 @@
                 return;
             }
 
-            // שמירה אוטומטית
             await saveToIndexedDB();
 
-            // עדכון UI
             document.getElementById('folderArea').classList.add('loaded');
             document.getElementById('folderArea').innerHTML = `
                 <div class="folder-icon">✅</div>
@@ -715,17 +734,16 @@
 
         // מילוי סינונים
         function populateFilters() {
-            // סינון תאריכים
+            // תאריכים - ממוין מהחדש לישן
             const dateSelect = document.getElementById('filterDate');
             dateSelect.innerHTML = '<option value="">כל התאריכים</option>';
             
-            // מיון תאריכים (מהחדש לישן)
             const sortedDates = Array.from(allDates).sort((a, b) => {
                 const [dayA, monthA, yearA] = a.split('/');
                 const [dayB, monthB, yearB] = b.split('/');
                 const dateA = new Date(yearA, monthA - 1, dayA);
                 const dateB = new Date(yearB, monthB - 1, dayB);
-                return dateB - dateA; // מהחדש לישן
+                return dateB - dateA;
             });
             
             sortedDates.forEach(date => {
@@ -735,16 +753,29 @@
                 dateSelect.appendChild(option);
             });
             
-            // סינון תוצאות דיווח
-            const resultSelect = document.getElementById('filterResult');
-            resultSelect.innerHTML = '<option value="">הכל</option>';
+            // חודשי דיווח
+            const monthSelect = document.getElementById('filterMonth');
+            monthSelect.innerHTML = '<option value="">כל החודשים</option>';
             
-            Array.from(allResults).sort().forEach(result => {
-                if (result) {
+            Array.from(allReportMonths).sort().forEach(month => {
+                if (month) {
                     const option = document.createElement('option');
-                    option.value = result;
-                    option.textContent = result;
-                    resultSelect.appendChild(option);
+                    option.value = month;
+                    option.textContent = month;
+                    monthSelect.appendChild(option);
+                }
+            });
+            
+            // תיקים
+            const tikSelect = document.getElementById('filterTik');
+            tikSelect.innerHTML = '<option value="">כל התיקים</option>';
+            
+            Array.from(allTiks).sort().forEach(tik => {
+                if (tik) {
+                    const option = document.createElement('option');
+                    option.value = tik;
+                    option.textContent = tik;
+                    tikSelect.appendChild(option);
                 }
             });
         }
@@ -753,7 +784,7 @@
         function updateStats() {
             document.getElementById('totalRecords').textContent = form100Data.length;
             document.getElementById('totalFiles').textContent = new Set(form100Data.map(r => r.fileName)).size;
-            document.getElementById('uniqueEmployees').textContent = new Set(form100Data.map(r => r.id)).size;
+            document.getElementById('uniqueEmployees').textContent = new Set(form100Data.map(r => r.id || r.employeeNumber)).size;
         }
 
         // הצגת תוצאות
@@ -767,10 +798,14 @@
                 
                 tr.innerHTML = `
                     <td>${row.id}</td>
-                    <td>${row.reportResult}</td>
+                    <td>${row.employeeNumber}</td>
+                    <td>${row.tik}</td>
+                    <td>${row.contractType}</td>
                     <td>${row.reportPeriod}</td>
-                    <td>${row.reportGuide}</td>
-                    <td>${row.fieldContent}</td>
+                    <td>${row.reportMonth}</td>
+                    <td>${row.fieldName}</td>
+                    <td>${row.reportedData}</td>
+                    <td>${row.description}</td>
                     <td><strong>${row.feedbackDate}</strong></td>
                     <td>
                         <select class="status-select" onchange="updateUserStatus('${row.key}', this.value)">
@@ -831,14 +866,18 @@
         // החלת סינונים
         function applyFilters() {
             const filterID = document.getElementById('filterID').value.trim();
+            const filterEmployee = document.getElementById('filterEmployee').value.trim();
             const filterDate = document.getElementById('filterDate').value;
-            const filterResult = document.getElementById('filterResult').value;
+            const filterMonth = document.getElementById('filterMonth').value;
+            const filterTik = document.getElementById('filterTik').value;
             const filterUserStatus = document.getElementById('filterUserStatus').value;
 
             let filtered = form100Data.filter(row => {
                 if (filterID && !row.id.includes(filterID)) return false;
+                if (filterEmployee && !row.employeeNumber.includes(filterEmployee)) return false;
                 if (filterDate && row.feedbackDate !== filterDate) return false;
-                if (filterResult && row.reportResult !== filterResult) return false;
+                if (filterMonth && row.reportMonth !== filterMonth) return false;
+                if (filterTik && row.tik !== filterTik) return false;
                 if (filterUserStatus && row.userStatus !== filterUserStatus) return false;
                 return true;
             });
@@ -849,22 +888,30 @@
 
         // ייצוא ל-Excel
         function exportToExcel() {
-            const data = [['מספר זהות', 'תוצאת דיווח', 'תקופת מדווח', 'מדריך דיווח', 'תוכן שדה', 'תאריך הפקת משוב', 'סטטוס עדכון', 'הערות']];
+            const data = [['מספר זהות', 'מספר עובד', 'תיק', 'חוזה דיווח', 'תקופת דיווח', 'חודש דיווח', 'שם השדה', 'הנתון שדווח', 'תיאור', 'תאריך הפקת משוב', 'סטטוס', 'הערות']];
             
             const tbody = document.getElementById('resultsBody');
             const rows = tbody.getElementsByTagName('tr');
             
             Array.from(rows).forEach(row => {
                 const cells = row.getElementsByTagName('td');
+                const id = cells[0].textContent;
+                const empNum = cells[1].textContent;
+                const record = form100Data.find(r => r.id === id && r.employeeNumber === empNum);
+                
                 const rowData = [
-                    cells[0].textContent,
-                    cells[1].textContent,
-                    cells[2].textContent,
-                    cells[3].textContent,
-                    cells[4].textContent,
-                    cells[5].textContent,
-                    cells[6].querySelector('select').value,
-                    form100Data.find(r => r.id === cells[0].textContent)?.notes || ''
+                    cells[0].textContent,  // מספר זהות
+                    cells[1].textContent,  // מספר עובד
+                    cells[2].textContent,  // תיק
+                    cells[3].textContent,  // חוזה דיווח
+                    cells[4].textContent,  // תקופת דיווח
+                    cells[5].textContent,  // חודש דיווח
+                    cells[6].textContent,  // שם השדה
+                    cells[7].textContent,  // הנתון שדווח
+                    cells[8].textContent,  // תיאור
+                    cells[9].textContent,  // תאריך
+                    cells[10].querySelector('select').value, // סטטוס
+                    record?.notes || ''    // הערות
                 ];
                 data.push(rowData);
             });
