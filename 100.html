@@ -461,22 +461,32 @@
         let allTiks = new Set();
         let currentEditingKey = null;
 
-        // IndexedDB
-        function openDatabase() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open('bituachLeumiDB', 1);
-                
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-                
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains('form100')) {
-                        db.createObjectStore('form100', { keyPath: 'key' });
-                    }
-                };
-            });
-        }
+         function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('bituachLeumiDB', 2); // ⭐ שינוי גרסה ל-2
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // יצירת כל ה-stores אם הם לא קיימים
+            if (!db.objectStoreNames.contains('form100')) {
+                db.createObjectStore('form100', { keyPath: 'key' });
+                console.log('✅ נוצר store: form100');
+            }
+            if (!db.objectStoreNames.contains('form102')) {
+                db.createObjectStore('form102', { keyPath: 'key' });
+                console.log('✅ נוצר store: form102');
+            }
+            if (!db.objectStoreNames.contains('maternity')) {
+                db.createObjectStore('maternity', { keyPath: 'key' });
+                console.log('✅ נוצר store: maternity');
+            }
+        };
+    });
+}
 
         // שמירה ל-IndexedDB
         async function saveToIndexedDB() {
@@ -926,3 +936,4 @@
     </script>
 </body>
 </html>
+
