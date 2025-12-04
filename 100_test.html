@@ -222,6 +222,10 @@
             background: #d1ecf1;
             color: #0c5460;
         }
+        .status-ok {
+    background: #d4edda;
+    color: #155724;
+}
 
         .details-btn {
             background: #3498db;
@@ -382,6 +386,10 @@
                     <div class="stat-number" id="totalRecords">0</div>
                     <div class="stat-label">סך הכל רשומות</div>
                 </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #27ae60, #229954);">
+    <div class="stat-number" id="okCount">0</div>
+    <div class="stat-label">✅ פידבקים תקינים</div>
+</div>
                 <div class="stat-card">
                     <div class="stat-number" id="waitingCount">0</div>
                     <div class="stat-label">⏳ ממתינים לפידבק</div>
@@ -418,11 +426,13 @@
                 <div class="filter-item">
                     <label>סטטוס</label>
                     <select id="filterStatus">
-                        <option value="">הכל</option>
-                        <option value="waiting">ממתין לפידבק</option>
-                        <option value="has_errors">פידבק עם שגיאות</option>
-                        <option value="initiated">פידבק יזום</option>
-                    </select>
+    <option value="">הכל</option>
+    <option value="waiting">ממתין לפידבק</option>
+    <option value="has_errors">פידבק עם שגיאות</option>
+    <option value="has_ok">פידבק תקין</option>
+    <option value="initiated">פידבק יזום (שגיאות)</option>
+    <option value="initiated_ok">פידבק יזום (תקין)</option>
+</select>
                 </div>
             </div>
             <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
@@ -685,97 +695,94 @@ const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
             return requests;
         }
 
-        // הצלבה בין בקשות לפידבקים
-        function combineRequestsAndFeedbacks() {
-            console.log(`🔄 מצליב ${requestsData.length} בקשות עם ${feedbacksData.length} פידבקים`);
-            
-            // הסרת כפילויות בבקשות - רק האחרונה
-            const uniqueRequests = {};
-            requestsData.forEach(req => {
-                const key = `${req.id}_${req.period}`;
-                if (!uniqueRequests[key] || req.requestDate > uniqueRequests[key].requestDate) {
-                    uniqueRequests[key] = req;
-                }
-            });
-            
-            console.log(`📋 ${Object.keys(uniqueRequests).length} בקשות ייחודיות (אחרי הסרת כפילויות)`);
-            
-            // יצירת מבנה משולב
-            combinedData = [];
-            const processedFeedbacks = new Set();
-            
-            // בקשות עם/בלי פידבק
-            Object.values(uniqueRequests).forEach(request => {
-                const key = `${request.id}_${request.period}`;
-                
-                const feedbacks = feedbacksData.filter(f => {
-    return f.id === request.id && f.reportPeriod === request.period;
-});
-                
-                if (feedbacks.length === 0) {
-                    // בקשה ללא פידבק
-                    combinedData.push({
-                        key: key + '_waiting',
-                        type: 'waiting',
-                        request: request,
-                        feedback: null,
-                        hasRequest: true,
-                        hasFeedback: false,
-                        isOK: false,
-                        userStatus: 'חדש',
-                        notes: ''
-                    });
-                } else {
-                    feedbacks.forEach((feedback, idx) => {
-                        const isOK = feedback.description && feedback.description.includes('תקין');
-                        processedFeedbacks.add(feedback.key);
-                        
-                        // רק אם לא תקין
-                        if (!isOK) {
-                            combinedData.push({
-                                key: `${key}_fb${idx}`,
-                                type: 'has_errors',
-                                request: request,
-                                feedback: feedback,
-                                hasRequest: true,
-                                hasFeedback: true,
-                                isOK: false,
-                                userStatus: 'חדש',
-                                notes: ''
-                            });
-                        }
-                    });
-                }
-            });
-            
-            // פידבקים יזומים (ללא בקשה) - רק לא תקינים
-            feedbacksData.forEach(feedback => {
-                if (processedFeedbacks.has(feedback.key)) return;
-                
-                const isOK = feedback.description && feedback.description.includes('תקין');
-                
-                // רק אם לא תקין
-                if (!isOK) {
-                    const period = feedback.reportMonth || feedback.reportPeriod || '';
-                    combinedData.push({
-                        key: `${feedback.id}_${period}_initiated`,
-                        type: 'initiated',
-                        request: null,
-                        feedback: feedback,
-                        hasRequest: false,
-                        hasFeedback: true,
-                        isOK: false,
-                        userStatus: 'חדש',
-                        notes: ''
-                    });
-                }
-            });
-            
-            console.log(`✅ הצלבה הושלמה: ${combinedData.length} רשומות`);
-            console.log(`   - ממתינים: ${combinedData.filter(r => r.type === 'waiting').length}`);
-            console.log(`   - שגיאות: ${combinedData.filter(r => r.type === 'has_errors').length}`);
-            console.log(`   - יזומים: ${combinedData.filter(r => r.type === 'initiated').length}`);
+       // הצלבה בין בקשות לפידבקים
+function combineRequestsAndFeedbacks() {
+    console.log(`🔄 מצליב ${requestsData.length} בקשות עם ${feedbacksData.length} פידבקים`);
+    
+    // הסרת כפילויות בבקשות - רק האחרונה
+    const uniqueRequests = {};
+    requestsData.forEach(req => {
+        const key = `${req.id}_${req.period}`;
+        if (!uniqueRequests[key] || req.requestDate > uniqueRequests[key].requestDate) {
+            uniqueRequests[key] = req;
         }
+    });
+    
+    console.log(`📋 ${Object.keys(uniqueRequests).length} בקשות ייחודיות (אחרי הסרת כפילויות)`);
+    
+    // יצירת מבנה משולב
+    combinedData = [];
+    const processedFeedbacks = new Set();
+    
+    // בקשות עם/בלי פידבק
+    Object.values(uniqueRequests).forEach(request => {
+        const key = `${request.id}_${request.period}`;
+        
+        const feedbacks = feedbacksData.filter(f => {
+            return f.id === request.id && f.reportPeriod === request.period;
+        });
+        
+        if (feedbacks.length === 0) {
+            // בקשה ללא פידבק
+            combinedData.push({
+                key: key + '_waiting',
+                type: 'waiting',
+                request: request,
+                feedback: null,
+                hasRequest: true,
+                hasFeedback: false,
+                isOK: false,  // ⭐ תיקון - false כי אין פידבק
+                userStatus: 'חדש',
+                notes: ''
+            });
+        } else {
+            // בקשה עם פידבק - מוסיפים את כולם (תקינים ולא תקינים)
+            feedbacks.forEach((feedback, idx) => {
+                const isOK = feedback.description && feedback.description.includes('תקין');
+                processedFeedbacks.add(feedback.key);
+                
+                combinedData.push({
+                    key: `${key}_fb${idx}`,
+                    type: isOK ? 'has_ok' : 'has_errors',  // ⭐ גם תקינים וגם שגיאות
+                    request: request,
+                    feedback: feedback,
+                    hasRequest: true,
+                    hasFeedback: true,
+                    isOK: isOK,  // ⭐ כאן זה מוגדר כי יש feedback
+                    userStatus: 'חדש',
+                    notes: ''
+                });
+            });
+        }
+    });
+    
+    // פידבקים יזומים (ללא בקשה) - גם תקינים וגם לא תקינים
+    feedbacksData.forEach(feedback => {
+        if (processedFeedbacks.has(feedback.key)) return;
+        
+        const isOK = feedback.description && feedback.description.includes('תקין');
+        const period = feedback.reportPeriod || '';
+        
+        combinedData.push({
+            key: `${feedback.id}_${period}_initiated`,
+            type: isOK ? 'initiated_ok' : 'initiated',  // ⭐ גם תקינים וגם שגיאות
+            request: null,
+            feedback: feedback,
+            hasRequest: false,
+            hasFeedback: true,
+            isOK: isOK,  // ⭐ כאן זה מוגדר כי יש feedback
+            userStatus: 'חדש',
+            notes: ''
+        });
+    });
+    
+    console.log(`✅ הצלבה הושלמה: ${combinedData.length} רשומות`);
+    console.log(`   - ממתינים: ${combinedData.filter(r => r.type === 'waiting').length}`);
+    console.log(`   - שגיאות: ${combinedData.filter(r => r.type === 'has_errors').length}`);
+    console.log(`   - תקינים: ${combinedData.filter(r => r.type === 'has_ok').length}`);
+    console.log(`   - יזומים (שגיאות): ${combinedData.filter(r => r.type === 'initiated').length}`);
+    console.log(`   - יזומים (תקינים): ${combinedData.filter(r => r.type === 'initiated_ok').length}`);
+}
 
         // טעינת קבצים
         document.getElementById('folderInput').addEventListener('change', async function(e) {
@@ -801,15 +808,42 @@ const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
 
             for (const file of files) {
                 try {
-                    // קבצי TXT - בקשות
-                    if (file.name.match(/\.txt$/i)) {
-                        console.log(`📄 מעבד TXT: ${file.name}`);
-                        const text = await file.text();
-                        const requests = processRequestFile(text, file.name);
-                        requestsData.push(...requests);
-                        txtCount++;
-                        processedFiles++;
-                    }
+                   // קבצי TXT - בקשות
+if (file.name.match(/\.txt$/i)) {
+    console.log(`📄 מעבד TXT: ${file.name}`);
+    
+    // קריאה עם קידוד עברית
+    const arrayBuffer = await file.arrayBuffer();
+    let text;
+    
+    // ניסיון מספר קידודים נפוצים בישראל
+    try {
+        const decoder = new TextDecoder('windows-1255');
+        text = decoder.decode(arrayBuffer);
+        
+        // בדיקה שיש עברית תקינה
+        if (!/[\u0590-\u05FF]/.test(text)) {
+            throw new Error('אין עברית');
+        }
+        console.log(`   ✅ נקרא בהצלחה עם windows-1255`);
+    } catch (e) {
+        try {
+            const decoder = new TextDecoder('iso-8859-8');
+            text = decoder.decode(arrayBuffer);
+            console.log(`   ✅ נקרא בהצלחה עם iso-8859-8`);
+        } catch (e2) {
+            // אם כל הניסיונות נכשלו, נסה UTF-8
+            const decoder = new TextDecoder('utf-8');
+            text = decoder.decode(arrayBuffer);
+            console.log(`   ⚠️ נקרא עם UTF-8 (ייתכן קידוד לא נכון)`);
+        }
+    }
+    
+    const requests = processRequestFile(text, file.name);
+    requestsData.push(...requests);
+    txtCount++;
+    processedFiles++;
+}
                     // קבצי Excel - פידבקים
                     else if (file.name.match(/\.(xlsx|xls)$/i)) {
                         console.log(`📊 מעבד Excel: ${file.name}`);
@@ -921,17 +955,18 @@ const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
             });
         }
 
-        // עדכון סטטיסטיקות
         function updateStats() {
-            const waiting = combinedData.filter(r => r.type === 'waiting').length;
-            const errors = combinedData.filter(r => r.type === 'has_errors').length;
-            const initiated = combinedData.filter(r => r.type === 'initiated').length;
-            
-            document.getElementById('totalRecords').textContent = combinedData.length;
-            document.getElementById('waitingCount').textContent = waiting;
-            document.getElementById('errorsCount').textContent = errors;
-            document.getElementById('initiatedCount').textContent = initiated;
-        }
+    const waiting = combinedData.filter(r => r.type === 'waiting').length;
+    const errors = combinedData.filter(r => r.type === 'has_errors').length;
+    const initiated = combinedData.filter(r => r.type === 'initiated').length;
+    const ok = combinedData.filter(r => r.type === 'has_ok' || r.type === 'initiated_ok').length;
+    
+    document.getElementById('totalRecords').textContent = combinedData.length;
+    document.getElementById('waitingCount').textContent = waiting;
+    document.getElementById('errorsCount').textContent = errors;
+    document.getElementById('initiatedCount').textContent = initiated;
+    document.getElementById('okCount').textContent = ok;
+}
 
         // הצגת תוצאות
         function displayResults(filteredData = null) {
@@ -942,24 +977,31 @@ const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                let statusBadge = '';
-                let statusText = '';
-                
-                switch(row.type) {
-                    case 'waiting':
-                        statusBadge = 'status-waiting';
-                        statusText = '⏳ ממתין לפידבק';
-                        break;
-                    case 'has_errors':
-                        statusBadge = 'status-errors';
-                        statusText = '⚠️ פידבק עם שגיאות';
-                        break;
-                    case 'initiated':
-                        statusBadge = 'status-initiated';
-                        statusText = '🔄 פידבק יזום';
-                        break;
-                }
-                
+               let statusBadge = '';
+let statusText = '';
+
+switch(row.type) {
+    case 'waiting':
+        statusBadge = 'status-waiting';
+        statusText = '⏳ ממתין לפידבק';
+        break;
+    case 'has_errors':
+        statusBadge = 'status-errors';
+        statusText = '⚠️ פידבק עם שגיאות';
+        break;
+    case 'has_ok':
+        statusBadge = 'status-ok';
+        statusText = '✅ פידבק תקין';
+        break;
+    case 'initiated':
+        statusBadge = 'status-errors';
+        statusText = '🔄 פידבק יזום (שגיאות)';
+        break;
+    case 'initiated_ok':
+        statusBadge = 'status-ok';
+        statusText = '🔄 פידבק יזום (תקין)';
+        break;
+}
                const id = row.request?.id || row.feedback?.id || '';
 const fullName = row.request?.fullName || '';
 const tik = row.request?.tikMaasik || row.feedback?.tik || '';
