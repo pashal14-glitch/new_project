@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת היזון 100</title>
+    <title>מערכת היזון 100 - בקשות ופידבקים</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
@@ -201,33 +201,44 @@
             background: #f8f9fa;
         }
 
-        .status-select {
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            background: white;
-            cursor: pointer;
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
             font-size: 0.85em;
-            min-width: 110px;
         }
 
-        .status-select:focus {
-            outline: none;
-            border-color: #3498db;
+        .status-waiting {
+            background: #fff3cd;
+            color: #856404;
         }
 
-        .notes-btn {
-            background: #9b59b6;
+        .status-errors {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-initiated {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-ok {
+    background: #d4edda;
+    color: #155724;
+}
+
+        .details-btn {
+            background: #3498db;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 5px 12px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 0.8em;
+            font-size: 0.85em;
         }
 
-        .notes-btn:hover {
-            background: #8e44ad;
+        .details-btn:hover {
+            background: #2980b9;
         }
 
         .modal {
@@ -241,6 +252,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            overflow-y: auto;
         }
 
         .modal.show {
@@ -251,23 +263,40 @@
             background: white;
             padding: 30px;
             border-radius: 15px;
-            max-width: 500px;
+            max-width: 800px;
             width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .modal-content h3 {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
         }
 
-        .modal-content textarea {
-            width: 100%;
-            min-height: 150px;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-family: inherit;
-            resize: vertical;
+        .modal-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .modal-section h4 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .modal-field {
+            margin-bottom: 8px;
+            display: flex;
+        }
+
+        .modal-field strong {
+            min-width: 150px;
+            color: #555;
         }
 
         .modal-buttons {
@@ -321,8 +350,8 @@
         <!-- Header -->
         <div class="header">
             <button class="back-btn" onclick="window.location.href='../index.html'">🏠 חזרה לתפריט</button>
-            <h1>📋 מערכת היזון 100</h1>
-            <p>ניהול וניתוח טפסי 100</p>
+            <h1>📋 מערכת היזון 100 - בקשות ופידבקים</h1>
+            <p>הצלבת בקשות מול פידבקים</p>
         </div>
 
         <!-- בחירת תיקייה -->
@@ -331,7 +360,7 @@
             <div class="folder-select-area" id="folderArea" onclick="document.getElementById('folderInput').click()">
                 <div class="folder-icon">📂</div>
                 <h3>לחץ לבחירת תיקייה</h3>
-                <p>התיקייה צריכה להכיל קבצי Excel של טפסי 100</p>
+                <p>התיקייה צריכה להכיל קבצי TXT (בקשות) וקבצי Excel (פידבקים)</p>
                 <input type="file" id="folderInput" webkitdirectory multiple style="display: none;">
             </div>
             <div id="loadMessage"></div>
@@ -357,13 +386,21 @@
                     <div class="stat-number" id="totalRecords">0</div>
                     <div class="stat-label">סך הכל רשומות</div>
                 </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #27ae60, #229954);">
+    <div class="stat-number" id="okCount">0</div>
+    <div class="stat-label">✅ פידבקים תקינים</div>
+</div>
                 <div class="stat-card">
-                    <div class="stat-number" id="totalFiles">0</div>
-                    <div class="stat-label">קבצים נטענו</div>
+                    <div class="stat-number" id="waitingCount">0</div>
+                    <div class="stat-label">⏳ ממתינים לפידבק</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="uniqueEmployees">0</div>
-                    <div class="stat-label">עובדים ייחודיים</div>
+                    <div class="stat-number" id="errorsCount">0</div>
+                    <div class="stat-label">⚠️ פידבקים עם שגיאות</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="initiatedCount">0</div>
+                    <div class="stat-label">🔄 פידבקים יזומים</div>
                 </div>
             </div>
         </div>
@@ -377,40 +414,29 @@
                     <input type="text" id="filterID" placeholder="הקלד מספר זהות">
                 </div>
                 <div class="filter-item">
-                    <label>מספר עובד</label>
-                    <input type="text" id="filterEmployee" placeholder="הקלד מספר עובד">
-                </div>
-                <div class="filter-item">
-                    <label>תאריך הפקת משוב</label>
-                    <select id="filterDate">
-                        <option value="">כל התאריכים</option>
-                    </select>
-                </div>
-                <div class="filter-item">
-                    <label>חודש דיווח</label>
-                    <select id="filterMonth">
-                        <option value="">כל החודשים</option>
-                    </select>
-                </div>
-                <div class="filter-item">
                     <label>תיק</label>
-                    <select id="filterTik">
-                        <option value="">כל התיקים</option>
+                    <input type="text" id="filterTik" placeholder="הקלד מספר תיק">
+                </div>
+                <div class="filter-item">
+                    <label>תקופה</label>
+                    <select id="filterPeriod">
+                        <option value="">כל התקופות</option>
                     </select>
                 </div>
                 <div class="filter-item">
-                    <label>סטטוס עדכון</label>
-                    <select id="filterUserStatus">
-                        <option value="">הכל</option>
-                        <option value="חדש">חדש</option>
-                        <option value="בטיפול">בטיפול</option>
-                        <option value="תוקן">תוקן</option>
-                        <option value="סגור">סגור</option>
-                    </select>
+                    <label>סטטוס</label>
+                    <select id="filterStatus">
+    <option value="">הכל</option>
+    <option value="waiting">ממתין לפידבק</option>
+    <option value="has_errors">פידבק עם שגיאות</option>
+    <option value="has_ok">פידבק תקין</option>
+    <option value="initiated">פידבק יזום (שגיאות)</option>
+    <option value="initiated_ok">פידבק יזום (תקין)</option>
+</select>
                 </div>
             </div>
             <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
-            <button class="btn-primary" onclick="exportToExcel()" style="background: #27ae60;">📥 ייצא ל-Excel</button>
+            <button class="btn-primary" onclick="exportWaitingRequests()" style="background: #27ae60;">📥 ייצא בקשות ללא פידבק</button>
         </div>
 
         <!-- טבלת תוצאות -->
@@ -421,17 +447,13 @@
                     <thead>
                         <tr>
                             <th>מספר זהות</th>
-                            <th>מספר עובד</th>
+                            <th>שם מלא</th>
                             <th>תיק</th>
-                            <th>חוזה דיווח</th>
-                            <th>תקופת דיווח</th>
-                            <th>חודש דיווח</th>
-                            <th>שם השדה</th>
-                            <th>הנתון שדווח</th>
-                            <th>תיאור</th>
-                            <th>תאריך הפקת משוב</th>
+                            <th>תקופה</th>
+                            <th>גביה/גמלה</th>
                             <th>סטטוס</th>
-                            <th>הערות</th>
+                            <th>תאריך פידבק</th>
+                            <th>פרטים</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody">
@@ -441,63 +463,60 @@
         </div>
     </div>
 
-    <!-- מודאל הערות -->
-    <div class="modal" id="notesModal">
+    <!-- מודאל פרטים -->
+    <div class="modal" id="detailsModal">
         <div class="modal-content">
-            <h3>💬 הערות</h3>
-            <textarea id="notesText" placeholder="הקלד הערות כאן..."></textarea>
+            <h3>📋 פרטי בקשה ופידבק</h3>
+            <div id="modalContent"></div>
             <div class="modal-buttons">
-                <button class="btn-primary" onclick="saveNotes()">💾 שמור</button>
-                <button class="btn-primary" onclick="closeNotesModal()" style="background: #95a5a6;">✖️ ביטול</button>
+                <button class="btn-primary" onclick="closeDetailsModal()">✖️ סגור</button>
             </div>
         </div>
     </div>
 
     <script>
         // משתנים גלובליים
-        let form100Data = [];
-        let allDates = new Set();
-        let allReportMonths = new Set();
-        let allTiks = new Set();
-        let currentEditingKey = null;
+        let requestsData = [];      // בקשות מ-TXT
+        let feedbacksData = [];      // פידבקים מ-Excel
+        let combinedData = [];       // נתונים משולבים
+        let allPeriods = new Set();
+        let currentViewingKey = null;
 
-         function openDatabase() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('bituachLeumiDB', 2); // ⭐ שינוי גרסה ל-2
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            
-            // יצירת כל ה-stores אם הם לא קיימים
-            if (!db.objectStoreNames.contains('form100')) {
-                db.createObjectStore('form100', { keyPath: 'key' });
-                console.log('✅ נוצר store: form100');
-            }
-            if (!db.objectStoreNames.contains('form102')) {
-                db.createObjectStore('form102', { keyPath: 'key' });
-                console.log('✅ נוצר store: form102');
-            }
-            if (!db.objectStoreNames.contains('maternity')) {
-                db.createObjectStore('maternity', { keyPath: 'key' });
-                console.log('✅ נוצר store: maternity');
-            }
-        };
-    });
-}
+        // IndexedDB
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('bituachLeumiDB', 3); // גרסה 3
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    if (!db.objectStoreNames.contains('form100Combined')) {
+                        db.createObjectStore('form100Combined', { keyPath: 'key' });
+                        console.log('✅ נוצר store: form100Combined');
+                    }
+                    if (!db.objectStoreNames.contains('form102')) {
+                        db.createObjectStore('form102', { keyPath: 'key' });
+                    }
+                    if (!db.objectStoreNames.contains('maternity')) {
+                        db.createObjectStore('maternity', { keyPath: 'key' });
+                    }
+                };
+            });
+        }
 
         // שמירה ל-IndexedDB
         async function saveToIndexedDB() {
             try {
                 const db = await openDatabase();
-                const tx = db.transaction(['form100'], 'readwrite');
-                const store = tx.objectStore('form100');
+                const tx = db.transaction(['form100Combined'], 'readwrite');
+                const store = tx.objectStore('form100Combined');
                 
                 store.clear();
                 
-                form100Data.forEach(item => {
+                combinedData.forEach(item => {
                     store.put(item);
                 });
                 
@@ -514,8 +533,8 @@
         async function loadFromIndexedDB() {
             try {
                 const db = await openDatabase();
-                const tx = db.transaction('form100', 'readonly');
-                const store = tx.objectStore('form100');
+                const tx = db.transaction('form100Combined', 'readonly');
+                const store = tx.objectStore('form100Combined');
                 const request = store.getAll();
                 
                 request.onsuccess = () => {
@@ -526,26 +545,24 @@
                         return;
                     }
                     
-                    form100Data = data;
+                    combinedData = data;
                     
                     // עדכון סטים
-                    allDates.clear();
-                    allReportMonths.clear();
-                    allTiks.clear();
-                    form100Data.forEach(item => {
-                        if (item.feedbackDate) allDates.add(item.feedbackDate);
-                        if (item.reportMonth) allReportMonths.add(item.reportMonth);
-                        if (item.tik) allTiks.add(item.tik);
-                    });
+                    allPeriods.clear();
+                    // עדכון תקופות
+combinedData.forEach(item => {
+    if (item.request?.period) allPeriods.add(item.request.period);
+    if (item.feedback?.reportPeriod) allPeriods.add(item.feedback.reportPeriod);
+});
                     
                     document.getElementById('folderArea').classList.add('loaded');
                     document.getElementById('folderArea').innerHTML = `
                         <div class="folder-icon">💾</div>
                         <h3>נטענו נתונים מהמחשב!</h3>
-                        <p>${form100Data.length} רשומות</p>
+                        <p>${combinedData.length} רשומות</p>
                     `;
                     
-                    showMessage('loadMessage', `✅ נטענו ${form100Data.length} רשומות מ-IndexedDB!`, 'success');
+                    showMessage('loadMessage', `✅ נטענו ${combinedData.length} רשומות מ-IndexedDB!`, 'success');
                     
                     populateFilters();
                     updateStats();
@@ -573,8 +590,8 @@
             
             try {
                 const db = await openDatabase();
-                const tx = db.transaction(['form100'], 'readwrite');
-                tx.objectStore('form100').clear();
+                const tx = db.transaction(['form100Combined'], 'readwrite');
+                tx.objectStore('form100Combined').clear();
                 await tx.complete;
                 
                 console.log('🗑️ IndexedDB נוקה');
@@ -609,6 +626,163 @@
             return excelDate.toString();
         }
 
+        // עיבוד קובץ בקשה (TXT)
+        function processRequestFile(text, fileName) {
+            const lines = text.split('\n');
+            const requests = [];
+            
+            // חילוץ תאריך מהקובץ
+            const dateMatch = fileName.match(/(\d{6})/);
+            const fileDate = dateMatch ? dateMatch[1] : '';
+            
+            console.log(`📄 מעבד קובץ בקשות: ${fileName}`);
+            
+            lines.forEach((line, index) => {
+                if (line.length < 115) {
+                    if (line.trim().length > 0) {
+                        console.log(`⚠️ שורה ${index + 1}: אורך לא תקין (${line.length} תווים)`);
+                    }
+                    return;
+                }
+                
+                const tikMaasik = line.substring(0, 11).trim();
+                const maasikName = line.substring(11, 43).trim();
+                const id = line.substring(43, 52).trim();
+                const firstName = line.substring(52, 67).trim();
+                const lastName = line.substring(67, 84).trim();
+                const dateFrom = line.substring(84, 94).trim();
+                const dateTo = line.substring(94, 104).trim();
+                const gviaGmula = line.substring(104, 106).trim();
+                const nossea = line.substring(106, 108).trim();
+                const sogHomer = line.substring(108, 111).trim();
+                const hoze = line.substring(111, 113).trim();
+                const sogIssuk = line.substring(113, 115).trim();
+                
+                if (!id || id.length < 5) {
+                    console.log(`⚠️ שורה ${index + 1}: מספר זהות לא תקין`);
+                    return;
+                }
+                
+               // המרת תאריכים לתקופה MM/YYYY-MM/YYYY
+const dateFromMatch = dateFrom.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+const dateToMatch = dateTo.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+
+const periodFrom = dateFromMatch ? `${dateFromMatch[2]}/${dateFromMatch[3]}` : '';
+const periodTo = dateToMatch ? `${dateToMatch[2]}/${dateToMatch[3]}` : '';
+const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
+                
+                requests.push({
+                    tikMaasik: tikMaasik,
+                    maasikName: maasikName,
+                    id: id,
+                    firstName: firstName,
+                    lastName: lastName,
+                    fullName: `${lastName} ${firstName}`.trim(),
+                    dateFrom: dateFrom,
+                    dateTo: dateTo,
+                    period: period,
+                    gviaGmula: gviaGmula,
+                    nossea: nossea,
+                    sogHomer: sogHomer,
+                    hoze: hoze,
+                    sogIssuk: sogIssuk,
+                    requestDate: fileDate,
+                    fileName: fileName
+                });
+            });
+            
+            console.log(`✅ ${requests.length} בקשות נטענו`);
+            return requests;
+        }
+
+      // הצלבה בין בקשות לפידבקים
+function combineRequestsAndFeedbacks() {
+    console.log(`🔄 מצליב ${requestsData.length} בקשות עם ${feedbacksData.length} פידבקים`);
+    
+    // הסרת כפילויות בבקשות - רק האחרונה
+    const uniqueRequests = {};
+    requestsData.forEach(req => {
+        const key = `${req.id}_${req.period}`;
+        if (!uniqueRequests[key] || req.requestDate > uniqueRequests[key].requestDate) {
+            uniqueRequests[key] = req;
+        }
+    });
+    
+    console.log(`📋 ${Object.keys(uniqueRequests).length} בקשות ייחודיות (אחרי הסרת כפילויות)`);
+    
+    // יצירת מבנה משולב
+    combinedData = [];
+    const processedFeedbacks = new Set();
+    
+    // בקשות עם/בלי פידבק
+    Object.values(uniqueRequests).forEach(request => {
+        const key = `${request.id}_${request.period}`;
+        
+        const feedbacks = feedbacksData.filter(f => {
+            return f.id === request.id && f.reportPeriod === request.period;
+        });
+        
+        if (feedbacks.length === 0) {
+            // בקשה ללא פידבק
+            combinedData.push({
+                key: key + '_waiting',
+                type: 'waiting',
+                request: request,
+                feedback: null,
+                hasRequest: true,
+                hasFeedback: false,
+                isOK: false,
+                userStatus: 'חדש',
+                notes: ''
+            });
+        } else {
+            // בקשה עם פידבק - מוסיפים את כולם (תקינים ולא תקינים)
+            feedbacks.forEach((feedback, idx) => {
+                const isOK = feedback.isOK;  // ⭐ משתמשים ב-isOK שכבר מחושב!
+                processedFeedbacks.add(feedback.key);
+                
+                combinedData.push({
+                    key: `${key}_fb${idx}`,
+                    type: isOK ? 'has_ok' : 'has_errors',
+                    request: request,
+                    feedback: feedback,
+                    hasRequest: true,
+                    hasFeedback: true,
+                    isOK: isOK,
+                    userStatus: 'חדש',
+                    notes: ''
+                });
+            });
+        }
+    });
+    
+    // פידבקים יזומים (ללא בקשה) - גם תקינים וגם לא תקינים
+    feedbacksData.forEach(feedback => {
+        if (processedFeedbacks.has(feedback.key)) return;
+        
+        const isOK = feedback.isOK;  // ⭐ משתמשים ב-isOK שכבר מחושב!
+        const period = feedback.reportPeriod || '';
+        
+        combinedData.push({
+            key: `${feedback.id}_${period}_initiated`,
+            type: isOK ? 'initiated_ok' : 'initiated',
+            request: null,
+            feedback: feedback,
+            hasRequest: false,
+            hasFeedback: true,
+            isOK: isOK,
+            userStatus: 'חדש',
+            notes: ''
+        });
+    });
+    
+    console.log(`✅ הצלבה הושלמה: ${combinedData.length} רשומות`);
+    console.log(`   - ממתינים: ${combinedData.filter(r => r.type === 'waiting').length}`);
+    console.log(`   - שגיאות: ${combinedData.filter(r => r.type === 'has_errors').length}`);
+    console.log(`   - תקינים: ${combinedData.filter(r => r.type === 'has_ok').length}`);
+    console.log(`   - יזומים (שגיאות): ${combinedData.filter(r => r.type === 'initiated').length}`);
+    console.log(`   - יזומים (תקינים): ${combinedData.filter(r => r.type === 'initiated_ok').length}`);
+}
         // טעינת קבצים
         document.getElementById('folderInput').addEventListener('change', async function(e) {
             const files = Array.from(e.target.files);
@@ -620,107 +794,190 @@
 
             console.log(`📁 סה"כ קבצים שנבחרו: ${files.length}`);
 
-            const excelFiles = files.filter(f => 
-                f.name.match(/\.(xlsx|xls)$/i)
-            );
+            showMessage('loadMessage', `⏳ טוען ${files.length} קבצים...`, 'info');
 
-            console.log('📊 קבצי Excel שנמצאו:', excelFiles.map(f => f.name));
+            requestsData = [];
+            feedbacksData = [];
+            combinedData = [];
+            allPeriods.clear();
 
-            if (excelFiles.length === 0) {
-                showMessage('loadMessage', '❌ לא נמצאו קבצי Excel', 'error');
-                return;
-            }
-
-            showMessage('loadMessage', `⏳ טוען ${excelFiles.length} קבצים...`, 'info');
-
-            form100Data = [];
             let processedFiles = 0;
-            let totalRecords = 0;
+            let txtCount = 0;
+            let excelCount = 0;
 
-            for (const file of excelFiles) {
+            for (const file of files) {
                 try {
-                    console.log(`\n📄 מעבד קובץ: ${file.name}`);
-                    
-                    const data = await file.arrayBuffer();
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    
-                    const firstSheet = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheet];
-                    
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-                        header: 1,
-                        raw: false,
-                        defval: ''
-                    });
-                    
-                    console.log(`   ${jsonData.length} שורות בקובץ`);
-                    
-                    // שורה 0 היא כותרות, מתחילים מ-1
-                    for (let i = 1; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        
-                        // דילוג על שורות ריקות - בודקים זהות או מספר עובד
-                        if (!row || row.length === 0 || (!row[4] && !row[5])) continue;
-                        
-                        // ⭐ מיפוי מדויק לפי טופס 100 ⭐
-                        const tik = (row[0] || '').toString().trim();              // A - תיק
-                        const contractType = (row[1] || '').toString().trim();     // B - חוזה דיווח
-                        const reportPeriod = (row[2] || '').toString().trim();     // C - תקופת הדיווח
-                        const reportMonth = (row[3] || '').toString().trim();      // D - חודש דיווח
-                        const employeeNumber = (row[4] || '').toString().trim();   // E - מספר עובד
-                        const id = (row[5] || '').toString().trim();               // F - זהות
-                        const fieldName = (row[6] || '').toString().trim();        // G - שם השדה
-                        const reportedData = (row[7] || '').toString().trim();     // H - הנתון שדווח
-                        const description = (row[8] || '').toString().trim();      // I - תיאור
-                        const feedbackDate = excelDateToJSDate(row[9]);            // J - תאריך הפקת משוב ⭐
-                        
-                        // ולידציה - בודקים שיש זהות או מספר עובד
-                        if (!id && !employeeNumber) {
-                            console.log(`   ⚠️ שורה ${i}: אין זהות או מספר עובד`);
-                            continue;
-                        }
-                        
-                        const key = `${id}_${employeeNumber}_${feedbackDate}_${i}`;
-                        
-                        form100Data.push({
-                            key: key,
-                            tik: tik,
-                            contractType: contractType,
-                            reportPeriod: reportPeriod,
-                            reportMonth: reportMonth,
-                            employeeNumber: employeeNumber,
-                            id: id,
-                            fieldName: fieldName,
-                            reportedData: reportedData,
-                            description: description,
-                            feedbackDate: feedbackDate,
-                            fileName: file.name,
-                            userStatus: 'חדש',
-                            notes: ''
-                        });
-                        
-                        // עדכון סטים לסינונים
-                        if (feedbackDate) allDates.add(feedbackDate);
-                        if (reportMonth) allReportMonths.add(reportMonth);
-                        if (tik) allTiks.add(tik);
-                        
-                        totalRecords++;
-                    }
-                    
-                    console.log(`   ✅ ${totalRecords} רשומות נטענו מהקובץ`);
-                    processedFiles++;
-                    
+                   // קבצי TXT - בקשות
+if (file.name.match(/\.txt$/i)) {
+    console.log(`📄 מעבד TXT: ${file.name}`);
+    
+    // קריאה עם קידוד עברית
+    const arrayBuffer = await file.arrayBuffer();
+    let text;
+    
+    // ניסיון מספר קידודים נפוצים בישראל
+    try {
+        const decoder = new TextDecoder('windows-1255');
+        text = decoder.decode(arrayBuffer);
+        
+        // בדיקה שיש עברית תקינה
+        if (!/[\u0590-\u05FF]/.test(text)) {
+            throw new Error('אין עברית');
+        }
+        console.log(`   ✅ נקרא בהצלחה עם windows-1255`);
+    } catch (e) {
+        try {
+            const decoder = new TextDecoder('iso-8859-8');
+            text = decoder.decode(arrayBuffer);
+            console.log(`   ✅ נקרא בהצלחה עם iso-8859-8`);
+        } catch (e2) {
+            // אם כל הניסיונות נכשלו, נסה UTF-8
+            const decoder = new TextDecoder('utf-8');
+            text = decoder.decode(arrayBuffer);
+            console.log(`   ⚠️ נקרא עם UTF-8 (ייתכן קידוד לא נכון)`);
+        }
+    }
+    
+    const requests = processRequestFile(text, file.name);
+    requestsData.push(...requests);
+    txtCount++;
+    processedFiles++;
+}
+                   // קבצי Excel - פידבקים
+else if (file.name.match(/\.(xlsx|xls)$/i)) {
+    console.log(`📊 מעבד Excel: ${file.name}`);
+    
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
+    const firstSheet = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheet];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        raw: false,
+        defval: ''
+    });
+    
+    console.log(`   סה"כ שורות בקובץ: ${jsonData.length}`);
+    
+    if (jsonData.length < 3) {
+        console.log(`   ⚠️ קובץ קצר מדי (צריך לפחות 3 שורות)`);
+        continue;
+    }
+    
+    // שורה 0 = ריקה
+    // שורה 1 = כותרות
+    // שורה 2 = נתוני עובד + סטטוס
+    const mainRow = jsonData[2];
+    
+    if (!mainRow || mainRow.length === 0) {
+        console.log(`   ⚠️ שורת הסטטוס ריקה`);
+        continue;
+    }
+    
+    // קריאת נתונים בסיסיים מהשורה השלישית (אינדקס 2)
+    const tik = (mainRow[0] || '').toString().trim();
+    const contractType = (mainRow[1] || '').toString().trim();
+    const reportPeriod = (mainRow[2] || '').toString().trim();
+    const reportMonth = (mainRow[3] || '').toString().trim();
+    const employeeNumber = (mainRow[4] || '').toString().trim();
+    const id = (mainRow[5] || '').toString().trim();
+    const feedbackDate = excelDateToJSDate(mainRow[9]);
+    
+    if (!id || id.length < 5) {
+        console.log(`   ⚠️ אין מספר זהות תקין`);
+        continue;
+    }
+    
+    // קריאת הסטטוס מעמודה I (8) של שורה 3 (אינדקס 2)
+    const mainStatus = (mainRow[8] || '').toString().trim();
+    console.log(`   📝 סטטוס: "${mainStatus}"`);
+    
+    // זיהוי האם תקין או שגוי
+    let isOK = false;
+    const statusLower = mainStatus.toLowerCase();
+    
+    if (statusLower.includes('שגוי') || 
+        statusLower.includes('שגיאה') || 
+        statusLower.includes('error') ||
+        statusLower.includes('לא תקין')) {
+        isOK = false;
+        console.log(`   ❌ זוהה כשגוי`);
+    } else if (statusLower.includes('תקין') || 
+               statusLower.includes('אין שגיאות') ||
+               statusLower === '') {
+        isOK = true;
+        console.log(`   ✅ זוהה כתקין`);
+    }
+    
+    // איסוף פירוט - מתחיל משורה 4 (אינדקס 3) ואילך
+    const details = [];
+    for (let i = 3; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (!row || row.length === 0) continue;
+        
+        const detailReportMonth = (row[3] || '').toString().trim();
+        const fieldName = (row[6] || '').toString().trim();
+        const reportedData = (row[7] || '').toString().trim();
+        const description = (row[8] || '').toString().trim();
+        
+        // רק שורות עם תוכן אמיתי
+        if (fieldName || reportedData || description) {
+            details.push({
+                reportMonth: detailReportMonth,
+                fieldName: fieldName,
+                reportedData: reportedData,
+                description: description
+            });
+        }
+    }
+    
+    console.log(`   📋 עובד ${id}:`);
+    console.log(`      סטטוס: ${isOK ? '✅ תקין' : '⚠️ שגוי'}`);
+    console.log(`      פירוט: ${details.length} שורות`);
+    
+    // יצירת רשומה אחת עם כל הפירוט
+    const key = `${id}_${reportPeriod}_${file.name}`;
+    
+   feedbacksData.push({
+    key: key,
+    tik: tik,
+    contractType: contractType,
+    reportPeriod: reportPeriod,
+    reportMonth: reportMonth,
+    employeeNumber: employeeNumber,
+    id: id,
+    mainStatus: mainStatus,    // ⭐ חדש
+    details: details,          // ⭐ חדש
+    isOK: isOK,               // ⭐ חדש
+    feedbackDate: feedbackDate,
+    fileName: file.name
+});
+    
+    excelCount++;
+    processedFiles++;
+}
+
                 } catch (error) {
                     console.error(`❌ שגיאה בעיבוד ${file.name}:`, error);
                 }
             }
 
-            console.log(`\n📊 סיכום: ${processedFiles} קבצים, ${totalRecords} רשומות`);
+            console.log(`\n📊 סיכום טעינה:`);
+            console.log(`   - קבצי TXT: ${txtCount}, בקשות: ${requestsData.length}`);
+            console.log(`   - קבצי Excel: ${excelCount}, פידבקים: ${feedbacksData.length}`);
 
-            if (totalRecords === 0) {
-                showMessage('loadMessage', '❌ לא נמצאו רשומות תקינות', 'error');
+            if (requestsData.length === 0 && feedbacksData.length === 0) {
+                showMessage('loadMessage', '❌ לא נמצאו קבצים תקינים', 'error');
                 return;
             }
+
+            // הצלבה
+            combineRequestsAndFeedbacks();
+
+          combinedData.forEach(item => {
+    if (item.request?.period) allPeriods.add(item.request.period);
+    if (item.feedback?.reportPeriod) allPeriods.add(item.feedback.reportPeriod);
+});
 
             await saveToIndexedDB();
 
@@ -728,10 +985,10 @@
             document.getElementById('folderArea').innerHTML = `
                 <div class="folder-icon">✅</div>
                 <h3>הקבצים נטענו בהצלחה!</h3>
-                <p>${processedFiles} קבצים | ${totalRecords} רשומות</p>
+                <p>${txtCount} TXT | ${excelCount} Excel | ${combinedData.length} רשומות</p>
             `;
 
-            showMessage('loadMessage', `✅ נטענו ${processedFiles} קבצים בהצלחה! (${totalRecords} רשומות)`, 'success');
+            showMessage('loadMessage', `✅ נטענו ${processedFiles} קבצים בהצלחה!`, 'success');
             
             populateFilters();
             updateStats();
@@ -744,151 +1001,227 @@
 
         // מילוי סינונים
         function populateFilters() {
-            // תאריכים - ממוין מהחדש לישן
-            const dateSelect = document.getElementById('filterDate');
-            dateSelect.innerHTML = '<option value="">כל התאריכים</option>';
+            const periodSelect = document.getElementById('filterPeriod');
+            periodSelect.innerHTML = '<option value="">כל התקופות</option>';
             
-            const sortedDates = Array.from(allDates).sort((a, b) => {
-                const [dayA, monthA, yearA] = a.split('/');
-                const [dayB, monthB, yearB] = b.split('/');
-                const dateA = new Date(yearA, monthA - 1, dayA);
-                const dateB = new Date(yearB, monthB - 1, dayB);
-                return dateB - dateA;
-            });
-            
-            sortedDates.forEach(date => {
-                const option = document.createElement('option');
-                option.value = date;
-                option.textContent = date;
-                dateSelect.appendChild(option);
-            });
-            
-            // חודשי דיווח
-            const monthSelect = document.getElementById('filterMonth');
-            monthSelect.innerHTML = '<option value="">כל החודשים</option>';
-            
-            Array.from(allReportMonths).sort().forEach(month => {
-                if (month) {
+            Array.from(allPeriods).sort().reverse().forEach(period => {
+                if (period) {
                     const option = document.createElement('option');
-                    option.value = month;
-                    option.textContent = month;
-                    monthSelect.appendChild(option);
-                }
-            });
-            
-            // תיקים
-            const tikSelect = document.getElementById('filterTik');
-            tikSelect.innerHTML = '<option value="">כל התיקים</option>';
-            
-            Array.from(allTiks).sort().forEach(tik => {
-                if (tik) {
-                    const option = document.createElement('option');
-                    option.value = tik;
-                    option.textContent = tik;
-                    tikSelect.appendChild(option);
+                    option.value = period;
+                    option.textContent = period;
+                    periodSelect.appendChild(option);
                 }
             });
         }
 
-        // עדכון סטטיסטיקות
         function updateStats() {
-            document.getElementById('totalRecords').textContent = form100Data.length;
-            document.getElementById('totalFiles').textContent = new Set(form100Data.map(r => r.fileName)).size;
-            document.getElementById('uniqueEmployees').textContent = new Set(form100Data.map(r => r.id || r.employeeNumber)).size;
-        }
+    const waiting = combinedData.filter(r => r.type === 'waiting').length;
+    const errors = combinedData.filter(r => r.type === 'has_errors').length;
+    const initiated = combinedData.filter(r => r.type === 'initiated').length;
+    const ok = combinedData.filter(r => r.type === 'has_ok' || r.type === 'initiated_ok').length;
+    
+    document.getElementById('totalRecords').textContent = combinedData.length;
+    document.getElementById('waitingCount').textContent = waiting;
+    document.getElementById('errorsCount').textContent = errors;
+    document.getElementById('initiatedCount').textContent = initiated;
+    document.getElementById('okCount').textContent = ok;
+}
 
         // הצגת תוצאות
         function displayResults(filteredData = null) {
-            const data = filteredData || form100Data;
+            const data = filteredData || combinedData;
             const tbody = document.getElementById('resultsBody');
             tbody.innerHTML = '';
 
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 
-                tr.innerHTML = `
-                    <td>${row.id}</td>
-                    <td>${row.employeeNumber}</td>
-                    <td>${row.tik}</td>
-                    <td>${row.contractType}</td>
-                    <td>${row.reportPeriod}</td>
-                    <td>${row.reportMonth}</td>
-                    <td>${row.fieldName}</td>
-                    <td>${row.reportedData}</td>
-                    <td>${row.description}</td>
-                    <td><strong>${row.feedbackDate}</strong></td>
-                    <td>
-                        <select class="status-select" onchange="updateUserStatus('${row.key}', this.value)">
-                            <option value="חדש" ${row.userStatus === 'חדש' ? 'selected' : ''}>חדש</option>
-                            <option value="בטיפול" ${row.userStatus === 'בטיפול' ? 'selected' : ''}>בטיפול</option>
-                            <option value="תוקן" ${row.userStatus === 'תוקן' ? 'selected' : ''}>תוקן</option>
-                            <option value="סגור" ${row.userStatus === 'סגור' ? 'selected' : ''}>סגור</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button class="notes-btn" onclick="openNotesModal('${row.key}')">
-                            💬 ${row.notes ? 'ערוך' : 'הוסף'}
-                        </button>
-                    </td>
-                `;
+               let statusBadge = '';
+let statusText = '';
+
+switch(row.type) {
+    case 'waiting':
+        statusBadge = 'status-waiting';
+        statusText = '⏳ ממתין לפידבק';
+        break;
+    case 'has_errors':
+        statusBadge = 'status-errors';
+        statusText = '⚠️ פידבק עם שגיאות';
+        break;
+    case 'has_ok':
+        statusBadge = 'status-ok';
+        statusText = '✅ פידבק תקין';
+        break;
+    case 'initiated':
+        statusBadge = 'status-errors';
+        statusText = '🔄 פידבק יזום (שגיאות)';
+        break;
+    case 'initiated_ok':
+        statusBadge = 'status-ok';
+        statusText = '🔄 פידבק יזום (תקין)';
+        break;
+}
+               const id = row.request?.id || row.feedback?.id || '';
+const fullName = row.request?.fullName || '';
+const tik = row.request?.tikMaasik || row.feedback?.tik || '';
+const period = row.request?.period || row.feedback?.reportPeriod || '';
+const gviaGmula = row.request?.gviaGmula || '-';
+const gviaGmulaText = gviaGmula === 'GV' ? '💰 גביה' : gviaGmula === 'GM' ? '🎁 גמלה' : gviaGmula;
+const feedbackDate = row.feedback?.feedbackDate || '-';
+
+tr.innerHTML = `
+    <td>${id}</td>
+    <td>${fullName}</td>
+    <td>${tik}</td>
+    <td>${period}</td>
+    <td><strong>${gviaGmulaText}</strong></td>
+    <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
+    <td>${feedbackDate}</td>
+    <td>
+        <button class="details-btn" onclick="openDetailsModal('${row.key}')">
+            🔍 פרטים
+        </button>
+    </td>
+`;
                 tbody.appendChild(tr);
             });
         }
 
-        // עדכון סטטוס משתמש
-        function updateUserStatus(key, status) {
-            const record = form100Data.find(r => r.key === key);
-            if (record) {
-                record.userStatus = status;
-                saveToIndexedDB();
-                console.log(`✅ עודכן סטטוס ל-${key}: ${status}`);
-            }
-        }
-
-        // פתיחת מודאל הערות
-        function openNotesModal(key) {
-            currentEditingKey = key;
-            const record = form100Data.find(r => r.key === key);
-            document.getElementById('notesText').value = record?.notes || '';
-            document.getElementById('notesModal').classList.add('show');
-        }
-
-        // סגירת מודאל
-        function closeNotesModal() {
-            document.getElementById('notesModal').classList.remove('show');
-            currentEditingKey = null;
-        }
-
-        // שמירת הערות
-        function saveNotes() {
-            const notes = document.getElementById('notesText').value;
-            const record = form100Data.find(r => r.key === currentEditingKey);
+       // פתיחת modal פרטים
+function openDetailsModal(key) {
+    currentViewingKey = key;
+    const record = combinedData.find(r => r.key === key);
+    
+    if (!record) return;
+    
+    let html = '';
+    
+    // נתוני בקשה
+    if (record.request) {
+        html += `
+            <div class="modal-section">
+                <h4>📋 נתוני הבקשה</h4>
+                <div class="modal-field"><strong>מספר תיק מעסיק:</strong> <span>${record.request.tikMaasik}</span></div>
+                <div class="modal-field"><strong>שם מעסיק:</strong> <span>${record.request.maasikName}</span></div>
+                <div class="modal-field"><strong>מספר זהות:</strong> <span>${record.request.id}</span></div>
+                <div class="modal-field"><strong>שם מלא:</strong> <span>${record.request.fullName}</span></div>
+                <div class="modal-field"><strong>מתאריך:</strong> <span>${record.request.dateFrom}</span></div>
+                <div class="modal-field"><strong>עד תאריך:</strong> <span>${record.request.dateTo}</span></div>
+                <div class="modal-field"><strong>תקופה:</strong> <span>${record.request.period}</span></div>
+                <div class="modal-field"><strong>גביה/גמלה:</strong> <span>${record.request.gviaGmula === 'GV' ? '💰 גביה' : record.request.gviaGmula === 'GM' ? '🎁 גמלה' : record.request.gviaGmula}</span></div>
+                <div class="modal-field"><strong>נושא:</strong> <span>${record.request.nossea}</span></div>
+                <div class="modal-field"><strong>סוג חומר:</strong> <span>${record.request.sogHomer}</span></div>
+                <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.request.hoze}</span></div>
+                <div class="modal-field"><strong>סוג עיסוק:</strong> <span>${record.request.sogIssuk}</span></div>
+            </div>
+        `;
+    }
+    
+    // נתוני פידבק
+    if (record.feedback) {
+        const statusColor = record.feedback.isOK ? '#27ae60' : '#e74c3c';
+        const statusIcon = record.feedback.isOK ? '✅' : '⚠️';
+        
+        html += `
+            <div class="modal-section">
+                <h4>💬 נתוני הפידבק</h4>
+                <div class="modal-field"><strong>תיק:</strong> <span>${record.feedback.tik}</span></div>
+                <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.feedback.contractType}</span></div>
+                <div class="modal-field"><strong>תקופת דיווח:</strong> <span>${record.feedback.reportPeriod}</span></div>
+                <div class="modal-field"><strong>חודש דיווח:</strong> <span>${record.feedback.reportMonth}</span></div>
+                <div class="modal-field"><strong>מספר עובד:</strong> <span>${record.feedback.employeeNumber}</span></div>
+                <div class="modal-field">
+                    <strong>סטטוס כללי:</strong> 
+                    <span style="font-weight: bold; color: ${statusColor}; font-size: 1.1em;">
+                        ${statusIcon} ${record.feedback.mainStatus || 'לא זמין'}
+                    </span>
+                </div>
+                <div class="modal-field"><strong>תאריך הפקת משוב:</strong> <span>${record.feedback.feedbackDate}</span></div>
+            </div>
+        `;
+        
+        // פירוט שגיאות/הערות
+        if (record.feedback.details && record.feedback.details.length > 0) {
+            html += `
+                <div class="modal-section" style="background: #fff;">
+                    <h4>📝 פירוט מלא</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.9em;">
+    <thead>
+        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">חודש דיווח</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">שם שדה</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">הנתון שדווח</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">תיאור</th>
+        </tr>
+    </thead>
+    <tbody>
+            `;
+          record.feedback.details.forEach((detail, idx) => {
+    const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+    html += `
+        <tr style="background: ${bgColor};">
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #3498db;">${detail.reportMonth || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.fieldName || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.reportedData || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.description || '-'}</td>
+        </tr>
+    `;
+});
             
-            if (record) {
-                record.notes = notes;
-                saveToIndexedDB();
-                displayResults();
-                closeNotesModal();
-                console.log(`✅ הערות נשמרו ל-${currentEditingKey}`);
-            }
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px; font-size: 0.9em;">
+                        <strong>📊 סה"כ:</strong> ${record.feedback.details.length} שורות פירוט
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="modal-section">
+                    <p style="color: #666; font-style: italic;">אין פירוט נוסף</p>
+                </div>
+            `;
+        }
+    } else {
+        html += `
+            <div class="modal-section">
+                <h4>⏳ אין פידבק</h4>
+                <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 5px;">
+                    הבקשה ממתינה לפידבק מביטוח לאומי
+                </p>
+            </div>
+        `;
+    }
+    
+    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('detailsModal').classList.add('show');
+}
+        // סגירת modal
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('show');
+            currentViewingKey = null;
         }
 
         // החלת סינונים
         function applyFilters() {
             const filterID = document.getElementById('filterID').value.trim();
-            const filterEmployee = document.getElementById('filterEmployee').value.trim();
-            const filterDate = document.getElementById('filterDate').value;
-            const filterMonth = document.getElementById('filterMonth').value;
-            const filterTik = document.getElementById('filterTik').value;
-            const filterUserStatus = document.getElementById('filterUserStatus').value;
+            const filterTik = document.getElementById('filterTik').value.trim();
+            const filterPeriod = document.getElementById('filterPeriod').value;
+            const filterStatus = document.getElementById('filterStatus').value;
 
-            let filtered = form100Data.filter(row => {
-                if (filterID && !row.id.includes(filterID)) return false;
-                if (filterEmployee && !row.employeeNumber.includes(filterEmployee)) return false;
-                if (filterDate && row.feedbackDate !== filterDate) return false;
-                if (filterMonth && row.reportMonth !== filterMonth) return false;
-                if (filterTik && row.tik !== filterTik) return false;
-                if (filterUserStatus && row.userStatus !== filterUserStatus) return false;
+            let filtered = combinedData.filter(row => {
+                const id = row.request?.id || row.feedback?.id || '';
+                const tik = row.request?.tikMaasik || row.feedback?.tik || '';
+                const period = row.request?.period || row.feedback?.reportMonth || '';
+                
+                if (filterID && !id.includes(filterID)) return false;
+                if (filterTik && !tik.includes(filterTik)) return false;
+                if (filterPeriod && period !== filterPeriod) return false;
+                if (filterStatus && row.type !== filterStatus) return false;
+                
                 return true;
             });
 
@@ -896,44 +1229,98 @@
             document.getElementById('totalRecords').textContent = filtered.length;
         }
 
-        // ייצוא ל-Excel
-        function exportToExcel() {
-            const data = [['מספר זהות', 'מספר עובד', 'תיק', 'חוזה דיווח', 'תקופת דיווח', 'חודש דיווח', 'שם השדה', 'הנתון שדווח', 'תיאור', 'תאריך הפקת משוב', 'סטטוס', 'הערות']];
-            
-            const tbody = document.getElementById('resultsBody');
-            const rows = tbody.getElementsByTagName('tr');
-            
-            Array.from(rows).forEach(row => {
-                const cells = row.getElementsByTagName('td');
-                const id = cells[0].textContent;
-                const empNum = cells[1].textContent;
-                const record = form100Data.find(r => r.id === id && r.employeeNumber === empNum);
-                
-                const rowData = [
-                    cells[0].textContent,  // מספר זהות
-                    cells[1].textContent,  // מספר עובד
-                    cells[2].textContent,  // תיק
-                    cells[3].textContent,  // חוזה דיווח
-                    cells[4].textContent,  // תקופת דיווח
-                    cells[5].textContent,  // חודש דיווח
-                    cells[6].textContent,  // שם השדה
-                    cells[7].textContent,  // הנתון שדווח
-                    cells[8].textContent,  // תיאור
-                    cells[9].textContent,  // תאריך
-                    cells[10].querySelector('select').value, // סטטוס
-                    record?.notes || ''    // הערות
-                ];
-                data.push(rowData);
-            });
-            
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'טפסי 100');
-            
-            const fileName = `form100_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+       // ייצוא בקשות ללא פידבק - כל תיק+סוג בגיליון נפרד
+function exportWaitingRequests() {
+    const waitingRecords = combinedData.filter(r => r.type === 'waiting');
+    
+    if (waitingRecords.length === 0) {
+        alert('אין בקשות ממתינות לייצוא');
+        return;
+    }
+    
+    // קיבוץ לפי תיק + גביה/גמלה
+    const grouped = {};
+    
+    waitingRecords.forEach(record => {
+        const req = record.request;
+        const key = `${req.tikMaasik}_${req.gviaGmula}`;
+        
+        if (!grouped[key]) {
+            grouped[key] = {
+                tikMaasik: req.tikMaasik,
+                gviaGmula: req.gviaGmula,
+                records: []
+            };
         }
+        
+        grouped[key].records.push(req);
+    });
+    
+    console.log(`📊 נמצאו ${Object.keys(grouped).length} קבוצות (תיק+סוג)`);
+    
+    // יצירת Workbook
+    const wb = XLSX.utils.book_new();
+    
+    // כותרות קבועות
+    const headers = [
+        'מספר תיק מעסיק',
+        'שם המעסיק',
+        'מספר זהות מבוטח',
+        'שם המבוטח',
+        'שם משפחה מבוטח',
+        'החל מתאריך',
+        'עד תאריך',
+        'גביה או גמלה',
+        'נושא',
+        'סוג חומר',
+        'חוזה דיווח',
+        'סוג עיסוק'
+    ];
+    
+    // יצירת גיליון לכל קבוצה
+    Object.keys(grouped).sort().forEach(key => {
+        const group = grouped[key];
+        const data = [headers];
+        
+        // הוספת נתונים
+        group.records.forEach(req => {
+            data.push([
+                req.tikMaasik,      // מספר תיק מעסיק
+                req.maasikName,     // שם המעסיק
+                req.id,             // מספר זהות מבוטח
+                req.firstName,      // שם המבוטח (שם פרטי)
+                req.lastName,       // שם משפחה מבוטח
+                req.dateFrom,       // החל מתאריך
+                req.dateTo,         // עד תאריך
+                req.gviaGmula,      // גביה או גמלה (GV/GM)
+                req.nossea,         // נושא (ME)
+                req.sogHomer,       // סוג חומר (100)
+                req.hoze,           // חוזה דיווח (01-09)
+                req.sogIssuk        // סוג עיסוק (עו/פנ)
+            ]);
+        });
+        
+        // יצירת worksheet
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        // שם הגיליון: "תיק 100 - GV"
+        const sheetName = `תיק ${group.tikMaasik} - ${group.gviaGmula}`;
+        
+        // Excel מגביל שם גיליון ל-31 תווים
+        const safeSheetName = sheetName.substring(0, 31);
+        
+        XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+        
+        console.log(`  ✅ גיליון: ${safeSheetName} (${group.records.length} רשומות)`);
+    });
+    
+    // שמירת הקובץ
+    const fileName = `waiting_requests_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    console.log(`✅ יוצא קובץ עם ${Object.keys(grouped).length} גיליונות, סה"כ ${waitingRecords.length} בקשות`);
+    alert(`הקובץ יוצא בהצלחה!\n${Object.keys(grouped).length} גיליונות\n${waitingRecords.length} בקשות`);
+}
     </script>
 </body>
 </html>
-
