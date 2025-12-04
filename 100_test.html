@@ -738,7 +738,7 @@ function combineRequestsAndFeedbacks() {
         } else {
             // בקשה עם פידבק - מוסיפים את כולם (תקינים ולא תקינים)
             feedbacks.forEach((feedback, idx) => {
-                const isOK = feedback.description && feedback.description.includes('תקין');
+               const isOK = feedback.isOK;  // ⭐ פשוט! כבר חושב בקריאה
                 processedFeedbacks.add(feedback.key);
                 
                 combinedData.push({
@@ -845,59 +845,107 @@ if (file.name.match(/\.txt$/i)) {
     processedFiles++;
 }
                     // קבצי Excel - פידבקים
-                    else if (file.name.match(/\.(xlsx|xls)$/i)) {
-                        console.log(`📊 מעבד Excel: ${file.name}`);
-                        
-                        const data = await file.arrayBuffer();
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheet = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheet];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-                            header: 1,
-                            raw: false,
-                            defval: ''
-                        });
-                        
-                        // שורה 0 היא כותרות, מתחילים מ-1
-                        for (let i = 1; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            
-                            if (!row || row.length === 0 || (!row[4] && !row[5])) continue;
-                            
-                            const tik = (row[0] || '').toString().trim();
-                            const contractType = (row[1] || '').toString().trim();
-                            const reportPeriod = (row[2] || '').toString().trim();
-                            const reportMonth = (row[3] || '').toString().trim();
-                            const employeeNumber = (row[4] || '').toString().trim();
-                            const id = (row[5] || '').toString().trim();
-                            const fieldName = (row[6] || '').toString().trim();
-                            const reportedData = (row[7] || '').toString().trim();
-                            const description = (row[8] || '').toString().trim();
-                            const feedbackDate = excelDateToJSDate(row[9]);
-                            
-                            if (!id && !employeeNumber) continue;
-                            
-                            const key = `${id}_${employeeNumber}_${feedbackDate}_${i}`;
-                            
-                            feedbacksData.push({
-                                key: key,
-                                tik: tik,
-                                contractType: contractType,
-                                reportPeriod: reportPeriod,
-                                reportMonth: reportMonth,
-                                employeeNumber: employeeNumber,
-                                id: id,
-                                fieldName: fieldName,
-                                reportedData: reportedData,
-                                description: description,
-                                feedbackDate: feedbackDate,
-                                fileName: file.name
-                            });
-                        }
-                        
-                        excelCount++;
-                        processedFiles++;
-                    }
+else if (file.name.match(/\.(xlsx|xls)$/i)) {
+    console.log(`📊 מעבד Excel: ${file.name}`);
+    
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
+    const firstSheet = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheet];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        raw: false,
+        defval: ''
+    });
+    
+    console.log(`   סה"כ שורות בקובץ: ${jsonData.length}`);
+    
+    if (jsonData.length < 2) {
+        console.log(`   ⚠️ קובץ ריק או קצר מדי`);
+        continue;
+    }
+    
+    // שורה 0 = כותרות
+    // שורה 1 = נתוני עובד + סטטוס כללי
+    const mainRow = jsonData[1];
+    
+    if (!mainRow || mainRow.length === 0) {
+        console.log(`   ⚠️ שורה ראשית ריקה`);
+        continue;
+    }
+    
+    // קריאת נתונים בסיסיים מהשורה הראשונה
+    const tik = (mainRow[0] || '').toString().trim();
+    const contractType = (mainRow[1] || '').toString().trim();
+    const reportPeriod = (mainRow[2] || '').toString().trim();
+    const reportMonth = (mainRow[3] || '').toString().trim();
+    const employeeNumber = (mainRow[4] || '').toString().trim();
+    const id = (mainRow[5] || '').toString().trim();
+    const feedbackDate = excelDateToJSDate(mainRow[9] || mainRow[8]);
+    
+    if (!id || id.length < 5) {
+        console.log(`   ⚠️ אין מספר זהות תקין`);
+        continue;
+    }
+    
+    // קריאת הסטטוס הכללי - בדרך כלל בעמודה H או I של שורה 2
+    let mainStatus = '';
+    if (jsonData.length > 1 && jsonData[1]) {
+        // מחפשים "תיאור שגוי" או "תקין" בשורה
+        const statusRow = jsonData[1].join(' ');
+        mainStatus = statusRow;
+    }
+    
+   // איסוף כל השורות כפירוט
+const details = [];
+for (let i = 2; i < jsonData.length; i++) {
+    const row = jsonData[i];
+    if (!row || row.length === 0) continue;
+    
+    // איסוף כל התוכן מהשורה
+    const detailReportMonth = (row[3] || '').toString().trim();  // ⭐ הוספה
+    const fieldName = (row[6] || '').toString().trim();
+    const reportedData = (row[7] || '').toString().trim();
+    const description = (row[8] || '').toString().trim();
+    
+    if (fieldName || reportedData || description) {
+        details.push({
+            reportMonth: detailReportMonth,  // ⭐ הוספה
+            fieldName: fieldName,
+            reportedData: reportedData,
+            description: description
+        });
+    }
+}
+    
+    // בדיקה אם הפידבק תקין או שגוי
+    const isOK = mainStatus.includes('תקין') && !mainStatus.includes('שגוי');
+    
+    console.log(`   📋 עובד ${id}:`);
+    console.log(`      סטטוס: ${isOK ? '✅ תקין' : '⚠️ שגוי'}`);
+    console.log(`      פירוט: ${details.length} שורות`);
+    
+    // יצירת רשומה אחת עם כל הפירוט
+    const key = `${id}_${reportPeriod}_${file.name}`;
+    
+    feedbacksData.push({
+        key: key,
+        tik: tik,
+        contractType: contractType,
+        reportPeriod: reportPeriod,
+        reportMonth: reportMonth,
+        employeeNumber: employeeNumber,
+        id: id,
+        mainStatus: mainStatus,  // ⭐ הסטטוס הכללי
+        details: details,        // ⭐ כל הפירוט
+        isOK: isOK,             // ⭐ האם תקין
+        feedbackDate: feedbackDate,
+        fileName: file.name
+    });
+    
+    excelCount++;
+    processedFiles++;
+}
                 } catch (error) {
                     console.error(`❌ שגיאה בעיבוד ${file.name}:`, error);
                 }
@@ -1028,63 +1076,118 @@ tr.innerHTML = `
             });
         }
 
-        // פתיחת modal פרטים
-        function openDetailsModal(key) {
-            currentViewingKey = key;
-            const record = combinedData.find(r => r.key === key);
+       // פתיחת modal פרטים
+function openDetailsModal(key) {
+    currentViewingKey = key;
+    const record = combinedData.find(r => r.key === key);
+    
+    if (!record) return;
+    
+    let html = '';
+    
+    // נתוני בקשה
+    if (record.request) {
+        html += `
+            <div class="modal-section">
+                <h4>📋 נתוני הבקשה</h4>
+                <div class="modal-field"><strong>מספר תיק מעסיק:</strong> <span>${record.request.tikMaasik}</span></div>
+                <div class="modal-field"><strong>שם מעסיק:</strong> <span>${record.request.maasikName}</span></div>
+                <div class="modal-field"><strong>מספר זהות:</strong> <span>${record.request.id}</span></div>
+                <div class="modal-field"><strong>שם מלא:</strong> <span>${record.request.fullName}</span></div>
+                <div class="modal-field"><strong>מתאריך:</strong> <span>${record.request.dateFrom}</span></div>
+                <div class="modal-field"><strong>עד תאריך:</strong> <span>${record.request.dateTo}</span></div>
+                <div class="modal-field"><strong>תקופה:</strong> <span>${record.request.period}</span></div>
+                <div class="modal-field"><strong>גביה/גמלה:</strong> <span>${record.request.gviaGmula === 'GV' ? '💰 גביה' : record.request.gviaGmula === 'GM' ? '🎁 גמלה' : record.request.gviaGmula}</span></div>
+                <div class="modal-field"><strong>נושא:</strong> <span>${record.request.nossea}</span></div>
+                <div class="modal-field"><strong>סוג חומר:</strong> <span>${record.request.sogHomer}</span></div>
+                <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.request.hoze}</span></div>
+                <div class="modal-field"><strong>סוג עיסוק:</strong> <span>${record.request.sogIssuk}</span></div>
+            </div>
+        `;
+    }
+    
+    // נתוני פידבק
+    if (record.feedback) {
+        const statusColor = record.feedback.isOK ? '#27ae60' : '#e74c3c';
+        const statusIcon = record.feedback.isOK ? '✅' : '⚠️';
+        
+        html += `
+            <div class="modal-section">
+                <h4>💬 נתוני הפידבק</h4>
+                <div class="modal-field"><strong>תיק:</strong> <span>${record.feedback.tik}</span></div>
+                <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.feedback.contractType}</span></div>
+                <div class="modal-field"><strong>תקופת דיווח:</strong> <span>${record.feedback.reportPeriod}</span></div>
+                <div class="modal-field"><strong>חודש דיווח:</strong> <span>${record.feedback.reportMonth}</span></div>
+                <div class="modal-field"><strong>מספר עובד:</strong> <span>${record.feedback.employeeNumber}</span></div>
+                <div class="modal-field">
+                    <strong>סטטוס כללי:</strong> 
+                    <span style="font-weight: bold; color: ${statusColor}; font-size: 1.1em;">
+                        ${statusIcon} ${record.feedback.mainStatus || 'לא זמין'}
+                    </span>
+                </div>
+                <div class="modal-field"><strong>תאריך הפקת משוב:</strong> <span>${record.feedback.feedbackDate}</span></div>
+            </div>
+        `;
+        
+        // פירוט שגיאות/הערות
+        if (record.feedback.details && record.feedback.details.length > 0) {
+            html += `
+                <div class="modal-section" style="background: #fff;">
+                    <h4>📝 פירוט מלא</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.9em;">
+    <thead>
+        <tr style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">חודש דיווח</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">שם שדה</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">הנתון שדווח</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">תיאור</th>
+        </tr>
+    </thead>
+    <tbody>
+            `;
+          record.feedback.details.forEach((detail, idx) => {
+    const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+    html += `
+        <tr style="background: ${bgColor};">
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #3498db;">${detail.reportMonth || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.fieldName || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.reportedData || '-'}</td>
+            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${detail.description || '-'}</td>
+        </tr>
+    `;
+});
             
-            if (!record) return;
-            
-            let html = '';
-            
-            // נתוני בקשה
-            if (record.request) {
-                html += `
-                    <div class="modal-section">
-                        <h4>📋 נתוני הבקשה</h4>
-                        <div class="modal-field"><strong>מספר תיק מעסיק:</strong> <span>${record.request.tikMaasik}</span></div>
-                        <div class="modal-field"><strong>שם מעסיק:</strong> <span>${record.request.maasikName}</span></div>
-                        <div class="modal-field"><strong>מספר זהות:</strong> <span>${record.request.id}</span></div>
-                        <div class="modal-field"><strong>שם מלא:</strong> <span>${record.request.fullName}</span></div>
-                        <div class="modal-field"><strong>מתאריך:</strong> <span>${record.request.dateFrom}</span></div>
-                        <div class="modal-field"><strong>עד תאריך:</strong> <span>${record.request.dateTo}</span></div>
-                        <div class="modal-field"><strong>תקופה:</strong> <span>${record.request.period}</span></div>
-                        <div class="modal-field"><strong>גביה/גמלה:</strong> <span>${record.request.gviaGmula}</span></div>
-                        <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.request.hoze}</span></div>
-                        <div class="modal-field"><strong>סוג עיסוק:</strong> <span>${record.request.sogIssuk}</span></div>
+            html += `
+                            </tbody>
+                        </table>
                     </div>
-                `;
-            }
-            
-            // נתוני פידבק
-            if (record.feedback) {
-                html += `
-                    <div class="modal-section">
-                        <h4>💬 נתוני הפידבק</h4>
-                        <div class="modal-field"><strong>תיק:</strong> <span>${record.feedback.tik}</span></div>
-                        <div class="modal-field"><strong>חוזה דיווח:</strong> <span>${record.feedback.contractType}</span></div>
-                        <div class="modal-field"><strong>תקופת דיווח:</strong> <span>${record.feedback.reportPeriod}</span></div>
-                        <div class="modal-field"><strong>חודש דיווח:</strong> <span>${record.feedback.reportMonth}</span></div>
-                        <div class="modal-field"><strong>מספר עובד:</strong> <span>${record.feedback.employeeNumber}</span></div>
-                        <div class="modal-field"><strong>שם השדה:</strong> <span>${record.feedback.fieldName}</span></div>
-                        <div class="modal-field"><strong>הנתון שדווח:</strong> <span>${record.feedback.reportedData}</span></div>
-                        <div class="modal-field"><strong>תיאור:</strong> <span>${record.feedback.description}</span></div>
-                        <div class="modal-field"><strong>תאריך הפקת משוב:</strong> <span>${record.feedback.feedbackDate}</span></div>
+                    <div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px; font-size: 0.9em;">
+                        <strong>📊 סה"כ:</strong> ${record.feedback.details.length} שורות פירוט
                     </div>
-                `;
-            } else {
-                html += `
-                    <div class="modal-section">
-                        <h4>⏳ אין פידבק</h4>
-                        <p>הבקשה ממתינה לפידבק מביטוח לאומי</p>
-                    </div>
-                `;
-            }
-            
-            document.getElementById('modalContent').innerHTML = html;
-            document.getElementById('detailsModal').classList.add('show');
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="modal-section">
+                    <p style="color: #666; font-style: italic;">אין פירוט נוסף</p>
+                </div>
+            `;
         }
-
+    } else {
+        html += `
+            <div class="modal-section">
+                <h4>⏳ אין פידבק</h4>
+                <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 5px;">
+                    הבקשה ממתינה לפידבק מביטוח לאומי
+                </p>
+            </div>
+        `;
+    }
+    
+    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('detailsModal').classList.add('show');
+}
         // סגירת modal
         function closeDetailsModal() {
             document.getElementById('detailsModal').classList.remove('show');
