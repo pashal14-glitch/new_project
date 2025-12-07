@@ -843,9 +843,11 @@ if (file.name.match(/\.txt$/i)) {
     txtCount++;
     processedFiles++;
 }
-                   // קבצי Excel - פידבקים
+ // קבצי Excel - פידבקים
 else if (file.name.match(/\.(xlsx|xls)$/i)) {
-    console.log(`📊 מעבד Excel: ${file.name}`);
+    console.log(`\n========================================`);
+    console.log(`📊 מתחיל לעבד: ${file.name}`);
+    console.log(`========================================`);
     
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: 'array' });
@@ -859,20 +861,25 @@ else if (file.name.match(/\.(xlsx|xls)$/i)) {
     
     console.log(`   סה"כ שורות בקובץ: ${jsonData.length}`);
     
-    if (jsonData.length < 3) {
-        console.log(`   ⚠️ קובץ קצר מדי (צריך לפחות 3 שורות)`);
-        continue;
-    }
-    
-    // שורה 0 = ריקה
-    // שורה 1 = כותרות
-    // שורה 2 = נתוני עובד + סטטוס
-    const mainRow = jsonData[2];
-    
+if (jsonData.length < 2) {
+    console.error(`❌❌❌ ${file.name} נדחה: רק ${jsonData.length} שורות!`);
+    continue;
+}
+console.log(`   ✅ אורך תקין: ${jsonData.length} שורות`);
+
+// קביעת אינדקס שורת הנתונים:
+// אם 2 שורות (תקין): שורה 0=כותרות, שורה 1=נתונים
+// אם 3+ שורות (שגוי): שורה 0=ריקה, שורה 1=כותרות, שורה 2=נתונים
+const mainRowIndex = jsonData.length === 2 ? 1 : 2;
+const mainRow = jsonData[mainRowIndex];
+
+console.log(`   📍 קורא נתונים משורה ${mainRowIndex + 1} (אינדקס ${mainRowIndex})`);
     if (!mainRow || mainRow.length === 0) {
-        console.log(`   ⚠️ שורת הסטטוס ריקה`);
+        console.error(`❌❌❌ ${file.name} נדחה: שורה 3 ריקה!`);
+        console.log('   שורה 3:', jsonData[2]);
         continue;
     }
+    console.log(`   ✅ שורה 3 קיימת: ${mainRow.length} עמודות`);
     
     // קריאת נתונים בסיסיים מהשורה השלישית (אינדקס 2)
     const tik = (mainRow[0] || '').toString().trim();
@@ -883,35 +890,46 @@ else if (file.name.match(/\.(xlsx|xls)$/i)) {
     const id = (mainRow[5] || '').toString().trim();
     const feedbackDate = excelDateToJSDate(mainRow[9]);
     
+    console.log(`   📋 נתונים: ID="${id}", תקופה="${reportPeriod}"`);
+    
     if (!id || id.length < 5) {
-        console.log(`   ⚠️ אין מספר זהות תקין`);
+        console.error(`❌❌❌ ${file.name} נדחה: ת.ז לא תקינה!`);
+        console.log(`   ת.ז שנמצאה: "${id}" (אורך: ${id.length})`);
+        console.log(`   עמודה F (5):`, mainRow[5]);
+        console.log(`   כל השורה:`, mainRow);
         continue;
     }
+    console.log(`   ✅ ת.ז תקינה: ${id}`);
     
     // קריאת הסטטוס מעמודה I (8) של שורה 3 (אינדקס 2)
     const mainStatus = (mainRow[8] || '').toString().trim();
     console.log(`   📝 סטטוס: "${mainStatus}"`);
     
-    // זיהוי האם תקין או שגוי
-    let isOK = false;
-    const statusLower = mainStatus.toLowerCase();
+    // זיהוי האם תקין או שגוי - ברירת מחדל תקין!
+    let isOK = true;
     
-    if (statusLower.includes('שגוי') || 
-        statusLower.includes('שגיאה') || 
-        statusLower.includes('error') ||
-        statusLower.includes('לא תקין')) {
-        isOK = false;
-        console.log(`   ❌ זוהה כשגוי`);
-    } else if (statusLower.includes('תקין') || 
-               statusLower.includes('אין שגיאות') ||
-               statusLower === '') {
+    if (mainStatus) {
+        const statusLower = mainStatus.toLowerCase();
+        
+        // אם יש מילות שגיאה - זה לא תקין
+        if (statusLower.includes('שגוי') || 
+            statusLower.includes('שגיאה') || 
+            statusLower.includes('error') ||
+            statusLower.includes('לא תקין')) {
+            isOK = false;
+            console.log(`   ❌ זוהה כשגוי: "${mainStatus}"`);
+        } else {
+            isOK = true;
+            console.log(`   ✅ זוהה כתקין: "${mainStatus}"`);
+        }
+    } else {
         isOK = true;
-        console.log(`   ✅ זוהה כתקין`);
+        console.log(`   ⚠️ אין סטטוס - מניח תקין`);
     }
     
-    // איסוף פירוט - מתחיל משורה 4 (אינדקס 3) ואילך
-    const details = [];
-    for (let i = 3; i < jsonData.length; i++) {
+ // איסוף פירוט - מתחיל מהשורה שאחרי mainRow
+const details = [];
+for (let i = mainRowIndex; i < jsonData.length; i++) {  // ⭐ שינוי מ-2 ל-mainRowIndex
         const row = jsonData[i];
         if (!row || row.length === 0) continue;
         
@@ -920,7 +938,6 @@ else if (file.name.match(/\.(xlsx|xls)$/i)) {
         const reportedData = (row[7] || '').toString().trim();
         const description = (row[8] || '').toString().trim();
         
-        // רק שורות עם תוכן אמיתי
         if (fieldName || reportedData || description) {
             details.push({
                 reportMonth: detailReportMonth,
@@ -935,23 +952,25 @@ else if (file.name.match(/\.(xlsx|xls)$/i)) {
     console.log(`      סטטוס: ${isOK ? '✅ תקין' : '⚠️ שגוי'}`);
     console.log(`      פירוט: ${details.length} שורות`);
     
-    // יצירת רשומה אחת עם כל הפירוט
     const key = `${id}_${reportPeriod}_${file.name}`;
     
-   feedbacksData.push({
-    key: key,
-    tik: tik,
-    contractType: contractType,
-    reportPeriod: reportPeriod,
-    reportMonth: reportMonth,
-    employeeNumber: employeeNumber,
-    id: id,
-    mainStatus: mainStatus,    // ⭐ חדש
-    details: details,          // ⭐ חדש
-    isOK: isOK,               // ⭐ חדש
-    feedbackDate: feedbackDate,
-    fileName: file.name
-});
+    feedbacksData.push({
+        key: key,
+        tik: tik,
+        contractType: contractType,
+        reportPeriod: reportPeriod,
+        reportMonth: reportMonth,
+        employeeNumber: employeeNumber,
+        id: id,
+        mainStatus: mainStatus,
+        details: details,
+        isOK: isOK,
+        feedbackDate: feedbackDate,
+        fileName: file.name
+    });
+    
+    console.log(`\n✅✅✅ ${file.name} נוסף בהצלחה! ✅✅✅`);
+    console.log(`   💾 סה"כ פידבקים עד כה: ${feedbacksData.length}\n`);
     
     excelCount++;
     processedFiles++;
@@ -1027,65 +1046,79 @@ else if (file.name.match(/\.(xlsx|xls)$/i)) {
     document.getElementById('okCount').textContent = ok;
 }
 
-        // הצגת תוצאות
-        function displayResults(filteredData = null) {
-            const data = filteredData || combinedData;
-            const tbody = document.getElementById('resultsBody');
-            tbody.innerHTML = '';
+       // הצגת תוצאות
+function displayResults(filteredData = null) {
+    const data = filteredData || combinedData;
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = '';
 
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                
-               let statusBadge = '';
-let statusText = '';
+    console.log(`📊 מציג ${data.length} רשומות`);
+    
+    // ⭐ debug - ספירת סוגים
+    const typeCounts = {};
+    data.forEach(row => {
+        typeCounts[row.type] = (typeCounts[row.type] || 0) + 1;
+    });
+    console.log('   סוגים:', typeCounts);
 
-switch(row.type) {
-    case 'waiting':
-        statusBadge = 'status-waiting';
-        statusText = '⏳ ממתין לפידבק';
-        break;
-    case 'has_errors':
-        statusBadge = 'status-errors';
-        statusText = '⚠️ פידבק עם שגיאות';
-        break;
-    case 'has_ok':
-        statusBadge = 'status-ok';
-        statusText = '✅ פידבק תקין';
-        break;
-    case 'initiated':
-        statusBadge = 'status-errors';
-        statusText = '🔄 פידבק יזום (שגיאות)';
-        break;
-    case 'initiated_ok':
-        statusBadge = 'status-ok';
-        statusText = '🔄 פידבק יזום (תקין)';
-        break;
-}
-               const id = row.request?.id || row.feedback?.id || '';
-const fullName = row.request?.fullName || '';
-const tik = row.request?.tikMaasik || row.feedback?.tik || '';
-const period = row.request?.period || row.feedback?.reportPeriod || '';
-const gviaGmula = row.request?.gviaGmula || '-';
-const gviaGmulaText = gviaGmula === 'GV' ? '💰 גביה' : gviaGmula === 'GM' ? '🎁 גמלה' : gviaGmula;
-const feedbackDate = row.feedback?.feedbackDate || '-';
-
-tr.innerHTML = `
-    <td>${id}</td>
-    <td>${fullName}</td>
-    <td>${tik}</td>
-    <td>${period}</td>
-    <td><strong>${gviaGmulaText}</strong></td>
-    <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
-    <td>${feedbackDate}</td>
-    <td>
-        <button class="details-btn" onclick="openDetailsModal('${row.key}')">
-            🔍 פרטים
-        </button>
-    </td>
-`;
-                tbody.appendChild(tr);
-            });
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        let statusBadge = '';
+        let statusText = '';
+        
+        switch(row.type) {
+            case 'waiting':
+                statusBadge = 'status-waiting';
+                statusText = '⏳ ממתין לפידבק';
+                break;
+            case 'has_errors':
+                statusBadge = 'status-errors';
+                statusText = '⚠️ פידבק עם שגיאות';
+                break;
+            case 'has_ok':
+                statusBadge = 'status-ok';
+                statusText = '✅ פידבק תקין';
+                break;
+            case 'initiated':
+                statusBadge = 'status-errors';
+                statusText = '🔄 פידבק יזום (שגיאות)';
+                break;
+            case 'initiated_ok':
+                statusBadge = 'status-ok';
+                statusText = '🔄 פידבק יזום (תקין)';
+                break;
+            default:
+                statusBadge = 'status-waiting';
+                statusText = `❓ לא ידוע (${row.type})`;
+                console.warn(`⚠️ סוג לא מוכר: ${row.type}`);
         }
+        
+        const id = row.request?.id || row.feedback?.id || '';
+        const fullName = row.request?.fullName || '';
+        const tik = row.request?.tikMaasik || row.feedback?.tik || '';
+        const period = row.request?.period || row.feedback?.reportPeriod || '';
+        const gviaGmula = row.request?.gviaGmula || '-';
+        const gviaGmulaText = gviaGmula === 'GV' ? '💰 גביה' : gviaGmula === 'GM' ? '🎁 גמלה' : gviaGmula;
+        const feedbackDate = row.feedback?.feedbackDate || '-';
+        
+        tr.innerHTML = `
+            <td>${id}</td>
+            <td>${fullName}</td>
+            <td>${tik}</td>
+            <td>${period}</td>
+            <td><strong>${gviaGmulaText}</strong></td>
+            <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
+            <td>${feedbackDate}</td>
+            <td>
+                <button class="details-btn" onclick="openDetailsModal('${row.key}')">
+                    🔍 פרטים
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
        // פתיחת modal פרטים
 function openDetailsModal(key) {
