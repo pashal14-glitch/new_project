@@ -1289,7 +1289,7 @@ async function loadSnapshotToView(snapshotId) {
         calculationResults = restoredData;
         
         // הצגת התוצאות
-        displayResults(calculationResults);
+        
         
         alert(`✅ סנפשוט "${snapshot.name}" נטען בהצלחה!\n${snapshot.recordCount} רשומות נטענו.`);
         
