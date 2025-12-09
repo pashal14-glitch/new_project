@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -664,18 +665,12 @@ combinedData.forEach(item => {
                 }
                 
                // המרת תאריכים לתקופה MM/YYYY-MM/YYYY
-// המרת תאריכים - חילוץ שנה בלבד
 const dateFromMatch = dateFrom.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 const dateToMatch = dateTo.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
-const yearFrom = dateFromMatch ? dateFromMatch[3] : '';
-const yearTo = dateToMatch ? dateToMatch[3] : '';
-
-// אם אותה שנה - שנה אחת, אחרת טווח שנים
-let period = '';
-if (yearFrom && yearTo) {
-    period = yearFrom === yearTo ? yearFrom : `${yearFrom}-${yearTo}`;
-}
+const periodFrom = dateFromMatch ? `${dateFromMatch[2]}/${dateFromMatch[3]}` : '';
+const periodTo = dateToMatch ? `${dateToMatch[2]}/${dateToMatch[3]}` : '';
+const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
                 
                 requests.push({
                     tikMaasik: tikMaasik,
@@ -890,15 +885,7 @@ console.log(`   📍 קורא נתונים משורה ${mainRowIndex + 1} (אי�
     // קריאת נתונים בסיסיים מהשורה השלישית (אינדקס 2)
     const tik = (mainRow[0] || '').toString().trim();
     const contractType = (mainRow[1] || '').toString().trim();
-const reportPeriodRaw = (mainRow[2] || '').toString().trim();
-
-// חילוץ שנה מהתקופה (למשל: "01/2024-12/2024" → "2024")
-let reportPeriod = reportPeriodRaw;
-const periodMatch = reportPeriodRaw.match(/(\d{4})/g);
-if (periodMatch && periodMatch.length > 0) {
-    const years = [...new Set(periodMatch)]; // שנים ייחודיות
-    reportPeriod = years.length === 1 ? years[0] : years.join('-');
-}
+    const reportPeriod = (mainRow[2] || '').toString().trim();
     const reportMonth = (mainRow[3] || '').toString().trim();
     const employeeNumber = (mainRow[4] || '').toString().trim();
     const id = (mainRow[5] || '').toString().trim();
