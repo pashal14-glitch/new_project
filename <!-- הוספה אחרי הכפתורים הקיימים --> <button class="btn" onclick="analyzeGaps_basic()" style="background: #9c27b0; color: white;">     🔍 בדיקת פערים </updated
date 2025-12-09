@@ -4318,7 +4318,7 @@ function dateToExcelNumber(date) {
     const msPerDay = 24 * 60 * 60 * 1000;
     
     // חישוב ההפרש בימים
-    const days = Math.floor((date - excelEpoch) / msPerDay) + 1;
+    const days = Math.floor((date - excelEpoch) / msPerDay) + 2;
     
     return days;
 }
