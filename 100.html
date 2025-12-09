@@ -665,12 +665,17 @@ combinedData.forEach(item => {
                 }
                 
                // המרת תאריכים לתקופה MM/YYYY-MM/YYYY
+// חילוץ שנים מתאריך התחלה וסיום
 const dateFromMatch = dateFrom.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 const dateToMatch = dateTo.match(/(\d{2})\/(\d{2})\/(\d{4})/);
 
-const periodFrom = dateFromMatch ? `${dateFromMatch[2]}/${dateFromMatch[3]}` : '';
-const periodTo = dateToMatch ? `${dateToMatch[2]}/${dateToMatch[3]}` : '';
-const period = periodFrom && periodTo ? `${periodFrom}-${periodTo}` : '';
+const yearFrom = dateFromMatch ? dateFromMatch[3] : '';
+const yearTo = dateToMatch ? dateToMatch[3] : '';
+
+// יצירת תקופה: תמיד "שנה-שנה" (גם אם אותה שנה)
+const period = yearFrom && yearTo ? `${yearFrom}-${yearTo}` : '';
+
+console.log(`   📅 ${dateFrom} → ${dateTo} = תקופה: ${period}`);
                 
                 requests.push({
                     tikMaasik: tikMaasik,
@@ -885,7 +890,24 @@ console.log(`   📍 קורא נתונים משורה ${mainRowIndex + 1} (אי�
     // קריאת נתונים בסיסיים מהשורה השלישית (אינדקס 2)
     const tik = (mainRow[0] || '').toString().trim();
     const contractType = (mainRow[1] || '').toString().trim();
-    const reportPeriod = (mainRow[2] || '').toString().trim();
+  const reportPeriodRaw = (mainRow[2] || '').toString().trim();
+
+// חילוץ כל השנים מהתקופה
+// למשל: "01/2024-12/2024" → ["2024", "2024"] → "2024-2024"
+// למשל: "03/2024-03/2025" → ["2024", "2025"] → "2024-2025"
+const yearMatches = reportPeriodRaw.match(/(\d{4})/g);
+
+let reportPeriod = reportPeriodRaw;
+if (yearMatches && yearMatches.length >= 2) {
+    const yearFrom = yearMatches[0];
+    const yearTo = yearMatches[yearMatches.length - 1]; // השנה האחרונה
+    reportPeriod = `${yearFrom}-${yearTo}`;
+} else if (yearMatches && yearMatches.length === 1) {
+    // אם יש רק שנה אחת בפורמט
+    reportPeriod = `${yearMatches[0]}-${yearMatches[0]}`;
+}
+
+console.log(`   📅 תקופה גולמית: "${reportPeriodRaw}" → תקופה: "${reportPeriod}"`);
     const reportMonth = (mainRow[3] || '').toString().trim();
     const employeeNumber = (mainRow[4] || '').toString().trim();
     const id = (mainRow[5] || '').toString().trim();
@@ -1358,3 +1380,4 @@ function exportWaitingRequests() {
     </script>
 </body>
 </html>
+
