@@ -442,6 +442,16 @@
         let currentSnapshotId = null;
         let previousSnapshotData = null;
         let comparisonResult = null;
+        // ==================== הגדרות חריגים ====================
+const exceptionTypes = [
+    { type: 'no_explanation', label: 'ללא הסבר', icon: '🔴' },
+    { type: 'pension_unexplained', label: 'פנסיוני ללא הסבר', icon: '⚠️' },
+    { type: 'grade_decrease', label: 'דרגה/דירוג + ירידה', icon: '🔴' },
+    { type: 'seniority_decrease', label: 'ותק + ירידה', icon: '🔴' },
+    { type: 'position_decrease', label: 'תפקיד + ירידה', icon: '⚠️' },
+    { type: 'large_change', label: 'שינוי גדול', icon: '⚠️' },
+    { type: 'payment_without_deduction', label: 'תשלומים ללא ניכויים', icon: '⚠️' }
+];
 
         // ============================================
         // IndexedDB - פתיחת מסד נתונים
@@ -1121,40 +1131,91 @@ if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_9
         detail: 'לא נמצא הסבר לשינוי - דורש בדיקה ידנית',
         status: 'RED'
     };
-}  // ← עכשיו הפונקציה תקינה!
+} 
+function analyzeAdditionalExceptions() {
+    console.log('🔍 בודק חריגים נוספים (לא קשורים לשוטף)...');
+    
+    let addedCount = 0;
+    
+    // ✅ משתמש ב-employeesData (כמו analyzeData שלך!)
+    Object.values(employeesData).forEach(employee => {
+        
+        // ========== חריג: גידול תשלומים ללא ניכויים ==========
+        
+        const current_91092 = employee.current.elements[91092] || 0;
+        const previous_91092 = employee.previous.elements[91092] || 0;
+        const current_91095 = employee.current.elements[91095] || 0;
+        const previous_91095 = employee.previous.elements[91095] || 0;
+        
+        const paymentsChange = current_91092 - previous_91092;
+        const deductionsChange = current_91095 - previous_91095;
+        
+        // 🚨 תנאי: גידול תשלומים > 1000 אבל ניכויים < 100
+        if (paymentsChange > 100 && Math.abs(deductionsChange) < 5) {
+            
+            console.log(`🔴 חריג: עובד ${employee.id_num}, תשלומים: +${paymentsChange.toFixed(2)}, ניכויים: ${deductionsChange.toFixed(2)}`);
+            
+            const newException = {
+                severity: 'warning',
+                type: 'payment_without_deduction',
+                reason: `תשלומים עלו ב-${paymentsChange.toFixed(2)} ₪ אך ניכויים ${deductionsChange >= 0 ? 'עלו רק' : 'ירדו'} ב-${Math.abs(deductionsChange).toFixed(2)} ₪`
+            };
+            
+            const existingIndex = analysisResults.findIndex(r => r.id_num === employee.id_num);
+            
+            if (existingIndex >= 0) {
+                // הוסף לשורה קיימת
+                analysisResults[existingIndex].exceptions.push(newException);
+                analysisResults[existingIndex].hasExceptions = true;
+                analysisResults[existingIndex].explanation_detail += ` | גידול תשלומים ללא ניכויים`;
+            } else {
+                // צור שורה חדשה
+                analysisResults.push({
+                    id_num: employee.id_num,
+                    office_num: employee.office_num,
+                    current_regular: current_91092,
+                    previous_regular: previous_91092,
+                    change: paymentsChange,
+                    reason_code: 'PAYMENT_DEDUCTION_MISMATCH',
+                    reason_text: 'גידול תשלומים ללא ניכויים',
+                    explanation_detail: `תשלומים (91092): +${paymentsChange.toFixed(2)} ₪ | ניכויים (91095): ${deductionsChange >= 0 ? '+' : ''}${deductionsChange.toFixed(2)} ₪`,
+                    status: 'warning',
+                    exceptions: [newException],
+                    hasExceptions: true
+                });
+                addedCount++;
+            }
+        }
+    });
+    
+    console.log(`✅ נוספו ${addedCount} חריגים חדשים`);
+}
        // ============================================
         // עדכון UI אחרי טעינה
         // ============================================
 
         function updateUIAfterLoad() {
-            document.getElementById('fileArea').classList.add('loaded');
-            document.getElementById('fileArea').innerHTML = `
-                <div class="folder-icon">✅</div>
-                <h3>הקובץ נטען בהצלחה!</h3>
-                <p>${rawData.length} רשומות | חודש נוכחי: ${currentMonth} | חודש קודם: ${previousMonth}</p>
-            `;
-
-            showMessage('loadMessage', 
-                `✅ ${rawData.length} רשומות נטענו | ${analysisResults.length} עובדים עם שינוי בשוטף`, 
-                'success');
-
-            populateOfficeFilter();
-            updateStats();
-            displayResults();
-
-            document.getElementById('statsSection').classList.remove('hidden');
-            document.getElementById('filtersSection').classList.remove('hidden');
-            document.getElementById('resultsSection').classList.remove('hidden');
-             // עדכון הסרגל
-    updateExceptionsSidebar();
-             //updateReviewCount();
-             // עדכון הסרגל
-    updateExceptionsSidebar();
+    console.log('📊 מתחיל ניתוח...');
     
-    // שמירת Snapshot אוטומטית
+    // 1️⃣ ניתוח שינויים בשוטף (91090)
+    analyzeData();
+    
+    // 2️⃣ חריגים נוספים (91092, 91095, וכו')
+    analyzeAdditionalExceptions();
+    
+    // 3️⃣ עדכון UI
+    populateOfficeFilter();
+    updateStats();
+    displayResults();
+    
+    document.getElementById('statsSection').classList.remove('hidden');
+    document.getElementById('filtersSection').classList.remove('hidden');
+    document.getElementById('resultsSection').classList.remove('hidden');
+    
+    loadSnapshotsList();
+    updateExceptionsSidebar();
     saveSnapshot();
-
-        }
+}
 
         // ============================================
         // מילוי סינון משרדים
@@ -1538,113 +1599,52 @@ function updateReviewCount() {
         // עדכון הסרגל עם מספרי חריגים
         // ============================================
         
-        function updateExceptionsSidebar() {
-            const withExceptions = analysisResults.filter(r => r.hasExceptions);
-            
-            // ספירה לפי סוג חריג
-            let gradeDecrease = 0;
-            let seniorityDecrease = 0;
-            let positionDecrease = 0;
-            let noExplanation = 0;
-            let pensionUnexplained = 0;
-            let largeChange = 0;
-            
-            withExceptions.forEach(row => {
-                row.exceptions.forEach(ex => {
-                    if (ex.type === 'grade_decrease') gradeDecrease++;
-                    if (ex.type === 'seniority_decrease') seniorityDecrease++;
-                    if (ex.type === 'position_decrease') positionDecrease++;
-                    if (ex.type === 'no_explanation') noExplanation++;
-                    if (ex.type === 'pension_unexplained') pensionUnexplained++;
-                    if (ex.type === 'large_change') largeChange++;
-                });
-            });
-            
-            // ספירת מאושרים
-            const approved = withExceptions.filter(row => {
-                const noteKey = `note_${row.id_num}_${currentMonth}`;
-                return localStorage.getItem(`approved_${noteKey}`) === 'true';
-            }).length;
-            
-            const pending = withExceptions.length - approved;
-            
-            // עדכון תצוגה
-            document.getElementById('newCount').textContent = pending;
-            document.getElementById('existingCount').textContent = approved;
-            document.getElementById('resolvedCount').textContent = 0;
-            
-            console.log('✅ עודכן הסרגל:', {
-                total: withExceptions.length,
-                pending: pending,
-                approved: approved,
-                breakdown: {
-                    gradeDecrease,
-                    seniorityDecrease,
-                    positionDecrease,
-                    noExplanation,
-                    pensionUnexplained,
-                    largeChange
-                }
-            });
-            console.log('✅ עודכן הסרגל:', {
-                total: withExceptions.length,
-                pending: pending,
-                approved: approved,
-                breakdown: {
-                    gradeDecrease,
-                    seniorityDecrease,
-                    positionDecrease,
-                    noExplanation,
-                    pensionUnexplained,
-                    largeChange
-                }
-            });
-            
-            // עדכון פילוח מפורט
-            const breakdown = document.getElementById('exceptionsBreakdown');
-            if (breakdown) {
-                let html = '';
-                
-                if (noExplanation > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('no_explanation')">
-                        🔴 ללא הסבר: <strong>${noExplanation}</strong>
-                    </div>`;
-                }
-                
-                if (pensionUnexplained > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('pension_unexplained')">
-                        ⚠️ פנסיוני ללא הסבר: <strong>${pensionUnexplained}</strong>
-                    </div>`;
-                }
-                
-                if (gradeDecrease > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('grade_decrease')">
-                        🔴 דרגה+ירידה: <strong>${gradeDecrease}</strong>
-                    </div>`;
-                }
-                
-                if (seniorityDecrease > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('seniority_decrease')">
-                        🔴 ותק+ירידה: <strong>${seniorityDecrease}</strong>
-                    </div>`;
-                }
-                
-                if (positionDecrease > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('position_decrease')">
-                        ⚠️ תפקיד+ירידה: <strong>${positionDecrease}</strong>
-                    </div>`;
-                }
-                
-                if (largeChange > 0) {
-                    html += `<div style="padding: 5px 0; cursor: pointer;" onclick="openDetailPanel('large_change')">
-                        ⚠️ שינוי גדול: <strong>${largeChange}</strong>
-                    </div>`;
-                }
-                
-                breakdown.innerHTML = html || '<div style="color:#999;">אין חריגים</div>';
+       function updateExceptionsSidebar() {
+    const withExceptions = analysisResults.filter(r => r.hasExceptions);
+    
+    // ספירה דינמית - אוטומטית! 🎯
+    const exceptionCounts = {};
+    exceptionTypes.forEach(et => {
+        exceptionCounts[et.type] = 0;
+    });
+    
+    withExceptions.forEach(row => {
+        row.exceptions.forEach(ex => {
+            if (exceptionCounts.hasOwnProperty(ex.type)) {
+                exceptionCounts[ex.type]++;
             }
-        
+        });
+    });
+    
+    // ספירת מאושרים
+    const approved = withExceptions.filter(row => {
+        const noteKey = `note_${row.id_num}_${currentMonth}`;
+        return localStorage.getItem(`approved_${noteKey}`) === 'true';
+    }).length;
+    
+    const pending = withExceptions.length - approved;
+    
+    document.getElementById('newCount').textContent = pending;
+    document.getElementById('existingCount').textContent = approved;
+    document.getElementById('resolvedCount').textContent = 0;
+    
+    // פילוח מפורט - אוטומטי! 🎯
+    const breakdown = document.getElementById('exceptionsBreakdown');
+    let html = '';
+    
+    exceptionTypes.forEach(et => {
+        const count = exceptionCounts[et.type];
+        if (count > 0) {
+            html += `<div class="breakdown-item" onclick="openDetailPanel('${et.type}')">
+                ${et.icon} ${et.label}: <strong>${count}</strong>
+            </div>`;
         }
+    });
+    
+    breakdown.innerHTML = html || '<div style="color:#999;">אין חריגים</div>';
+    
+    console.log('✅ עודכן הסרגל:', exceptionCounts);
+}
         // ============================================
         // הצגת חריגים בפאנל - גרסה פשוטה
         // ============================================
@@ -1902,7 +1902,7 @@ async function deleteSnapshot(snapshotId) {
         alert('❌ שגיאה במחיקה: ' + error.message);
     }
 }
-        async function deleteAllSnapshots() {
+async function deleteAllSnapshots() {
     if (!confirm('⚠️ האם למחוק את כל ה-Snapshots?\nפעולה זו אינה הפיכה!')) {
         return;
     }
@@ -2318,4 +2318,3 @@ function formatChange(change) {
     </div>
 </body>
 </html>
-
