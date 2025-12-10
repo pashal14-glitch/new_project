@@ -101,133 +101,189 @@
         .message.success { background: #d5f4e6; color: #27ae60; border: 2px solid #27ae60; }
         .message.error { background: #fadbd8; color: #e74c3c; border: 2px solid #e74c3c; }
         .message.info { background: #e3f2fd; color: #3498db; border: 2px solid #3498db; }
-        /* כפתור צף */
-.float-btn {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
-    border: none;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    font-size: 1.5em;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4);
-    transition: all 0.3s;
-    z-index: 1000;
-    display: none;
-}
+       /* סרגל חריגים קבוע */
+        .exceptions-sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 250px;
+            height: 100vh;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+        }
 
-.float-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 12px 30px rgba(231, 76, 60, 0.6);
-}
+        .exceptions-sidebar h2 {
+            color: white;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
 
-.float-btn-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #f39c12;
-    color: white;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7em;
-    font-weight: bold;
-}
+        .exception-stat {
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-/* פאנל צד */
-.side-panel {
-    position: fixed;
-    top: 0;
-    right: -600px;
-    width: 600px;
-    height: 100vh;
-    background: white;
-    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
-    transition: right 0.3s;
-    z-index: 2000;
-    overflow-y: auto;
-}
+        .exception-stat:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(-5px);
+        }
 
-.side-panel.open {
-    right: 0;
-}
+        .exception-stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
 
-.side-panel-header {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+        .exception-stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
 
-.side-panel-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 2em;
-    cursor: pointer;
-}
+        .exception-new { border-left: 4px solid #e74c3c; }
+        .exception-existing { border-left: 4px solid #f39c12; }
+        .exception-resolved { border-left: 4px solid #27ae60; }
 
-.side-panel-content {
-    padding: 20px;
-}
+        .snapshots-list {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
 
-.review-item {
-    border: 2px solid #e9ecef;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    background: #f8f9fa;
-}
+        .snapshot-item {
+            background: rgba(255,255,255,0.1);
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+            cursor: pointer;
+        }
 
-.review-item.warning {
-    border-color: #f39c12;
-    background: #fff3cd;
-}
+        .snapshot-item:hover {
+            background: rgba(255,255,255,0.2);
+        }
 
-.review-item.error {
-    border-color: #e74c3c;
-    background: #fadbd8;
-}
+        .snapshot-item.active {
+            background: #3498db;
+        }
 
-.review-notes {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 5px;
-    margin: 10px 0;
-    min-height: 60px;
-    font-family: inherit;
-}
+        .btn-sidebar {
+            width: 100%;
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
 
-.review-approve {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 5px;
-}
+        .btn-sidebar:hover {
+            background: #2980b9;
+        }
 
-.review-approve:hover {
-    background: #229954;
-}
+       /* התאמת התוכן הראשי */
+        .container {
+            margin-right: 250px;
+        }
 
-.review-approved {
-    background: #d5f4e6;
-    border-color: #27ae60;
-}
+        /* פאנל מפורט */
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: -700px;
+            width: 700px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+            transition: right 0.3s;
+            z-index: 200;
+            overflow-y: auto;
+        }
 
+        .detail-panel.open {
+            right: 250px;
+        }
+
+        .detail-panel-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+        }
+
+        .detail-panel-content {
+            padding: 20px;
+        }
+
+        .exception-card {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .exception-card.new {
+            border-color: #e74c3c;
+            background: #fadbd8;
+        }
+
+        .exception-card.existing {
+            border-color: #f39c12;
+            background: #fff3cd;
+        }
+
+        .exception-card.resolved {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .exception-card.approved {
+            opacity: 0.6;
+        }
+
+        .exception-notes {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            min-height: 60px;
+            font-family: inherit;
+        }
+
+        .btn-approve {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-approve:hover {
+            background: #229954;
+        }
     </style>
 </head>
 
@@ -350,7 +406,9 @@
         let analysisResults = [];      // תוצאות הניתוח
         let currentMonth = null;       // חודש נוכחי
         let previousMonth = null;      // חודש קודם
-
+        let currentSnapshotId = null;  // הוסף את זה
+        let previousSnapshotData = null; // הוסף את זה
+        let comparisonResult = null;   // הוסף את זה
         // ============================================
         // פונקציות עזר
         // ============================================
@@ -398,7 +456,43 @@
                 showMessage('loadMessage', '❌ שגיאה בטעינת הקובץ: ' + error.message, 'error');
             }
         });
+function formatChange(number) {
+            return number.toLocaleString('he-IL', { minimumFractionDigits: 2, signDisplay: 'always' }) + ' ₪';
+        }
 
+        // ============================================
+        // IndexedDB - ניהול מסד נתונים
+        // ============================================
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('SalaryControlDB', 2);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    // טבלת Snapshots
+                    if (!db.objectStoreNames.contains('snapshots')) {
+                        const snapshotsStore = db.createObjectStore('snapshots', { keyPath: 'id' });
+                        snapshotsStore.createIndex('salaryMonth', 'salaryMonth', { unique: false });
+                        snapshotsStore.createIndex('runDate', 'runDate', { unique: false });
+                    }
+                    
+                    // טבלת הערות משתמש
+                    if (!db.objectStoreNames.contains('userNotes')) {
+                        db.createObjectStore('userNotes', { keyPath: 'key' });
+                    }
+                    
+                    // טבלת אישורים
+                    if (!db.objectStoreNames.contains('approvals')) {
+                        db.createObjectStore('approvals', { keyPath: 'key' });
+                    }
+                };
+            });
+        }
         // ============================================
         // זיהוי חודשים (נוכחי/קודם)
         // ============================================
@@ -876,7 +970,7 @@ if (current_90146_qty !== previous_90146_qty && (current_90146_amt > 0 || previo
             document.getElementById('statsSection').classList.remove('hidden');
             document.getElementById('filtersSection').classList.remove('hidden');
             document.getElementById('resultsSection').classList.remove('hidden');
-             updateReviewCount();
+             //updateReviewCount();
         }
 
         // ============================================
@@ -1230,21 +1324,49 @@ function updateReviewCount() {
     }
 }
     </script>
-    <!-- כפתור צף -->
-<button class="float-btn" id="floatBtn" onclick="toggleSidePanel()">
-    <div>⚠️</div>
-    <div class="float-btn-badge" id="reviewCount">0</div>
-</button>
+    <!-- סרגל חריגים -->
+    <div class="exceptions-sidebar" id="exceptionsSidebar">
+        <h2>📊 חריגים</h2>
+        
+        <div class="exception-stat exception-new" onclick="openDetailPanel('new')">
+            <div class="exception-stat-number" id="newCount">0</div>
+            <div class="exception-stat-label">🆕 חריגים חדשים</div>
+        </div>
+        
+        <div class="exception-stat exception-existing" onclick="openDetailPanel('existing')">
+            <div class="exception-stat-number" id="existingCount">0</div>
+            <div class="exception-stat-label">↔️ חריגים קיימים</div>
+        </div>
+        
+        <div class="exception-stat exception-resolved" onclick="openDetailPanel('resolved')">
+            <div class="exception-stat-number" id="resolvedCount">0</div>
+            <div class="exception-stat-label">✅ חריגים שנפתרו</div>
+        </div>
+        
+        <button class="btn-sidebar" onclick="openDetailPanel('all')">
+            📋 הצג הכל
+        </button>
+        
+        <div class="snapshots-list">
+            <h3 style="font-size: 1.1em; margin-bottom: 10px;">📸 Snapshots</h3>
+            <div id="snapshotsList">
+                <!-- יווצר דינמית -->
+            </div>
+            <button class="btn-sidebar" onclick="compareSnapshots()" style="background: #9b59b6;">
+                🔄 השווה Snapshots
+            </button>
+        </div>
+    </div>
 
-<!-- פאנל צד -->
-<div class="side-panel" id="sidePanel">
-    <div class="side-panel-header">
-        <h2>🔍 דורש בדיקה ידנית</h2>
-        <button class="side-panel-close" onclick="toggleSidePanel()">×</button>
+    <!-- פאנל מפורט -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="detail-panel-header">
+            <h2 id="detailPanelTitle">📋 חריגים מפורטים</h2>
+            <button class="detail-panel-close" onclick="closeDetailPanel()">×</button>
+        </div>
+        <div class="detail-panel-content" id="detailPanelContent">
+            <!-- תוכן ייווצר דינמית -->
+        </div>
     </div>
-    <div class="side-panel-content" id="reviewList">
-        <!-- תוכן ייווצר דינמית -->
-    </div>
-</div>
 </body>
 </html>
