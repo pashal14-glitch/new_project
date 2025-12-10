@@ -1902,6 +1902,44 @@ async function deleteSnapshot(snapshotId) {
         alert('❌ שגיאה במחיקה: ' + error.message);
     }
 }
+        async function deleteAllSnapshots() {
+    if (!confirm('⚠️ האם למחוק את כל ה-Snapshots?\nפעולה זו אינה הפיכה!')) {
+        return;
+    }
+    
+    if (!confirm('⚠️ אישור אחרון - באמת למחוק הכל?')) {
+        return;
+    }
+    
+    try {
+        console.log('🗑️ מוחק את כל ה-Snapshots...');
+        
+        const db = await openDB();
+        
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction('snapshots', 'readwrite');
+            const store = tx.objectStore('snapshots');
+            const request = store.clear();
+            
+            request.onsuccess = () => {
+                console.log('✅ כל ה-Snapshots נמחקו');
+                resolve();
+            };
+            
+            request.onerror = () => {
+                console.error('❌ שגיאה במחיקה:', request.error);
+                reject(request.error);
+            };
+        });
+        
+        await loadSnapshotsList();
+        alert('✅ כל ה-Snapshots נמחקו!');
+        
+    } catch (error) {
+        console.error('❌ שגיאה:', error);
+        alert('❌ שגיאה במחיקה: ' + error.message);
+    }
+}
         // ============================================
         // טעינת Snapshot ספציפי
         // ============================================
@@ -2280,3 +2318,4 @@ function formatChange(change) {
     </div>
 </body>
 </html>
+
