@@ -363,6 +363,7 @@
         <option value="PENSION">שינוי פנסיוני (כולל)</option>
         <option value="PENSION_GRADE">├─ שינוי דרגה/דירוג</option>
         <option value="PENSION_SENIORITY">├─ שינוי ותק</option>
+        <option value="PENSION_POSITION">├─ שינוי תפקיד</option>
         <option value="PENSION_UNEXPLAINED">└─ ללא הסבר נוסף</option>
         <option value="OVERTIME">שעות נוספות</option>
         <option value="EXPENSES">החזרי הוצאות</option>
@@ -572,6 +573,95 @@ function formatChange(number) {
         // ניתוח נתונים
         // ============================================
 
+    function identifyExceptions(row) {
+         console.log('🔎 identifyExceptions רץ לעובד:', row.id_num);
+        const exceptions = [];
+        
+        // ======================================
+        // חריג 1: שינוי דרגה/דירוג + ירידה בשכר
+        // ======================================
+        if (row.reason_code === 'PENSION' && 
+            (row.explanation_detail.includes('דרגה') || row.explanation_detail.includes('דירוג'))) {
+            if (row.change < 0) {
+                exceptions.push({
+                    severity: 'error',
+                    type: 'grade_decrease',
+                    reason: `שינוי דרגה/דירוג אך השכר ירד ב-${Math.abs(row.change).toFixed(2)} ₪`,
+                    expectedIncrease: true,
+                    actualDecrease: true
+                });
+            }
+        }
+        
+        // ======================================
+        // חריג 2: שינוי ותק + ירידה בשכר
+        // ======================================
+        if (row.reason_code === 'PENSION' && row.explanation_detail.includes('ותק')) {
+            if (row.change < 0) {
+                exceptions.push({
+                    severity: 'error',
+                    type: 'seniority_decrease',
+                    reason: `שינוי ותק אך השכר ירד ב-${Math.abs(row.change).toFixed(2)} ₪`,
+                    expectedIncrease: true,
+                    actualDecrease: true
+                });
+            }
+        }
+        
+        // ======================================
+        // חריג 3: שינוי תפקיד + ירידה בשכר
+        // ======================================
+        if (row.reason_code === 'PENSION' && row.explanation_detail.includes('תפקיד')) {
+            if (row.change < 0) {
+                exceptions.push({
+                    severity: 'warning',
+                    type: 'position_decrease',
+                    reason: `שינוי תפקיד אך השכר ירד ב-${Math.abs(row.change).toFixed(2)} ₪`,
+                    expectedIncrease: false,  // תפקיד יכול גם לרדת
+                    actualDecrease: true
+                });
+            }
+        }
+        
+        // ======================================
+        // חריג 4: לא נמצא הסבר
+        // ======================================
+        if (row.reason_code === 'UNKNOWN') {
+            exceptions.push({
+                severity: 'error',
+                type: 'no_explanation',
+                reason: 'לא נמצא הסבר לשינוי בשכר',
+                needsInvestigation: true
+            });
+        }
+        
+        // ======================================
+        // חריג 5: שינוי פנסיוני ללא הסבר נוסף
+        // ======================================
+        if (row.reason_code === 'PENSION' && row.explanation_detail.includes('ללא הסבר נוסף')) {
+            exceptions.push({
+                severity: 'warning',
+                type: 'pension_unexplained',
+                reason: 'שינוי פנסיוני ללא זיהוי סיבה מדויקת',
+                needsInvestigation: true
+            });
+        }
+        
+        // ======================================
+        // חריג 6: שינוי גדול מאוד (מעל 5000 ₪)
+        // ======================================
+        if (Math.abs(row.change) > 5000) {
+            exceptions.push({
+                severity: 'warning',
+                type: 'large_change',
+                reason: `שינוי גדול מאוד: ${row.change > 0 ? '+' : ''}${row.change.toFixed(2)} ₪`,
+                needsVerification: true
+            });
+        }
+        
+        return exceptions;
+    }
+
         function analyzeData() {
             analysisResults = [];
 
@@ -585,9 +675,9 @@ function formatChange(number) {
         // זיהוי עובד חדש / מופסק
         // ======================================
         
-        // עובד מופסק: חודש נוכחי = 0
+       // עובד מופסק: חודש נוכחי = 0
         if (current_91090 === 0 && previous_91090 > 0) {
-            analysisResults.push({
+            const result = {
                 id_num: employee.id_num,
                 office_num: employee.office_num,
                 current_regular: 0,
@@ -597,13 +687,21 @@ function formatChange(number) {
                 reason_text: 'עובד מופסק',
                 explanation_detail: 'עובד הופסק - אין תשלום בחודש נוכחי',
                 status: 'TERMINATED'
-            });
-            return; // לא ממשיכים לבדיקות
+            };
+            result.exceptions = [];  // אין חריגים לעובד מופסק
+            result.hasExceptions = false;
+            // זיהוי חריגים
+                console.log('🔵 קורא ל-identifyExceptions לעובד:', result.id_num);
+                result.exceptions = identifyExceptions(result);
+                result.hasExceptions = result.exceptions.length > 0;
+                console.log('🔵 תוצאה:', result.exceptions.length, 'חריגים');
+            analysisResults.push(result);
+            return;
         }
 
         // עובד חדש: חודש קודם = 0
         if (previous_91090 === 0 && current_91090 > 0) {
-            analysisResults.push({
+            const result = {
                 id_num: employee.id_num,
                 office_num: employee.office_num,
                 current_regular: current_91090,
@@ -613,8 +711,11 @@ function formatChange(number) {
                 reason_text: 'עובד חדש',
                 explanation_detail: 'עובד חדש - לא היה תשלום בחודש קודם',
                 status: 'NEW'
-            });
-            return; // לא ממשיכים לבדיקות
+            };
+            result.exceptions = [];  // אין חריגים לעובד חדש
+            result.hasExceptions = false;
+            analysisResults.push(result);
+            return;
         }
                 // ניתוח רק אם יש שינוי
                 if (Math.abs(change) > 0.01) {
@@ -635,8 +736,15 @@ function formatChange(number) {
                 }
             });
 
-            console.log(`🔍 נמצאו ${analysisResults.length} עובדים עם שינוי בשוטף`);
-        }
+       
+        console.log(`🔍 נמצאו ${analysisResults.length} עובדים עם שינוי בשוטף`);
+        const withExceptions = analysisResults.filter(r => r.hasExceptions).length;
+        console.log(`⚠️ מתוכם ${withExceptions} עם חריגים`);
+    }
+
+    // ============================================
+    // זיהוי חריגים - רשומות שדורשות בדיקה ידנית
+    // ============================================
 
         // ============================================
         // פונקציה נפרדת למציאת הסבר!
@@ -757,11 +865,7 @@ function findExplanation(employee) {
     const previous = employee.previous.elements;
     const currentQty = employee.current.quantities;
     const previousQty = employee.previous.quantities;
-
-    // ======================================
-    // ======================================
-// בדיקה 1: שינוי בתעריף מסל (91203)
-// ======================================
+    
 // ======================================
 // בדיקה 1: שינוי בתעריף מסל (91203)
 // חשוב: רק תשלום שוטף! (SALARY_DATE = REFERENCE_DATE)
@@ -785,8 +889,9 @@ const previous_91203 = isPreviousRegular ? (employee.previous.tariffs[91203] || 
 if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_91203) > 0.01) {
         // יש שינוי פנסיוני - נמשיך לבדוק 90144 ו-90146
         
-        let found90144 = false;
+       let found90144 = false;
         let found90146 = false;
+        let found1507 = false;  // ← הוספתי!
         let explanation = '';
 
         // ======================================
@@ -815,31 +920,57 @@ if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_9
         // ======================================
        // ======================================
 // בדיקת 90146 - ותק
-// סוג הותק = AMOUNT, QUANTITY = הערך שהשתנה
-// ======================================
-const current_90146_amt = current[90146] || 0;
-const previous_90146_amt = previous[90146] || 0;
-const current_90146_qty = currentQty[90146] || 0;
-const previous_90146_qty = previousQty[90146] || 0;
+        const current_90146_amt = current[90146] || 0;
+        const previous_90146_amt = previous[90146] || 0;
+        const current_90146_qty = currentQty[90146] || 0;
+        const previous_90146_qty = previousQty[90146] || 0;
 
-if (current_90146_qty !== previous_90146_qty && (current_90146_amt > 0 || previous_90146_amt > 0)) {
-    found90146 = true;
-    
-    if (explanation) {
-        explanation += ' + ';
-    }
-    
-    // סוג הותק מ-AMOUNT (נשתמש בחודש הנוכחי, או קודם אם אין נוכחי)
-    const vatakType = current_90146_amt > 0 ? current_90146_amt : previous_90146_amt;
-    
-    // הצגת השינוי ב-QUANTITY
-    explanation += `שינוי בותק מסוג ${vatakType} - QUANTITY השתנה מ-${previous_90146_qty} ל-${current_90146_qty}`;
-}
+        if (current_90146_qty !== previous_90146_qty && (current_90146_amt > 0 || previous_90146_amt > 0)) {
+            found90146 = true;
+            
+            if (explanation) {
+                explanation += ' + ';
+            }
+            
+            const vatakType = current_90146_amt > 0 ? current_90146_amt : previous_90146_amt;
+            explanation += `שינוי בותק מסוג ${vatakType} - QUANTITY השתנה מ-${previous_90146_qty} ל-${current_90146_qty}`;
+        }
 
         // ======================================
-        // אם לא נמצא 90144 או 90146
+        // בדיקת 1507 - שינוי תפקיד
+        // בודקים QUANTITY, רק תשלום שוטף
         // ======================================
-        if (!found90144 && !found90146) {
+        
+        // בדיקה שזה תשלום שוטף בחודש נוכחי
+        const current_1507_salaryDate = employee.current.salaryDates[1507] || '';
+        const current_1507_refDate = employee.current.referenceDates[1507] || '';
+        const isCurrent1507Regular = current_1507_salaryDate === current_1507_refDate && current_1507_salaryDate !== '';
+        
+        // בדיקה שזה תשלום שוטף בחודש קודם
+        const previous_1507_salaryDate = employee.previous.salaryDates[1507] || '';
+        const previous_1507_refDate = employee.previous.referenceDates[1507] || '';
+        const isPrevious1507Regular = previous_1507_salaryDate === previous_1507_refDate && previous_1507_salaryDate !== '';
+        
+        // שליפת QUANTITY רק אם זה תשלום שוטף
+        const current_1507_qty = isCurrent1507Regular ? (currentQty[1507] || 0) : 0;
+        const previous_1507_qty = isPrevious1507Regular ? (previousQty[1507] || 0) : 0;
+        
+        // אם יש שינוי בתפקיד
+       if ((isCurrent1507Regular || isPrevious1507Regular) && current_1507_qty !== previous_1507_qty) {
+            found1507 = true;  // ← בלי let!
+            
+            if (explanation) {
+                explanation += ' + ';
+            }
+            
+            explanation += `שינוי תפקיד - QUANTITY השתנה מ-${previous_1507_qty} ל-${current_1507_qty}`;
+        }
+
+        // ======================================
+        // אם לא נמצא 90144 או 90146 או 1507
+        // ======================================
+     if (!found90144 && !found90146 && !found1507) {
+
             return {
                 code: 'PENSION',
                 text: 'שינוי פנסיוני',
@@ -970,6 +1101,8 @@ if (current_90146_qty !== previous_90146_qty && (current_90146_amt > 0 || previo
             document.getElementById('statsSection').classList.remove('hidden');
             document.getElementById('filtersSection').classList.remove('hidden');
             document.getElementById('resultsSection').classList.remove('hidden');
+             // עדכון הסרגל
+    updateExceptionsSidebar();
              //updateReviewCount();
         }
 
@@ -1086,11 +1219,16 @@ document.getElementById('terminatedEmployees').textContent = terminatedEmployees
                     !row.explanation_detail.includes('דירוג')) return false;
                     
             } else if (filterReason === 'PENSION_SENIORITY') {
-                // רק פנסיוני עם ותק
-                if (row.reason_code !== 'PENSION') return false;
-                if (!row.explanation_detail.includes('ותק')) return false;
-                
-            } else if (filterReason === 'PENSION_UNEXPLAINED') {
+    // רק פנסיוני עם ותק
+    if (row.reason_code !== 'PENSION') return false;
+    if (!row.explanation_detail.includes('ותק')) return false;
+    
+} else if (filterReason === 'PENSION_POSITION') {
+    // רק פנסיוני עם תפקיד
+    if (row.reason_code !== 'PENSION') return false;
+    if (!row.explanation_detail.includes('תפקיד')) return false;
+    
+} else if (filterReason === 'PENSION_UNEXPLAINED') {
                 // רק פנסיוני ללא הסבר נוסף
                 if (row.reason_code !== 'PENSION') return false;
                 if (!row.explanation_detail.includes('ללא הסבר נוסף')) return false;
@@ -1323,6 +1461,99 @@ function updateReviewCount() {
         floatBtn.style.display = 'none';
     }
 }
+// ============================================
+        // פונקציות לסרגל החריגים - זמני
+        // ============================================
+        
+        function openDetailPanel(type) {
+            console.log('פותח פאנל:', type);
+            const panel = document.getElementById('detailPanel');
+            if (panel) {
+                panel.classList.add('open');
+                document.getElementById('detailPanelTitle').textContent = '📋 חריגים';
+                
+                // הצג את החריגים!
+                showExceptionsInPanel(type);
+            }
+        }
+        
+        function closeDetailPanel() {
+            const panel = document.getElementById('detailPanel');
+            if (panel) {
+                panel.classList.remove('open');
+            }
+        }
+        
+        // ============================================
+        // עדכון הסרגל עם מספרי חריגים
+        // ============================================
+        
+        function updateExceptionsSidebar() {
+            const withExceptions = analysisResults.filter(r => r.hasExceptions);
+            
+            // זמנית - נציג את הכל כחריגים חדשים
+            document.getElementById('newCount').textContent = withExceptions.length;
+            document.getElementById('existingCount').textContent = 0;
+            document.getElementById('resolvedCount').textContent = 0;
+            
+            console.log('✅ עודכן הסרגל:', withExceptions.length, 'חריגים');
+        }
+        
+        // ============================================
+        // הצגת חריגים בפאנל - גרסה פשוטה
+        // ============================================
+        
+        function showExceptionsInPanel(type) {
+            const withExceptions = analysisResults.filter(r => r.hasExceptions);
+            const content = document.getElementById('detailPanelContent');
+            
+            if (withExceptions.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align:center; padding:50px; color:#999;">
+                        <div style="font-size:3em;">✅</div>
+                        <h3>אין חריגים!</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            content.innerHTML = withExceptions.map(row => {
+                const exceptionsHtml = row.exceptions.map(ex => `
+                    <div style="background: ${ex.severity === 'error' ? '#fadbd8' : '#fff3cd'}; 
+                                padding: 8px; 
+                                border-radius: 5px; 
+                                margin: 5px 0;
+                                border-left: 4px solid ${ex.severity === 'error' ? '#e74c3c' : '#f39c12'};">
+                        ${ex.severity === 'error' ? '🔴' : '⚠️'} ${ex.reason}
+                    </div>
+                `).join('');
+                
+                return `
+                    <div class="exception-card ${row.exceptions[0].severity === 'error' ? 'error' : 'warning'}" 
+                         style="border: 2px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                        <h3 style="margin: 0 0 10px 0;">עובד ${row.id_num} | משרד ${row.office_num}</h3>
+                        <div style="margin: 10px 0;">
+                            <strong>שינוי:</strong> 
+                            <span style="color: ${row.change >= 0 ? '#27ae60' : '#e74c3c'}; font-weight: bold;">
+                                ${formatChange(row.change)}
+                            </span>
+                        </div>
+                        <div style="margin: 10px 0;">
+                            <strong>הסבר מערכת:</strong> ${row.explanation_detail}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <strong>חריגים:</strong>
+                            ${exceptionsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function compareSnapshots() {
+            console.log('השוואת snapshots - בקרוב...');
+            alert('תכונה זו תהיה זמינה בקרוב');
+        }
     </script>
     <!-- סרגל חריגים -->
     <div class="exceptions-sidebar" id="exceptionsSidebar">
