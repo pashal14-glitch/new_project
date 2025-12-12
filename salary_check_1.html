@@ -22,17 +22,20 @@
             overflow: hidden;
         }
         .header {
-            background: linear-gradient(45deg, #2c3e50, #3498db);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+    background: linear-gradient(45deg, #2c3e50, #3498db);
+    color: white;
+    padding: 15px 20px;  /* ← היה 30px */
+    text-align: center;
+}
+        .header h1 {
+    font-size: 1.8em;  /* ← היה 2.5em */
+    margin-bottom: 5px;  /* ← היה 10px */
+}
         .section { padding: 30px; border-bottom: 1px solid #e9ecef; }
         .section h2 { color: #2c3e50; margin-bottom: 20px; font-size: 1.5em; }
         .folder-select-area {
             text-align: center;
-            padding: 40px;
+            padding: 10px;
             background: #f8f9fa;
             border: 3px dashed #ddd;
             border-radius: 15px;
@@ -41,7 +44,7 @@
         }
         .folder-select-area:hover { border-color: #3498db; background: #e3f2fd; }
         .folder-select-area.loaded { border-color: #27ae60; background: #d5f4e6; }
-        .folder-icon { font-size: 4em; margin-bottom: 15px; }
+        .folder-icon { font-size: 4em; margin-bottom: 10px; }
         .btn-primary {
             background: #3498db;
             color: white;
@@ -316,28 +319,175 @@
 .delete-snapshot-btn:active {
     transform: scale(0.95);
 }
+/* סרגל סטטיסטיקות שמאלי */
+.stats-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+}
+
+.stats-sidebar h2 {
+    color: white;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+    padding-bottom: 10px;
+}
+
+.stats-sidebar-card {
+    background: rgba(255,255,255,0.15);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    transition: all 0.3s;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.stats-sidebar-card:hover {
+    background: rgba(255,255,255,0.25);
+    transform: scale(1.05);
+}
+
+.stats-sidebar-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.stats-sidebar-label {
+    font-size: 0.95em;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
+/* התאמת container לשני סרגלים */
+.container {
+    margin-right: 250px;  /* סרגל חריגים */
+    margin-left: 280px;   /* סרגל סטטיסטיקות */
+}
+/* ========================================
+   טאבים inline - עיצוב חדש
+======================================== */
+
+.tabs-container-inline {
+    display: flex;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 5px;
+    border-radius: 10px;
+}
+
+.tab-btn {
+    background: white;
+    color: #2c3e50;
+    border: 2px solid transparent;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.tab-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.tab-badge {
+    background: rgba(0,0,0,0.2);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    min-width: 25px;
+    text-align: center;
+}
+
+.tab-btn.active .tab-badge {
+    background: rgba(255,255,255,0.3);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* התאמה למסכים קטנים */
+@media (max-width: 768px) {
+    .section > div:first-child {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    .tabs-container-inline {
+        width: 100%;
+        justify-content: center;
+        margin-top: 15px;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+}
     </style>
 </head>
 
 <body>
+  
     <div class="container">
         <div class="header">
             <h1>🎯 מערכת בקרת שכר - גרסה מלאה</h1>
             <p>ניתוח מפורט של שינויים בתשלומים שוטפים עם הסברים אוטומטיים</p>
         </div>
 
-        <div class="section">
-            <h2>📂 טעינת נתונים</h2>
-            <div class="folder-select-area" id="fileArea" onclick="document.getElementById('fileInput').click()">
-                <div class="folder-icon">📄</div>
-                <h3>לחץ לבחירת קובץ Excel</h3>
-                <p>קובץ המיוצא מה-View: V_SALARY_RAW_DATA</p>
-                <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
-            </div>
-            <div id="loadMessage"></div>
+       <div class="section" style="padding: 15px 30px;">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()" style="font-size: 1.1em; padding: 15px 30px;">
+            📂 טעינת נתונים
+        </button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+        
+        <div id="fileNameDisplay" style="color: #7f8c8d; font-size: 0.95em;">
+            לא נבחר קובץ
         </div>
+    </div>
+    <div id="loadMessage" style="margin-top: 10px;"></div>
+</div>
 
-        <div class="section hidden" id="statsSection">
+<div class="section hidden" id="statsSection" style="display: none !important;">
             <h2>📊 סטטיסטיקות</h2>
             <div class="stats-grid">
                 <div class="stat-card">
@@ -356,6 +506,10 @@
                     <div class="stat-number" id="unexplained">0</div>
                     <div class="stat-label">ללא הסבר ⚠️</div>
                 </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+    <div class="stat-number" id="employeesWithDifferences">0</div>
+    <div class="stat-label">קיבלו הפרשים 💰</div>
+</div>
                 <div class="stat-card" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">
     <div class="stat-number" id="newEmployees">0</div>
     <div class="stat-label">עובדים חדשים 🆕</div>
@@ -367,70 +521,110 @@
             </div>
         </div>
 
-        <div class="section hidden" id="filtersSection">
-            <h2>🔍 סינונים</h2>
-            <div class="filters-grid">
-                <div class="filter-item">
-                    <label>מספר עובד</label>
-                    <input type="text" id="filterEmployee" placeholder="הקלד מספר זהות">
-                </div>
-                <div class="filter-item">
-                    <label>משרד</label>
-                    <select id="filterOffice"><option value="">כל המשרדים</option></select>
-                </div>
-                <div class="filter-item">
-                    <label>סטטוס</label>
-                    <select id="filterStatus">
-                        <option value="">הכל</option>
-                        <option value="GREEN">נמצא הסבר ✅</option>
-                        <option value="RED">ללא הסבר ❌</option>
-                    </select>
-                </div>
-               <div class="filter-item">
-    <label>סיבת שינוי</label>
-    <select id="filterReason">
-        <option value="">כל הסיבות</option>
-        <option value="NEW">עובד חדש 🆕</option>
-        <option value="TERMINATED">עובד מופסק ⛔</option>
-        <option value="PENSION">שינוי פנסיוני (כולל)</option>
-        <option value="PENSION_RESEARCH">├─ עדכון ותק - עובדי מחקר</option>  <!-- ← חדש! -->
-        <option value="PENSION_GRADE">├─ שינוי דרגה/דירוג</option>
-        <option value="PENSION_SENIORITY">├─ שינוי ותק</option>
-        <option value="PENSION_POSITION">├─ שינוי תפקיד</option>
-        <option value="PENSION_UNEXPLAINED">└─ ללא הסבר נוסף</option>
-        <option value="OVERTIME">שעות נוספות</option>
-        <option value="EXPENSES">החזרי הוצאות</option>
-        <option value="ONE_TIME">תשלום חד פעמי</option>
-        <option value="UNKNOWN">ללא הסבר</option>
-    </select>
+     <div class="section hidden" id="filtersSection" style="padding: 15px 30px;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <strong style="font-size: 1.1em;">🔍 סינון:</strong>
+        
+        <input type="text" id="filterEmployee" placeholder="מספר עובד" 
+               style="width: 120px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+        
+        <select id="filterOffice" style="width: 100px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+            <option value="">כל המשרדים</option>
+        </select>
+        
+        <select id="filterStatus" style="width: 120px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+            <option value="">הכל</option>
+            <option value="GREEN">נמצא הסבר ✅</option>
+            <option value="RED">ללא הסבר ❌</option>
+        </select>
+        
+        <select id="filterReason" style="width: 180px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+            <option value="">כל הסיבות</option>
+            <option value="NEW">עובד חדש 🆕</option>
+            <option value="TERMINATED">עובד מופסק ⛔</option>
+            <option value="PENSION">שינוי פנסיוני (כולל)</option>
+            <option value="PENSION_RESEARCH">├─ עדכון ותק - עובדי מחקר</option>
+            <option value="PENSION_GRADE">├─ שינוי דרגה/דירוג</option>
+            <option value="PENSION_SENIORITY">├─ שינוי ותק</option>
+            <option value="PENSION_POSITION">├─ שינוי תפקיד</option>
+            <option value="PENSION_UNEXPLAINED">└─ ללא הסבר נוסף</option>
+            <option value="OVERTIME">שעות נוספות</option>
+            <option value="EXPENSES">החזרי הוצאות</option>
+            <option value="ONE_TIME">תשלום חד פעמי</option>
+            <option value="UNKNOWN">ללא הסבר</option>
+        </select>
+        
+        <button class="btn-primary" onclick="applyFilters()" style="padding: 8px 20px; font-size: 0.9em;">
+            🔎 סנן
+        </button>
+        
+        <button class="export-btn" onclick="exportToExcel()" style="padding: 8px 20px; font-size: 0.9em;">
+            📥 ייצא לExcel
+        </button>
+    </div>
 </div>
-            </div>
-            <button class="btn-primary" onclick="applyFilters()">🔎 סנן</button>
-            <button class="btn-primary btn-success" onclick="exportToExcel()">📥 ייצוא לExcel</button>
-        </div>
-
-        <div class="section hidden" id="resultsSection">
-            <h2>📋 תוצאות - עובדים עם שינוי בשוטף (91090)</h2>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>מספר זהות</th>
-                            <th>משרד</th>
-                            <th>שוטף נוכחי</th>
-                            <th>שוטף קודם</th>
-                            <th>שינוי</th>
-                            <th>סיבת שינוי</th>
-                            <th>הסבר מפורט</th>
-                            <th>סטטוס</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultsBody"></tbody>
-                </table>
-            </div>
+       <div class="section hidden" id="resultsSection">
+    <!-- כותרת ראשית -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">📋 תוצאות ניתוח</h2>
+        
+        <!-- טאבים -->
+        <div class="tabs-container-inline">
+            <button class="tab-btn active" onclick="switchTab('tab91090')">
+                📊 שוטף (91090)
+                <span class="tab-badge" id="badge91090">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('tab91091')">
+                📈 הפרשים (91091)
+                <span class="tab-badge" id="badge91091">0</span>
+            </button>
         </div>
     </div>
 
+    <!-- תוכן טאב 91090 -->
+    <div id="tab91090" class="tab-content active">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>מספר זהות</th>
+                        <th>משרד</th>
+                        <th>שוטף נוכחי</th>
+                        <th>שוטף קודם</th>
+                        <th>שינוי</th>
+                        <th>סיבת שינוי</th>
+                        <th>הסבר מפורט</th>
+                        <th>סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- תוכן טאב 91091 -->
+    <div id="tab91091" class="tab-content">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>מספר זהות</th>
+                        <th>משרד</th>
+                        <th>סה"כ הפרשים</th>
+<th>-</th>
+                        <th>שינוי</th>
+                        <th>סיבת שינוי</th>
+                        <th>הסבר מפורט</th>
+                        <th>סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody91091">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
     <script>
         // ============================================
         // משתנים גלובליים
@@ -438,6 +632,7 @@
         let rawData = [];              // כל הנתונים הגולמיים מהקובץ
         let employeesData = {};        // נתונים מאורגנים לפי עובד
         let analysisResults = [];      // תוצאות הניתוח
+        let analysisResults91091 = [];  // תוצאות 91091 - חדש!
         let currentMonth = null;
         let previousMonth = null;
         let currentSnapshotId = null;
@@ -519,12 +714,18 @@ const exceptionTypes = [
         // טעינת קובץ
   document.getElementById('fileInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
+            // ✨ הוסיפי את זה כאן! ✨
+    if (file) {
+        document.getElementById('fileNameDisplay').innerHTML = `
+            <strong style="color: #27ae60;">✅ ${file.name}</strong>
+        `;
+    }
             if (!file) {
                 showMessage('loadMessage', 'לא נבחר קובץ', 'error');
                 return;
             }
 
-            showMessage('loadMessage', '⏳ טוען קובץ ומנתח נתונים...', 'info');
+       
 
             try {
                 const data = await file.arrayBuffer();
@@ -769,7 +970,7 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
             return;
         }
                 // ניתוח רק אם יש שינוי
-                if (Math.abs(change) > 0.01) {
+                if (Math.abs(change) > 100) {
                     // מציאת הסבר לשינוי - פונקציה נפרדת!
                     const explanation = findExplanation(employee);
                     
@@ -813,7 +1014,55 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
 // ============================================
 // פונקציה לניתוח תשלומים חד פעמיים (91013)
 // ============================================
+// ============================================
+// ניתוח נתונים - 91091 (הפרשים)
+// ============================================
+// ============================================
+// ניתוח נתונים - 91091 (הפרשים)
+// זיהוי מי קיבל הפרשים החודש ומה הסיבה
+// ============================================
+// ============================================
+// ניתוח נתונים - 91091 (הפרשים)
+// מי קיבל הפרשים החודש ולמה
+// ============================================
 
+function analyzeData91091() {
+    analysisResults91091 = [];
+
+    Object.values(employeesData).forEach(employee => {
+        // סכום הפרשים בחודש נוכחי
+        const current_91091 = employee.current.elements[91091] || 0;
+        
+        // ✅ רק עובדים עם הפרשים > 100
+        if (current_91091 > 100) {
+            
+            // ניתוח למה קיבל הפרשים
+            const explanation = findExplanation91091(employee);
+            
+            const result = {
+                id_num: employee.id_num,
+                office_num: employee.office_num,
+                current_regular: current_91091,       // סכום ההפרשים
+                previous_regular: 0,                  // לא רלוונטי
+                change: current_91091,                // ההפרשים עצמם
+                reason_code: explanation.code,
+                reason_text: explanation.text,
+                explanation_detail: explanation.detail,
+                status: explanation.status
+            };
+            
+            // זיהוי חריגים
+            result.exceptions = identifyExceptions(result);
+            result.hasExceptions = result.exceptions.length > 0;
+            
+            analysisResults91091.push(result);
+        }
+    });
+
+    console.log(`💰 נמצאו ${analysisResults91091.length} עובדים עם הפרשים`);
+    const withExceptions = analysisResults91091.filter(r => r.hasExceptions).length;
+    console.log(`⚠️ מתוכם ${withExceptions} עם חריגים`);
+}
 function analyzeOneTimePayments(employee) {
     const empId = employee.id_num;
     
@@ -1197,6 +1446,185 @@ if (current_research_90144 && previous_research_90144) {
         status: 'RED'
     };
 } 
+
+// ============================================
+// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
+// ============================================
+
+// ============================================
+// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
+// למה העובד קיבל הפרשים?
+// ============================================
+
+// ============================================
+// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
+// למה העובד קיבל הפרשים?
+// ============================================
+
+function findExplanation91091(employee) {
+    const current = employee.current.elements;
+    const previous = employee.previous.elements;
+    const currentQty = employee.current.quantities;
+    const previousQty = employee.previous.quantities;
+    const empId = employee.id_num;
+    
+    // 🔍 בדיקה: האם יש רשומות רטרואקטיביות?
+    const retroRecords = rawData.filter(row => 
+        row.id_num === empId &&
+        row.SALARY_DATE === currentMonth &&
+        row.REFERENCE_DATE !== currentMonth &&
+        [90144, 90146, 1507, 91203, 4720, 4717].includes(row.SALARY_ELEMENT_NUM)
+    );
+    
+    const hasRetro = retroRecords.length > 0;
+    const retroSuffix = hasRetro ? ' (כולל רטרואקטיבי 🔙)' : '';
+    
+    console.log(`📊 עובד ${empId}: ${retroRecords.length} רשומות רטרואקטיביות`);
+    
+    // ======================================
+    // בדיקה 1: שינוי בשוטף (91090) - אם השוטף השתנה יש גם הפרשים
+    // ======================================
+    const current_91090 = current[91090] || 0;
+    const previous_91090 = previous[91090] || 0;
+    const change_91090 = current_91090 - previous_91090;
+    
+    if (Math.abs(change_91090) > 0.01) {
+        // יש שינוי בשוטף - זו הסיבה להפרשים!
+        
+        // ======================================
+        // בדיקת 90144 - דרגה/דירוג
+        // ======================================
+        const current_90144_qty = currentQty[90144] || 0;
+        const previous_90144_qty = previousQty[90144] || 0;
+        
+        if (current_90144_qty !== previous_90144_qty) {
+            return {
+                code: 'PENSION',
+                text: 'שינוי פנסיוני',
+                detail: `שינוי דרגה מ-${previous_90144_qty} ל-${current_90144_qty}${retroSuffix}`,
+                status: 'GREEN'
+            };
+        }
+        
+        // ======================================
+        // בדיקת 90146 - ותק
+        // ======================================
+        const current_90146_qty = currentQty[90146] || 0;
+        const previous_90146_qty = previousQty[90146] || 0;
+        
+        if (current_90146_qty !== previous_90146_qty) {
+            return {
+                code: 'PENSION',
+                text: 'שינוי פנסיוני',
+                detail: `שינוי ותק מ-${previous_90146_qty} ל-${current_90146_qty}${retroSuffix}`,
+                status: 'GREEN'
+            };
+        }
+        
+        // ======================================
+        // בדיקת 1507 - תפקיד
+        // ======================================
+        const current_1507_qty = currentQty[1507] || 0;
+        const previous_1507_qty = previousQty[1507] || 0;
+        
+        if (current_1507_qty !== previous_1507_qty) {
+            return {
+                code: 'PENSION',
+                text: 'שינוי פנסיוני',
+                detail: `שינוי תפקיד מ-${previous_1507_qty} ל-${current_1507_qty}${retroSuffix}`,
+                status: 'GREEN'
+            };
+        }
+        
+        // ======================================
+        // בדיקת תעריף מסל (91203)
+        // ======================================
+        const current_91203 = employee.current.tariffs[91203] || 0;
+        const previous_91203 = employee.previous.tariffs[91203] || 0;
+        
+        if (Math.abs(current_91203 - previous_91203) > 0.01) {
+            return {
+                code: 'PENSION',
+                text: 'שינוי פנסיוני',
+                detail: `שינוי תעריף שעה מ-${previous_91203.toFixed(2)} ל-${current_91203.toFixed(2)}${retroSuffix}`,
+                status: 'GREEN'
+            };
+        }
+        
+        // יש שינוי בשוטף אבל לא מצאנו סיבה ספציפית
+        return {
+            code: 'PENSION',
+            text: 'שינוי פנסיוני',
+            detail: `שינוי בשוטף: ${formatChange(change_91090)}${retroSuffix}`,
+            status: 'GREEN'
+        };
+    }
+    
+    // ======================================
+    // בדיקה 2: שעות נוספות (4720)
+    // ======================================
+    const current_4720 = current[4720] || 0;
+    const previous_4720 = previous[4720] || 0;
+    
+    if (Math.abs(current_4720 - previous_4720) > 0.01) {
+        return {
+            code: 'OVERTIME',
+            text: 'שעות נוספות',
+            detail: `שעות נוספות השתנו מ-${previous_4720.toFixed(2)} ל-${current_4720.toFixed(2)}${retroSuffix}`,
+            status: 'GREEN'
+        };
+    }
+    
+    // ======================================
+    // בדיקה 3: החזרי הוצאות (4717)
+    // ======================================
+    const current_4717 = current[4717] || 0;
+    const previous_4717 = previous[4717] || 0;
+    
+    if (Math.abs(current_4717 - previous_4717) > 0.01) {
+        return {
+            code: 'EXPENSES',
+            text: 'החזרי הוצאות',
+            detail: `החזרי הוצאות השתנו מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)}${retroSuffix}`,
+            status: 'GREEN'
+        };
+    }
+    
+    // ======================================
+    // בדיקה 4: תשלום חד פעמי (91013)
+    // ======================================
+    const current_91013 = current[91013] || 0;
+    
+    if (current_91013 > 0) {
+        const oneTimeAnalysis = analyzeOneTimePayments(employee);
+        return {
+            code: 'ONE_TIME',
+            text: 'תשלום חד פעמי',
+            detail: oneTimeAnalysis + retroSuffix,
+            status: 'GREEN'
+        };
+    }
+    
+    // ======================================
+    // לא נמצא הסבר ספציפי
+    // ======================================
+    
+    if (hasRetro) {
+        return {
+            code: 'RETRO',
+            text: 'תשלום רטרואקטיבי',
+            detail: 'תשלום רטרואקטיבי - לא זוהתה סיבה ספציפית 🔙',
+            status: 'GREEN'
+        };
+    }
+    
+    return {
+        code: 'UNKNOWN',
+        text: 'ללא הסבר',
+        detail: 'לא נמצא הסבר להפרשים - דורש בדיקה ידנית',
+        status: 'RED'
+    };
+}
 function analyzeAdditionalExceptions() {
     console.log('🔍 בודק חריגים נוספים (לא קשורים לשוטף)...');
     
@@ -1264,6 +1692,7 @@ function analyzeAdditionalExceptions() {
     
     // 1️⃣ ניתוח שינויים בשוטף (91090)
     analyzeData();
+     analyzeData91091();  
     
     // 2️⃣ חריגים נוספים (91092, 91095, וכו')
     analyzeAdditionalExceptions();
@@ -1272,6 +1701,9 @@ function analyzeAdditionalExceptions() {
     populateOfficeFilter();
     updateStats();
     displayResults();
+    displayResults91091();
+    // 🆕 עדכון תגיות הטאבים
+    updateTabBadges();
     
     document.getElementById('statsSection').classList.remove('hidden');
     document.getElementById('filtersSection').classList.remove('hidden');
@@ -1303,21 +1735,33 @@ function analyzeAdditionalExceptions() {
         // עדכון סטטיסטיקות
         // ============================================
 
-       function updateStats() {
+      function updateStats() {
     const totalEmployees = Object.keys(employeesData).length;
     const employeesWithChange = analysisResults.length;
+    const employeesWithDifferences = analysisResults91091.length;
     const newEmployees = analysisResults.filter(r => r.status === 'NEW').length;
     const terminatedEmployees = analysisResults.filter(r => r.status === 'TERMINATED').length;
     const explained = analysisResults.filter(r => r.status === 'GREEN').length;
     const unexplained = analysisResults.filter(r => r.status === 'RED').length;
 
-            document.getElementById('totalEmployees').textContent = totalEmployees;
-            document.getElementById('employeesWithChange').textContent = employeesWithChange;
-            document.getElementById('explained').textContent = explained;
-            document.getElementById('unexplained').textContent = unexplained;
-            document.getElementById('newEmployees').textContent = newEmployees;
-document.getElementById('terminatedEmployees').textContent = terminatedEmployees;
-        }
+    // עדכון הסטטיסטיקות הישנות (למקרה שנשאיר אותן)
+    document.getElementById('totalEmployees').textContent = totalEmployees;
+    document.getElementById('employeesWithChange').textContent = employeesWithChange;
+    document.getElementById('employeesWithDifferences').textContent = employeesWithDifferences;
+    document.getElementById('explained').textContent = explained;
+    document.getElementById('unexplained').textContent = unexplained;
+    document.getElementById('newEmployees').textContent = newEmployees;
+    document.getElementById('terminatedEmployees').textContent = terminatedEmployees;
+    
+    // ✨ עדכון הסרגל השמאלי - חדש!
+    document.getElementById('totalEmployeesSide').textContent = totalEmployees;
+    document.getElementById('employeesWithChangeSide').textContent = employeesWithChange;
+    document.getElementById('employeesWithDifferencesSide').textContent = employeesWithDifferences;
+    document.getElementById('explainedSide').textContent = explained;
+    document.getElementById('unexplainedSide').textContent = unexplained;
+    document.getElementById('newEmployeesSide').textContent = newEmployees;
+    document.getElementById('terminatedEmployeesSide').textContent = terminatedEmployees;
+}
 
         // ============================================
         // הצגת תוצאות
@@ -1370,7 +1814,61 @@ document.getElementById('terminatedEmployees').textContent = terminatedEmployees
         // ============================================
         // החלת סינונים
         // ============================================
+// ============================================
+// הצגת תוצאות - 91091 (הפרשים)
+// ============================================
 
+function displayResults91091(filteredData = null) {
+    const data = filteredData || analysisResults91091;
+    const tbody = document.getElementById('resultsBody91091');
+    
+    if (!tbody) {
+        console.error('❌ לא נמצא resultsBody91091');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:30px;color:#999;">לא נמצאו תוצאות</td></tr>';
+        return;
+    }
+
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        // טיפול בעובד חדש/מופסק
+        let statusText, changeClass, statusClass;
+        
+        if (row.status === 'NEW') {
+            statusText = '🆕 עובד חדש';
+            changeClass = 'status-green';
+            statusClass = 'status-green';
+        } else if (row.status === 'TERMINATED') {
+            statusText = '⛔ עובד מופסק';
+            changeClass = 'status-red';
+            statusClass = 'status-red';
+        } else {
+            statusText = row.status === 'GREEN' ? '✅ נמצא הסבר' : '❌ ללא הסבר';
+            changeClass = row.change >= 0 ? 'status-green' : 'status-red';
+            statusClass = row.status.toLowerCase();
+        }
+        
+        tr.innerHTML = `
+    <td>${row.id_num}</td>
+    <td>${row.office_num}</td>
+    <td>${formatCurrency(row.current_regular)}</td>
+    <td>-</td>  <!-- ← לא רלוונטי -->
+    <td class="${changeClass}">${formatCurrency(row.change)}</td>
+    <td><strong>${row.reason_text}</strong></td>
+    <td style="text-align:right;padding-right:20px;">${row.explanation_detail}</td>
+    <td class="status-${statusClass}">${statusText}</td>
+`;
+        tbody.appendChild(tr);
+    });
+    
+    console.log(`📊 הוצגו ${data.length} שורות בטבלת 91091`);
+}
       function applyFilters() {
     const filterEmployee = document.getElementById('filterEmployee').value.trim();
     const filterOffice = document.getElementById('filterOffice').value;
@@ -2334,6 +2832,43 @@ function convertExcelDateToReadable(excelDate) {
     
     return `${day}.${month}.${year}`;
 }
+function switchTab(tabId) {
+    // הסר active מכל הטאבים
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // הוסף active לטאב הנבחר
+    event.target.closest('.tab-btn').classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    
+    console.log(`🔄 עבר לטאב: ${tabId}`);
+}
+// ============================================
+// עדכון תגיות מספרים בטאבים
+// ============================================
+
+function updateTabBadges() {
+    // עדכון טאב 91090
+    const count91090 = analysisResults ? analysisResults.length : 0;
+    const badge91090 = document.getElementById('badge91090');
+    if (badge91090) {
+        badge91090.textContent = count91090;
+    }
+    
+    // עדכון טאב 91091
+    const count91091 = analysisResults91091 ? analysisResults91091.length : 0;
+    const badge91091 = document.getElementById('badge91091');
+    if (badge91091) {
+        badge91091.textContent = count91091;
+    }
+    
+    console.log(`🔢 תגיות עודכנו: 91090=${count91090}, 91091=${count91091}`);
+}
+
     </script>
     <!-- סרגל חריגים -->
     <div class="exceptions-sidebar" id="exceptionsSidebar">
@@ -2396,6 +2931,45 @@ function convertExcelDateToReadable(excelDate) {
         </div>
         <div class="detail-panel-content" id="detailPanelContent">
             <!-- תוכן ייווצר דינמית -->
+        </div>
+    </div>
+    <!-- סרגל סטטיסטיקות שמאלי -->
+    <div class="stats-sidebar" id="statsSidebar">
+        <h2>📊 סטטיסטיקות</h2>
+        
+        <div class="stats-sidebar-card">
+            <div class="stats-sidebar-number" id="totalEmployeesSide">0</div>
+            <div class="stats-sidebar-label">סך הכל עובדים</div>
+        </div>
+        
+        <div class="stats-sidebar-card">
+            <div class="stats-sidebar-number" id="employeesWithChangeSide">0</div>
+            <div class="stats-sidebar-label">עם שינוי בשוטף</div>
+        </div>
+        
+        <div class="stats-sidebar-card">
+            <div class="stats-sidebar-number" id="employeesWithDifferencesSide">0</div>
+            <div class="stats-sidebar-label">קיבלו הפרשים 💰</div>
+        </div>
+        
+        <div class="stats-sidebar-card" style="background: rgba(46, 204, 113, 0.3);">
+            <div class="stats-sidebar-number" id="explainedSide">0</div>
+            <div class="stats-sidebar-label">נמצא הסבר ✅</div>
+        </div>
+        
+        <div class="stats-sidebar-card" style="background: rgba(231, 76, 60, 0.3);">
+            <div class="stats-sidebar-number" id="unexplainedSide">0</div>
+            <div class="stats-sidebar-label">ללא הסבר ⚠️</div>
+        </div>
+        
+        <div class="stats-sidebar-card" style="background: rgba(52, 152, 219, 0.3);">
+            <div class="stats-sidebar-number" id="newEmployeesSide">0</div>
+            <div class="stats-sidebar-label">עובדים חדשים 🆕</div>
+        </div>
+        
+        <div class="stats-sidebar-card" style="background: rgba(149, 165, 166, 0.3);">
+            <div class="stats-sidebar-number" id="terminatedEmployeesSide">0</div>
+            <div class="stats-sidebar-label">עובדים מופסקים ⛔</div>
         </div>
     </div>
 </body>
