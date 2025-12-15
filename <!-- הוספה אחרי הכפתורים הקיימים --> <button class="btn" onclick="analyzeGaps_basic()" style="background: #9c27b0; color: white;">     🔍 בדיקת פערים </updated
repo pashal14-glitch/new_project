@@ -3024,6 +3024,8 @@ const recommendedValue = calculateRecommendedValue(
         emergencyCompulsion4405: originalMiluim ? originalMiluim.emergencyCompulsion4405 || 0 : 0 ,
         emergency40percentage: originalMiluim ? originalMiluim.emergency40percentage : undefined,
         employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null,
+        paidAmount91220: originalMiluim ? originalMiluim.paidAmount91220 : 0,
+        totalpaidAmount: originalMiluim ? originalMiluim.totalpaidAmount : 0,
      
     };
 }
@@ -4204,6 +4206,11 @@ function processPaymentFile(workbook, fileName, paymentData) {
             endDt !== null && endDt !== undefined &&
             amt !== null && amt !== undefined &&
             !isNaN(Number(idNum)) && Number(idNum) >= 0) {
+            // כמה שורות בBTL עברו את כל התנאים?
+// וכמה נדחו?
+
+// כתוב לוג בתוך processPaymentFile לפני ה-if:
+console.log(`שורה ${i}: idNum=${idNum}, startDt=${startDt}, endDt=${endDt}, amt=${amt}`);
             
             // יצירת מפתח
             const key = `${idNum}|${startDt}|${endDt}`;
@@ -4263,7 +4270,7 @@ function getPaymentAmount(result, type) {
     }
     
     // המרת התאריכים למספרי Excel לצורך השוואה
-const startExcel = (result.startDate instanceof Date) ? dateToExcelNumber(result.startDate) : result.startDate;
+  const startExcel = (result.startDate instanceof Date) ? dateToExcelNumber(result.startDate) : result.startDate;
 const endExcel = (result.endDate instanceof Date) ? dateToExcelNumber(result.endDate) : result.endDate;
     
     // השתמש ב-employeeId אם passportNum לא קיים
@@ -4373,7 +4380,10 @@ function dateToExcelNumber(date) {
                         emergencyCompulsion4405: parseFloat(row[14]),
                         emergency40percentage:row[15],
                         passportNum:row[16],
-                        employeeStatus:row[17]
+                        employeeStatus:row[17],
+                        paidAmount91220:parseFloat(row[18]),
+                        totalpaidAmount:parseFloat(row[19])
+
                     })).filter(item => item.employeeId);
                     break;
                     
@@ -4836,6 +4846,9 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>נדרש מביטל</th>
                         <th>אושר מביטל</th>
                         <th>מעמד</th>
+                        <th>ערך91220</th>
+                        <th>סהכ שולם בשכר</th>
+
 
                     </tr>
                 </thead>
@@ -4899,6 +4912,9 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${getPaymentAmount(result, 'requested')}</td>
                 <td>${getPaymentAmount(result, 'approved')}</td>
                 <td><strong>${result.employeeStatus}</strong></td>
+               <td>${result.paidAmount91220 || 0}</td>
+               <td>${result.paidAmount || 0}</td>
+
             </tr>
         `;
     });
