@@ -4193,25 +4193,27 @@ function splitUnifiedFile(workbook) {
         
         // מציאת אינדקס עמודת SHEET_TYPE
         const headers = allData[0];
-        const sheetTypeIndex = headers.length - 2; // עמודה אחרונה
+        const sheetTypeIndex = 23; // עמודה 24 (SHEET_TYPE)
         
         console.log(`📊 סה"כ ${allData.length - 2} שורות בקובץ המאוחד`);
         
         // הפרדת נתונים לפי SHEET_TYPE
-        const rawData = [headers];
-        const data166 = [headers];
-        const data1857 = [headers];
+       const rawData = [headers];
+        const data166 = [['Employee ID', 'Month/Year', 'Work Days']];
+        const data1857 = [['Employee ID', 'Date From', 'Quantity']];
         
         for (let i = 1; i < allData.length; i++) {
             const row = allData[i];
             const sheetType = row[sheetTypeIndex];
             
-            if (sheetType === 'RAW') {
+           if (sheetType === 'RAW') {
                 rawData.push(row);
-            } else if (sheetType === '166') {
-                data166.push(row);
-            } else if (sheetType === '1857') {
-                data1857.push(row);
+        } else if (sheetType === 166 || sheetType === '166') {
+                // חלץ רק 3 עמודות: ID, תאריך, ימי עבודה
+                data166.push([row[0], row[1], row[17]]);  // row[2] = DATE_TO (עמודה C)
+            } else if (sheetType === 1857 || sheetType === '1857') {
+                // חלץ רק 3 עמודות: ID, תאריך, כמות
+                data1857.push([row[0], row[1], row[17]]);  // row[1] = DATE_FROM (עמודה B)
             }
         }
         
@@ -4227,15 +4229,17 @@ function splitUnifiedFile(workbook) {
         
         XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet90291, '90291');
         XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet94010, '94010');
-        XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet1930, '1930');
+        
+        // גיליון 3: 1857 (לא 1930!)
+        const ws1857 = XLSX.utils.aoa_to_sheet(data1857);
+        XLSX.utils.book_append_sheet(newWorkbook, ws1857, '1857');
         
         // גיליון 4: 166
         const ws166 = XLSX.utils.aoa_to_sheet(data166);
         XLSX.utils.book_append_sheet(newWorkbook, ws166, '166');
         
-        // גיליון 5: 1857
-        const ws1857 = XLSX.utils.aoa_to_sheet(data1857);
-        XLSX.utils.book_append_sheet(newWorkbook, ws1857, '1857');
+        // גיליון 5: 1930
+        XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet1930, '1930');
         
         console.log('✅ קובץ מאוחד פוצל בהצלחה ל-5 גיליונות!');
         
@@ -4363,8 +4367,8 @@ function excelDateToJSDate(excelDate) {
 
 function addMonths(date, months) {
     const result = new Date(date);
-    result.setMonth(result.getMonth() + months);
-    result.setDate(1); // תמיד היום הראשון בחודש
+    result.setDate(1); // קודם קבע יום 1!
+    result.setMonth(result.getMonth() + months); // אחר כך הוסף חודשים
     return result;
 }
 
