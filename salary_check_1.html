@@ -1361,33 +1361,55 @@ function findExplanation(employee) {
     const currentQty = employee.current.quantities;
     const previousQty = employee.previous.quantities;
     
-// ======================================
-// בדיקה 1: שינוי בתעריף מסל (91203)
-// חשוב: רק תשלום שוטף! (SALARY_DATE = REFERENCE_DATE)
-// ======================================
-
-// בדיקה שזה תשלום שוטף בחודש נוכחי
-const current_91203_salaryDate = employee.current.salaryDates[91203] || '';
-const current_91203_refDate = employee.current.referenceDates[91203] || '';
-const isCurrentRegular = current_91203_salaryDate === current_91203_refDate && current_91203_salaryDate !== '';
-
-// בדיקה שזה תשלום שוטף בחודש קודם
-const previous_91203_salaryDate = employee.previous.salaryDates[91203] || '';
-const previous_91203_refDate = employee.previous.referenceDates[91203] || '';
-const isPreviousRegular = previous_91203_salaryDate === previous_91203_refDate && previous_91203_salaryDate !== '';
-
-// שליפת תעריף רק אם זה תשלום שוטף
-const current_91203 = isCurrentRegular ? (employee.current.tariffs[91203] || 0) : 0;
-const previous_91203 = isPreviousRegular ? (employee.previous.tariffs[91203] || 0) : 0;
-
-// רק אם שני החודשים הם שוטפים ויש שינוי
-if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_91203) > 0.01) {
-        // יש שינוי פנסיוני - נמשיך לבדוק 90144 ו-90146
+    // 🎯 השינוי הכולל בשוטף שאנחנו צריכים להסביר
+    const totalChange = (current[91090] || 0) - (previous[91090] || 0);
+    
+    console.log(`🔍 עובד ${employee.id_num}: שינוי כולל = ${totalChange.toFixed(2)}`);
+    
+    // ======================================
+    // בדיקה 1: שינוי בתעריף מסל (91203)
+    // ======================================
+    
+    const current_91203_salaryDate = employee.current.salaryDates[91203] || '';
+    const current_91203_refDate = employee.current.referenceDates[91203] || '';
+    const isCurrentRegular = current_91203_salaryDate === current_91203_refDate && current_91203_salaryDate !== '';
+    
+    const previous_91203_salaryDate = employee.previous.salaryDates[91203] || '';
+    const previous_91203_refDate = employee.previous.referenceDates[91203] || '';
+    const isPreviousRegular = previous_91203_salaryDate === previous_91203_refDate && previous_91203_salaryDate !== '';
+    
+    const current_91203 = isCurrentRegular ? (employee.current.tariffs[91203] || 0) : 0;
+    const previous_91203 = isPreviousRegular ? (employee.previous.tariffs[91203] || 0) : 0;
+    
+    if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_91203) > 0.01) {
+        // יש שינוי פנסיוני
         
-       let found90144 = false;
+        // 💰 שליפת ברוטו פנסיה (91025) - שוטף בלבד!
+        const current_91025_salaryDate = employee.current.salaryDates[91025] || '';
+        const current_91025_refDate = employee.current.referenceDates[91025] || '';
+        const isCurrent91025Regular = current_91025_salaryDate === current_91025_refDate && current_91025_salaryDate !== '';
+        
+        const previous_91025_salaryDate = employee.previous.salaryDates[91025] || '';
+        const previous_91025_refDate = employee.previous.referenceDates[91025] || '';
+        const isPrevious91025Regular = previous_91025_salaryDate === previous_91025_refDate && previous_91025_salaryDate !== '';
+        
+        const current_91025 = isCurrent91025Regular ? (current[91025] || 0) : 0;
+        const previous_91025 = isPrevious91025Regular ? (previous[91025] || 0) : 0;
+        const bruto_diff = current_91025 - previous_91025;
+        
+        // טקסט שינוי ברוטו פנסיה
+        let brutoText = '';
+        if (Math.abs(bruto_diff) > 0.01) {
+            brutoText = ` | שינוי ברוטו פנסיה: מ-${previous_91025.toFixed(2)} ל-${current_91025.toFixed(2)} (${bruto_diff > 0 ? '+' : ''}${bruto_diff.toFixed(2)} ₪)`;
+        }
+        
+        console.log(`💰 ברוטו פנסיה (91025): ${previous_91025.toFixed(2)} → ${current_91025.toFixed(2)} (${bruto_diff.toFixed(2)})`);
+        
+        let found90144 = false;
         let found90146 = false;
-        let found1507 = false;  // ← הוספתי!
+        let found1507 = false;
         let explanation = '';
+        
         // ======================================
         // בדיקת 90144 - דרגה/דירוג
         // ======================================
@@ -1412,8 +1434,8 @@ if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_9
         }
 
         // ======================================
-       // ======================================
-// בדיקת 90146 - ותק
+        // בדיקת 90146 - ותק
+        // ======================================
         const current_90146_amt = current[90146] || 0;
         const previous_90146_amt = previous[90146] || 0;
         const current_90146_qty = currentQty[90146] || 0;
@@ -1431,27 +1453,21 @@ if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_9
         }
 
         // ======================================
-        // בדיקת 1507 - שינוי תפקיד
-        // בודקים QUANTITY, רק תשלום שוטף
+        // בדיקת 1507 - תפקיד
         // ======================================
-        
-        // בדיקה שזה תשלום שוטף בחודש נוכחי
         const current_1507_salaryDate = employee.current.salaryDates[1507] || '';
         const current_1507_refDate = employee.current.referenceDates[1507] || '';
         const isCurrent1507Regular = current_1507_salaryDate === current_1507_refDate && current_1507_salaryDate !== '';
         
-        // בדיקה שזה תשלום שוטף בחודש קודם
         const previous_1507_salaryDate = employee.previous.salaryDates[1507] || '';
         const previous_1507_refDate = employee.previous.referenceDates[1507] || '';
         const isPrevious1507Regular = previous_1507_salaryDate === previous_1507_refDate && previous_1507_salaryDate !== '';
         
-        // שליפת QUANTITY רק אם זה תשלום שוטף
         const current_1507_qty = isCurrent1507Regular ? (currentQty[1507] || 0) : 0;
         const previous_1507_qty = isPrevious1507Regular ? (previousQty[1507] || 0) : 0;
         
-        // אם יש שינוי בתפקיד
-       if ((isCurrent1507Regular || isPrevious1507Regular) && current_1507_qty !== previous_1507_qty) {
-            found1507 = true;  // ← בלי let!
+        if ((isCurrent1507Regular || isPrevious1507Regular) && current_1507_qty !== previous_1507_qty) {
+            found1507 = true;
             
             if (explanation) {
                 explanation += ' + ';
@@ -1459,196 +1475,180 @@ if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_9
             
             explanation += `שינוי תפקיד - QUANTITY השתנה מ-${previous_1507_qty} ל-${current_1507_qty}`;
         }
-// ========== בדיקה מיוחדת: עדכון ותק עובדי מחקר ==========
-// הגיון: דירוג 43 + אותה דרגה + DATE_FROM באותו חודש
-const current_research_90144 = rawData.find(r => 
-    r.id_num === employee.id_num &&
-    r.SALARY_ELEMENT_NUM === 90144 && 
-    r.AMOUNT === 43 &&
-    r.SALARY_DATE === currentMonth &&
-    r.REFERENCE_DATE === currentMonth
-);
-
-const previous_research_90144 = rawData.find(r => 
-    r.id_num === employee.id_num &&
-    r.SALARY_ELEMENT_NUM === 90144 && 
-    r.AMOUNT === 43 &&
-    r.SALARY_DATE === previousMonth &&
-    r.REFERENCE_DATE === previousMonth
-);
-
-// אם יש דירוג 43 בשני החודשים ואותה דרגה
-if (current_research_90144 && previous_research_90144) {
-    const currentGrade = current_research_90144.QUANTITY;
-    const previousGrade = previous_research_90144.QUANTITY;
-    
-    console.log(`🔬 עובד ${employee.id_num}: עובד מחקר - דירוג 43, דרגה קודם: ${previousGrade}, דרגה נוכחי: ${currentGrade}`);
-    
-    // אם הדרגה נשארה אותו דבר
-    if (currentGrade === previousGrade) {
-        console.log(`   ✅ הדרגה נשארה ${currentGrade}`);
         
-        // שליפת DATE_FROM מ-employeesData - חובה!
-      const dateFrom = employee.current.dateFroms[90144];  // ← 90144 במקום 91203!
-        
-        if (dateFrom) {
-            // המרת Excel date לאובייקט תאריך
-            const dateFromObj = new Date((dateFrom - 25569) * 86400 * 1000);
-            const currentMonthObj = new Date((currentMonth - 25569) * 86400 * 1000);
+        // ======================================
+        // בדיקה מיוחדת: עדכון ותק עובדי מחקר
+        // ======================================
+        const current_research_90144 = rawData.find(r => 
+            r.id_num === employee.id_num &&
+            r.SALARY_ELEMENT_NUM === 90144 && 
+            r.AMOUNT === 43 &&
+            r.SALARY_DATE === currentMonth &&
+            r.REFERENCE_DATE === currentMonth
+        );
+
+        const previous_research_90144 = rawData.find(r => 
+            r.id_num === employee.id_num &&
+            r.SALARY_ELEMENT_NUM === 90144 && 
+            r.AMOUNT === 43 &&
+            r.SALARY_DATE === previousMonth &&
+            r.REFERENCE_DATE === previousMonth
+        );
+
+        if (current_research_90144 && previous_research_90144) {
+            const currentGrade = current_research_90144.QUANTITY;
+            const previousGrade = previous_research_90144.QUANTITY;
             
-            const dateFromMonth = dateFromObj.getMonth(); // 0-11
-            const currentMonthMonth = currentMonthObj.getMonth(); // 0-11
-            
-            console.log(`   DATE_FROM חודש: ${dateFromMonth + 1}, חודש נוכחי: ${currentMonthMonth + 1}`);
-            
-            // רק אם אותו חודש!
-            if (dateFromMonth === currentMonthMonth) {
-                console.log(`   ✅ אותו חודש - עדכון ותק שנתי`);
+            if (currentGrade === previousGrade) {
+                const dateFrom = employee.current.dateFroms[90144];
                 
-                return {
-                    code: 'PENSION',
-                    text: 'שינוי פנסיוני',
-                    detail: `עדכון ותק שנתי - עובדי מחקר בדרגה ${currentGrade}`,
-                    status: 'explained'
-                };
-            } else {
-                console.log(`   ⚠️ חודשים לא תואמים - לא עדכון ותק`);
+                if (dateFrom) {
+                    const dateFromObj = new Date((dateFrom - 25569) * 86400 * 1000);
+                    const currentMonthObj = new Date((currentMonth - 25569) * 86400 * 1000);
+                    
+                    const dateFromMonth = dateFromObj.getMonth();
+                    const currentMonthMonth = currentMonthObj.getMonth();
+                    
+                    if (dateFromMonth === currentMonthMonth) {
+                        console.log(`   ✅ עובדי מחקר - ההסבר מתאים`);
+                        
+                        return {
+                            code: 'PENSION',
+                            text: 'שינוי פנסיוני',
+                            detail: `עדכון ותק שנתי - עובדי מחקר בדרגה ${currentGrade}${brutoText}`,
+                            status: 'GREEN'
+                        };
+                    }
+                }
             }
-        } else {
-            console.log(`   ⚠️ לא נמצא DATE_FROM - לא מזהה`);
         }
-    } else {
-        console.log(`   ⚠️ הדרגה השתנתה מ-${previousGrade} ל-${currentGrade}`);
-    }
-}
-// ← מחקתי את ה-else עם ה-fallback!
 
         // ======================================
-        // אם לא נמצא 90144 או 90146 או 1507
+        // אם מצאנו הסבר פנסיוני - הוסף ברוטו פנסיה
         // ======================================
-     if (!found90144 && !found90146 && !found1507) {
-
+        if (found90144 || found90146 || found1507) {
             return {
                 code: 'PENSION',
                 text: 'שינוי פנסיוני',
-                detail: `שינוי תעריף שעה מ-${previous_91203.toFixed(2)} ל-${current_91203.toFixed(2)} ללא הסבר נוסף`,
+                detail: explanation + brutoText,
+                status: 'GREEN'
+            };
+        } else {
+            return {
+                code: 'PENSION',
+                text: 'שינוי פנסיוני',
+                detail: `שינוי תעריף שעה מ-${previous_91203.toFixed(2)} ל-${current_91203.toFixed(2)} ללא הסבר נוסף${brutoText}`,
                 status: 'GREEN'
             };
         }
-
-        // מצאנו הסבר
-        return {
-            code: 'PENSION',
-            text: 'שינוי פנסיוני',
-            detail: explanation,
-            status: 'GREEN'
-        };
     }
 
     // ======================================
-    // אם אין שינוי פנסיוני - בדיקות רגילות
-    // ======================================
-
-// ======================================
-    // בדיקה 4: שינוי שעות נוספות (4720)
-    // רק תשלום שוטף: SALARY_DATE = REFERENCE_DATE
+    // בדיקה 2: שעות נוספות (4720) - עם בדיקת התאמה!
     // ======================================
     
-    // בדיקה שזה תשלום שוטף בחודש נוכחי
     const current_4720_salaryDate = employee.current.salaryDates[4720] || '';
     const current_4720_refDate = employee.current.referenceDates[4720] || '';
     const isCurrent4720Regular = current_4720_salaryDate === current_4720_refDate && current_4720_salaryDate !== '';
     
-    // בדיקה שזה תשלום שוטף בחודש קודם
     const previous_4720_salaryDate = employee.previous.salaryDates[4720] || '';
     const previous_4720_refDate = employee.previous.referenceDates[4720] || '';
     const isPrevious4720Regular = previous_4720_salaryDate === previous_4720_refDate && previous_4720_salaryDate !== '';
     
-    // שליפת סכום רק אם זה תשלום שוטף
     const current_4720 = isCurrent4720Regular ? (current[4720] || 0) : 0;
     const previous_4720 = isPrevious4720Regular ? (previous[4720] || 0) : 0;
     
-    // אם יש שינוי בשעות נוספות שוטפות
     if ((isCurrent4720Regular || isPrevious4720Regular) && Math.abs(current_4720 - previous_4720) > 0.01) {
         const diff = current_4720 - previous_4720;
-        return {
-            code: 'OVERTIME',
-            text: 'שינוי שעות נוספות',
-            detail: `שעות נוספות השתנו מ-${previous_4720.toFixed(2)} ל-${current_4720.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
-            status: 'GREEN'
-        };
+        
+        // 🎯 בדיקת התאמה: האם השינוי בשעות נוספות מסביר את השינוי הכולל?
+        if (Math.abs(diff - totalChange) <= 100) {
+            console.log(`   ✅ שעות נוספות - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
+            
+            return {
+                code: 'OVERTIME',
+                text: 'שינוי שעות נוספות',
+                detail: `שעות נוספות השתנו מ-${previous_4720.toFixed(2)} ל-${current_4720.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
+                status: 'GREEN'
+            };
+        } else {
+            console.log(`   ⚠️ שעות נוספות לא מסבירות: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
+        }
     }
-// ======================================
-    // בדיקה 5: שינוי החזרי הוצאות (4717)
-    // רק תשלום שוטף: SALARY_DATE = REFERENCE_DATE
+    
+    // ======================================
+    // בדיקה 3: החזרי הוצאות (4717) - עם בדיקת התאמה!
     // ======================================
     
-    // בדיקה שזה תשלום שוטף בחודש נוכחי
     const current_4717_salaryDate = employee.current.salaryDates[4717] || '';
     const current_4717_refDate = employee.current.referenceDates[4717] || '';
     const isCurrent4717Regular = current_4717_salaryDate === current_4717_refDate && current_4717_salaryDate !== '';
     
-    // בדיקה שזה תשלום שוטף בחודש קודם
     const previous_4717_salaryDate = employee.previous.salaryDates[4717] || '';
     const previous_4717_refDate = employee.previous.referenceDates[4717] || '';
     const isPrevious4717Regular = previous_4717_salaryDate === previous_4717_refDate && previous_4717_salaryDate !== '';
     
-    // שליפת סכום רק אם זה תשלום שוטף
     const current_4717 = isCurrent4717Regular ? (current[4717] || 0) : 0;
     const previous_4717 = isPrevious4717Regular ? (previous[4717] || 0) : 0;
     
-    // אם יש שינוי בהחזרי הוצאות שוטפות
     if ((isCurrent4717Regular || isPrevious4717Regular) && Math.abs(current_4717 - previous_4717) > 0.01) {
         const diff = current_4717 - previous_4717;
-        return {
-            code: 'EXPENSES',
-            text: 'החזרי הוצאות',
-            detail: `החזרי הוצאות השתנו מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
-            status: 'GREEN'
-        };
+        
+        // 🎯 בדיקת התאמה
+        if (Math.abs(diff - totalChange) <= 100) {
+            console.log(`   ✅ הוצאות - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
+            
+            return {
+                code: 'EXPENSES',
+                text: 'החזרי הוצאות',
+                detail: `החזרי הוצאות השתנו מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
+                status: 'GREEN'
+            };
+        } else {
+            console.log(`   ⚠️ הוצאות לא מסבירות: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
+        }
     }
+    
     // ======================================
-    // בדיקה 6 : תשלום חד פעמי (91013)
+    // בדיקה 4: תשלום חד פעמי (91013) - עם בדיקת התאמה!
     // ======================================
+    
     const current_91013 = current[91013] || 0;
     const previous_91013 = previous[91013] || 0;
 
     if (current_91013 > 0 || previous_91013 > 0) {
-        // ניתוח מפורט של תשלומים חד פעמיים
-        const oneTimeAnalysis = analyzeOneTimePayments(employee);
+        const diff = current_91013 - previous_91013;
         
-        return {
-            code: 'ONE_TIME',
-            text: 'תשלום חד פעמי',
-            detail: oneTimeAnalysis,
-            status: 'GREEN'
-        };
+        // 🎯 בדיקת התאמה
+        if (Math.abs(diff - totalChange) <= 100) {
+            console.log(`   ✅ חד פעמי - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
+            
+            const oneTimeAnalysis = analyzeOneTimePayments(employee);
+            
+            return {
+                code: 'ONE_TIME',
+                text: 'תשלום חד פעמי',
+                detail: oneTimeAnalysis,
+                status: 'GREEN'
+            };
+        } else {
+            console.log(`   ⚠️ חד פעמי לא מסביר: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
+        }
     }
 
     // ======================================
-    // לא נמצא הסבר
+    // לא נמצא הסבר מתאים
     // ======================================
+    
+    console.log(`   ❌ לא נמצא הסבר מתאים לשינוי של ${totalChange.toFixed(2)}`);
+    
     return {
         code: 'UNKNOWN',
         text: 'ללא הסבר',
         detail: 'לא נמצא הסבר לשינוי - דורש בדיקה ידנית',
         status: 'RED'
     };
-} 
-
-// ============================================
-// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
-// ============================================
-
-// ============================================
-// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
-// למה העובד קיבל הפרשים?
-// ============================================
-
-// ============================================
-// פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
-// למה העובד קיבל הפרשים?
-// ============================================
+}
 
 // ============================================
 // פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
