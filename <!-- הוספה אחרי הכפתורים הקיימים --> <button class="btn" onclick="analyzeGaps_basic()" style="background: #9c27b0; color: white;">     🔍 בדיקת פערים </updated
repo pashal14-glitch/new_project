@@ -4911,7 +4911,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td>${getPaymentAmount(result, 'approved')}</td>
                 <td><strong>${result.employeeStatus}</strong></td>
                <td>${result.paidAmount91220 || 0}</td>
-               <td>${result.paidAmount || 0}</td>
+               <td>${result.totalpaidAmount || 0}</td>
 
             </tr>
         `;
