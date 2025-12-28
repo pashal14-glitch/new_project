@@ -652,6 +652,65 @@
 .stats-summary-item strong {
     font-size: 1.2em;
 }
+/* שורה מתרחבת */
+.expandable-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.expandable-row:hover {
+    background: #e8f4f8 !important;
+}
+
+.detail-row {
+    display: none;
+    background: #f8f9fa;
+    border-top: 2px solid #3498db;
+}
+
+.detail-row.open {
+    display: table-row;
+}
+
+.detail-content {
+    padding: 20px;
+    line-height: 1.8;
+}
+
+.detail-section {
+    margin-bottom: 15px;
+}
+
+.detail-section strong {
+    color: #2c3e50;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.detail-item {
+    padding: 5px 0;
+    padding-right: 20px;
+}
+
+.detail-item.success {
+    color: #27ae60;
+}
+
+.detail-item.error {
+    color: #e74c3c;
+}
+
+.expand-icon {
+    display: inline-block;
+    margin-left: 10px;
+    transition: transform 0.3s;
+    font-size: 0.8em;
+}
+
+.expand-icon.open {
+    transform: rotate(180deg);
+}
     </style>
 </head>
 
@@ -764,10 +823,7 @@
                 📊 שוטף (91090)
                 <span class="tab-badge" id="badge91090">0</span>
             </button>
-            <button class="tab-btn" onclick="switchTab('tab91091')">
-                📈 הפרשים (91091)
-                <span class="tab-badge" id="badge91091">0</span>
-            </button>
+            
         </div>
     </div>
 
@@ -1172,7 +1228,11 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
                         reason_code: explanation.code,
                         reason_text: explanation.text,
                         explanation_detail: explanation.detail,
-                        status: explanation.status
+                        status: explanation.status,
+                       categories: explanation.categories || [],
+    explanations: explanation.explanations || [],      // ← 🎯 הוסיפי!
+    totalExplained: explanation.totalExplained || 0,   // ← 🎯 הוסיפי!
+    totalChange: explanation.totalChange || 0          // ← 🎯 הוסיפי!
                     };
                     
                     // זיהוי חריגים - כאן!
@@ -1187,33 +1247,7 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
         console.log(`🔍 נמצאו ${analysisResults.length} עובדים עם שינוי בשוטף`);
         const withExceptions = analysisResults.filter(r => r.hasExceptions).length;
         console.log(`⚠️ מתוכם ${withExceptions} עם חריגים`);
-    }
-
-    // ============================================
-    // זיהוי חריגים - רשומות שדורשות בדיקה ידנית
-    // ============================================
-
-        // ============================================
-        // פונקציה נפרדת למציאת הסבר!
-        // ============================================
-
-        // ============================================
-// פונקציה נפרדת למציאת הסבר - גרסה מתוקנת!
-// ============================================
-// ============================================
-// פונקציה לניתוח תשלומים חד פעמיים (91013)
-// ============================================
-// ============================================
-// ניתוח נתונים - 91091 (הפרשים)
-// ============================================
-// ============================================
-// ניתוח נתונים - 91091 (הפרשים)
-// זיהוי מי קיבל הפרשים החודש ומה הסיבה
-// ============================================
-// ============================================
-// ניתוח נתונים - 91091 (הפרשים)
-// מי קיבל הפרשים החודש ולמה
-// ============================================
+    } 
 
 function analyzeData91091() {
     analysisResults91091 = [];
@@ -1251,6 +1285,100 @@ function analyzeData91091() {
     console.log(`💰 נמצאו ${analysisResults91091.length} עובדים עם הפרשים`);
     const withExceptions = analysisResults91091.filter(r => r.hasExceptions).length;
     console.log(`⚠️ מתוכם ${withExceptions} עם חריגים`);
+}
+
+// ============================================
+// ניתוח תשלומים חד פעמיים שנכללים בפנסיה
+// ============================================
+
+function analyzePensionOneTime(employee) {
+    const empId = employee.id_num;
+    
+    // 🎯 רשימה של QUANTITY שנכללים בברוטו פנסיה
+    const PENSION_ONE_TIME_SYMBOLS = [
+        1360,  // מענק יובל (פנסיוני)
+        1342   // הבראה (פנסיוני)
+        // תוכלי להוסיף עוד סמלים כאן
+    ];
+    
+    console.log(`🔍 בודק תשלומים חד פעמיים פנסיוניים לעובד ${empId}...`);
+    
+    // =========================================
+    // בדיקת חודש נוכחי
+    // =========================================
+    const currentRecords = rawData.filter(row => 
+        row.id_num === empId && 
+        row.SALARY_ELEMENT_NUM === 91013 &&
+        row.SALARY_DATE === currentMonth &&
+        row.REFERENCE_DATE === currentMonth
+    );
+    
+    let currentTotal = 0;
+    const currentDetails = [];
+    
+    currentRecords.forEach(record => {
+        const quantity = record.QUANTITY || 0;
+        const amount = record.AMOUNT || 0;
+        
+        if (PENSION_ONE_TIME_SYMBOLS.includes(quantity)) {
+            currentTotal += amount;
+            
+            let symbolName = '';
+            if (quantity === 1360) symbolName = ' מענק יובל';
+            else if (quantity === 1342) symbolName = 'הבראה';
+            else symbolName = `סמל ${quantity}`;
+            
+            currentDetails.push(`${symbolName}: ${amount.toFixed(2)} ₪`);
+            console.log(`  ✓ חודש נוכחי - ${symbolName} (${quantity}): ${amount.toFixed(2)} ₪`);
+        }
+    });
+    
+    // =========================================
+    // בדיקת חודש קודם
+    // =========================================
+    const previousRecords = rawData.filter(row => 
+        row.id_num === empId && 
+        row.SALARY_ELEMENT_NUM === 91013 &&
+        row.SALARY_DATE === previousMonth &&
+        row.REFERENCE_DATE === previousMonth
+    );
+    
+    let previousTotal = 0;
+    const previousDetails = [];
+    
+    previousRecords.forEach(record => {
+        const quantity = record.QUANTITY || 0;
+        const amount = record.AMOUNT || 0;
+        
+        if (PENSION_ONE_TIME_SYMBOLS.includes(quantity)) {
+            previousTotal += amount;
+            
+            let symbolName = '';
+            if (quantity === 1360) symbolName = ' מענק יובל';
+            else if (quantity === 1342) symbolName = 'הבראה';
+            else symbolName = `סמל ${quantity}`;
+            
+            previousDetails.push(`${symbolName}: ${amount.toFixed(2)} ₪`);
+            console.log(`  ✓ חודש קודם - ${symbolName} (${quantity}): ${amount.toFixed(2)} ₪`);
+        }
+    });
+    
+    // =========================================
+    // חישוב השינוי בחד פעמי פנסיוני
+    // =========================================
+    const diff = currentTotal - previousTotal;
+    
+    console.log(`  📊 חד פעמי פנסיוני נוכחי: ${currentTotal.toFixed(2)} ₪`);
+    console.log(`  📊 חד פעמי פנסיוני קודם: ${previousTotal.toFixed(2)} ₪`);
+    console.log(`  💰 שינוי בחד פעמי פנסיוני: ${diff.toFixed(2)} ₪`);
+    
+    return {
+        current: currentTotal,
+        previous: previousTotal,
+        diff: diff,  // ← זה מה שצריך להפחית!
+        currentDetails: currentDetails,
+        previousDetails: previousDetails
+    };
 }
 function analyzeOneTimePayments(employee) {
     const empId = employee.id_num;
@@ -1307,6 +1435,10 @@ function analyzeOneTimePayments(employee) {
             byReferenceDate[refDate].clothing.symbols.push(quantity);
             byReferenceDate[refDate].clothing.total += amount;
             console.log(`  👔 ביגוד: +${amount}`);
+             } else if (quantity === 1360) {
+            byReferenceDate[refDate].clothing.symbols.push(quantity);
+            byReferenceDate[refDate].clothing.total += amount;
+            console.log(`  👔 מענק יובל: +${amount}`);
         } else {
             byReferenceDate[refDate].other.symbols.push(quantity);
             byReferenceDate[refDate].other.total += amount;
@@ -1340,6 +1472,12 @@ function analyzeOneTimePayments(employee) {
                 `ביגוד - ${data.clothing.total.toFixed(2)} ₪`
             );
         }
+        // מענק יובל
+        if (data.clothing.total > 0) {
+            explanations.push(
+                `מענק יובל - ${data.clothing.total.toFixed(2)} ₪`
+            );
+        }
         
         // אחר
         if (data.other.symbols.length > 0) {
@@ -1355,16 +1493,20 @@ function analyzeOneTimePayments(employee) {
     
     return result;
 }
+
 function findExplanation(employee) {
     const current = employee.current.elements;
     const previous = employee.previous.elements;
     const currentQty = employee.current.quantities;
     const previousQty = employee.previous.quantities;
     
-    // 🎯 השינוי הכולל בשוטף שאנחנו צריכים להסביר
     const totalChange = (current[91090] || 0) - (previous[91090] || 0);
     
     console.log(`🔍 עובד ${employee.id_num}: שינוי כולל = ${totalChange.toFixed(2)}`);
+    
+    // 🎯 מערך לאיסוף כל ההסברים
+    let foundExplanations = [];
+    let totalExplained = 0;
     
     // ======================================
     // בדיקה 1: שינוי בתעריף מסל (91203)
@@ -1382,9 +1524,8 @@ function findExplanation(employee) {
     const previous_91203 = isPreviousRegular ? (employee.previous.tariffs[91203] || 0) : 0;
     
     if (isCurrentRegular && isPreviousRegular && Math.abs(current_91203 - previous_91203) > 0.01) {
-        // יש שינוי פנסיוני
         
-        // 💰 שליפת ברוטו פנסיה (91025) - שוטף בלבד!
+        // שליפת ברוטו פנסיה (91025)
         const current_91025_salaryDate = employee.current.salaryDates[91025] || '';
         const current_91025_refDate = employee.current.referenceDates[91025] || '';
         const isCurrent91025Regular = current_91025_salaryDate === current_91025_refDate && current_91025_salaryDate !== '';
@@ -1397,64 +1538,54 @@ function findExplanation(employee) {
         const previous_91025 = isPrevious91025Regular ? (previous[91025] || 0) : 0;
         const bruto_diff = current_91025 - previous_91025;
         
-        // טקסט שינוי ברוטו פנסיה
-        let brutoText = '';
-        if (Math.abs(bruto_diff) > 0.01) {
-            brutoText = ` | שינוי ברוטו פנסיה: מ-${previous_91025.toFixed(2)} ל-${current_91025.toFixed(2)} (${bruto_diff > 0 ? '+' : ''}${bruto_diff.toFixed(2)} ₪)`;
+        // 🎯 בדיקת תשלומים חד פעמיים שנכללים בפנסיה
+        const pensionOneTime = analyzePensionOneTime(employee);
+        const adjustedBrutoDiff = bruto_diff - pensionOneTime.diff;  // ← תוקן!
+        
+        console.log(`  📊 ברוטו פנסיה גולמי: ${bruto_diff.toFixed(2)} ₪`);
+        if (pensionOneTime.diff !== 0) {  // ← תוקן!
+            console.log(`  ➖ שינוי בחד פעמי פנסיוני: ${pensionOneTime.diff.toFixed(2)} ₪`);
+            if (pensionOneTime.current > 0) {
+                console.log(`     • נוכחי: ${pensionOneTime.current.toFixed(2)} ₪ (${pensionOneTime.currentDetails.join(', ')})`);
+            }
+            if (pensionOneTime.previous > 0) {
+                console.log(`     • קודם: ${pensionOneTime.previous.toFixed(2)} ₪ (${pensionOneTime.previousDetails.join(', ')})`);
+            }
+            console.log(`  ✅ ברוטו פנסיה מתוקן: ${adjustedBrutoDiff.toFixed(2)} ₪`);
         }
+  
+        // 🎯 מערך לאיסוף סוגי השינויים הפנסיוניים
+        let pensionTypes = [];
         
-        console.log(`💰 ברוטו פנסיה (91025): ${previous_91025.toFixed(2)} → ${current_91025.toFixed(2)} (${bruto_diff.toFixed(2)})`);
-        
-        let found90144 = false;
-        let found90146 = false;
-        let found1507 = false;
-        let explanation = '';
-        
-        // ======================================
-        // בדיקת 90144 - דרגה/דירוג
-        // ======================================
+        // בדיקת 90144 - דרגה/הירוג
         const current_90144_amt = current[90144] || 0;
         const previous_90144_amt = previous[90144] || 0;
         const current_90144_qty = currentQty[90144] || 0;
         const previous_90144_qty = previousQty[90144] || 0;
         
-        const amountChanged = Math.abs(current_90144_amt - previous_90144_amt) > 0.01;
-        const quantityChanged = current_90144_qty !== previous_90144_qty;
-        
-        if (amountChanged || quantityChanged) {
-            found90144 = true;
-            
-            if (amountChanged && quantityChanged) {
-                explanation += `שינוי פנסיוני: שינוי דירוג (מ-${previous_90144_amt.toFixed(2)} ל-${current_90144_amt.toFixed(2)}) ודרגה (מ-${previous_90144_qty} ל-${current_90144_qty})`;
-            } else if (amountChanged) {
-                explanation += `שינוי פנסיוני: שינוי דירוג מ-${previous_90144_amt.toFixed(2)} ל-${current_90144_amt.toFixed(2)}`;
-            } else {
-                explanation += `שינוי פנסיוני: שינוי דרגה מ-${previous_90144_qty} ל-${current_90144_qty}`;
-            }
+        if (Math.abs(current_90144_amt - previous_90144_amt) > 0.01 || current_90144_qty !== previous_90144_qty) {
+            pensionTypes.push({
+                code: 'PENSION_GRADE',
+                text: 'דרגה/הירוג',
+                detail: `מ-${previous_90144_qty} ל-${current_90144_qty}`
+            });
         }
-
-        // ======================================
+        
         // בדיקת 90146 - ותק
-        // ======================================
         const current_90146_amt = current[90146] || 0;
         const previous_90146_amt = previous[90146] || 0;
         const current_90146_qty = currentQty[90146] || 0;
         const previous_90146_qty = previousQty[90146] || 0;
 
         if (current_90146_qty !== previous_90146_qty && (current_90146_amt > 0 || previous_90146_amt > 0)) {
-            found90146 = true;
-            
-            if (explanation) {
-                explanation += ' + ';
-            }
-            
-            const vatakType = current_90146_amt > 0 ? current_90146_amt : previous_90146_amt;
-            explanation += `שינוי בותק מסוג ${vatakType} - QUANTITY השתנה מ-${previous_90146_qty} ל-${current_90146_qty}`;
+            pensionTypes.push({
+                code: 'PENSION_SENIORITY',
+                text: 'ותק',
+                detail: `מ-${previous_90146_qty} ל-${current_90146_qty}`
+            });
         }
-
-        // ======================================
+        
         // בדיקת 1507 - תפקיד
-        // ======================================
         const current_1507_salaryDate = employee.current.salaryDates[1507] || '';
         const current_1507_refDate = employee.current.referenceDates[1507] || '';
         const isCurrent1507Regular = current_1507_salaryDate === current_1507_refDate && current_1507_salaryDate !== '';
@@ -1467,18 +1598,14 @@ function findExplanation(employee) {
         const previous_1507_qty = isPrevious1507Regular ? (previousQty[1507] || 0) : 0;
         
         if ((isCurrent1507Regular || isPrevious1507Regular) && current_1507_qty !== previous_1507_qty) {
-            found1507 = true;
-            
-            if (explanation) {
-                explanation += ' + ';
-            }
-            
-            explanation += `שינוי תפקיד - QUANTITY השתנה מ-${previous_1507_qty} ל-${current_1507_qty}`;
+            pensionTypes.push({
+                code: 'PENSION_POSITION',
+                text: 'תפקיד',
+                detail: `מ-${previous_1507_qty} ל-${current_1507_qty}`
+            });
         }
         
-        // ======================================
-        // בדיקה מיוחדת: עדכון ותק עובדי מחקר
-        // ======================================
+        // בדיקה מיוחדת: עובדי מחקר
         const current_research_90144 = rawData.find(r => 
             r.id_num === employee.id_num &&
             r.SALARY_ELEMENT_NUM === 90144 && 
@@ -1506,45 +1633,48 @@ function findExplanation(employee) {
                     const dateFromObj = new Date((dateFrom - 25569) * 86400 * 1000);
                     const currentMonthObj = new Date((currentMonth - 25569) * 86400 * 1000);
                     
-                    const dateFromMonth = dateFromObj.getMonth();
-                    const currentMonthMonth = currentMonthObj.getMonth();
-                    
-                    if (dateFromMonth === currentMonthMonth) {
-                        console.log(`   ✅ עובדי מחקר - ההסבר מתאים`);
-                        
-                        return {
-                            code: 'PENSION',
-                            text: 'שינוי פנסיוני',
-                            detail: `עדכון ותק שנתי - עובדי מחקר בדרגה ${currentGrade}${brutoText}`,
-                            status: 'GREEN'
-                        };
+                    if (dateFromObj.getMonth() === currentMonthObj.getMonth()) {
+                        pensionTypes.push({
+                            code: 'PENSION_RESEARCH',
+                            text: 'עובדי מחקר',
+                            detail: `בדרגה ${currentGrade}`
+                        });
                     }
                 }
             }
         }
-
-        // ======================================
-        // אם מצאנו הסבר פנסיוני - הוסף ברוטו פנסיה
-        // ======================================
-        if (found90144 || found90146 || found1507) {
-            return {
+        
+        // 🎯 אם נמצאו שינויים פנסיוניים - הוסף פעם אחת בלבד!
+        if (pensionTypes.length > 0) {
+            let pensionDetail = pensionTypes.map(p => p.text + ': ' + p.detail).join(', ');
+            
+            // ← הוספת פירוט אם יש חד פעמי פנסיוני
+            if (pensionOneTime.current > 0 || pensionOneTime.previous > 0) {  // ← הזחה תוקנה!
+                let details = [];
+                if (pensionOneTime.current > 0) {
+                    details.push(`נוכחי: ${pensionOneTime.currentDetails.join(', ')}`);
+                }
+                if (pensionOneTime.previous > 0) {
+                    details.push(`קודם: ${pensionOneTime.previousDetails.join(', ')}`);
+                }
+                pensionDetail += ` | חד פעמי פנסיוני: ${details.join(' | ')}`;
+            }
+            
+            foundExplanations.push({
                 code: 'PENSION',
                 text: 'שינוי פנסיוני',
-                detail: explanation + brutoText,
-                status: 'GREEN'
-            };
-        } else {
-            return {
-                code: 'PENSION',
-                text: 'שינוי פנסיוני',
-                detail: `שינוי תעריף שעה מ-${previous_91203.toFixed(2)} ל-${current_91203.toFixed(2)} ללא הסבר נוסף${brutoText}`,
-                status: 'GREEN'
-            };
+                detail: pensionDetail,
+                amount: adjustedBrutoDiff,  // ← משתמשים במתוקן!
+                subCategories: pensionTypes.map(p => p.code)
+            });
+            
+            totalExplained += adjustedBrutoDiff;  // ← גם כאן מתוקן!
+            console.log(`   ✓ פנסיוני: ${pensionDetail} (${adjustedBrutoDiff.toFixed(2)} ₪)`);  // ← תוקן!
         }
     }
-
+    
     // ======================================
-    // בדיקה 2: שעות נוספות (4720) - עם בדיקת התאמה!
+    // בדיקה 2: שעות נוספות (4720)
     // ======================================
     
     const current_4720_salaryDate = employee.current.salaryDates[4720] || '';
@@ -1560,24 +1690,19 @@ function findExplanation(employee) {
     
     if ((isCurrent4720Regular || isPrevious4720Regular) && Math.abs(current_4720 - previous_4720) > 0.01) {
         const diff = current_4720 - previous_4720;
+        foundExplanations.push({
+            code: 'OVERTIME',
+            text: 'שעות נוספות',
+            detail: `מ-${previous_4720.toFixed(2)} ל-${current_4720.toFixed(2)}`,
+            amount: diff
+        });
+        totalExplained += diff;
         
-        // 🎯 בדיקת התאמה: האם השינוי בשעות נוספות מסביר את השינוי הכולל?
-        if (Math.abs(diff - totalChange) <= 100) {
-            console.log(`   ✅ שעות נוספות - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
-            
-            return {
-                code: 'OVERTIME',
-                text: 'שינוי שעות נוספות',
-                detail: `שעות נוספות השתנו מ-${previous_4720.toFixed(2)} ל-${current_4720.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
-                status: 'GREEN'
-            };
-        } else {
-            console.log(`   ⚠️ שעות נוספות לא מסבירות: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
-        }
+        console.log(`   ✓ שעות נוספות: ${diff.toFixed(2)} ₪`);
     }
     
     // ======================================
-    // בדיקה 3: החזרי הוצאות (4717) - עם בדיקת התאמה!
+    // בדיקה 3: החזרי הוצאות (4717)
     // ======================================
     
     const current_4717_salaryDate = employee.current.salaryDates[4717] || '';
@@ -1593,63 +1718,129 @@ function findExplanation(employee) {
     
     if ((isCurrent4717Regular || isPrevious4717Regular) && Math.abs(current_4717 - previous_4717) > 0.01) {
         const diff = current_4717 - previous_4717;
+        foundExplanations.push({
+            code: 'EXPENSES',
+            text: 'החזרי הוצאות',
+            detail: `מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)}`,
+            amount: diff
+        });
+        totalExplained += diff;
         
-        // 🎯 בדיקת התאמה
-        if (Math.abs(diff - totalChange) <= 100) {
-            console.log(`   ✅ הוצאות - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
-            
-            return {
-                code: 'EXPENSES',
-                text: 'החזרי הוצאות',
-                detail: `החזרי הוצאות השתנו מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)} (הפרש: ${diff > 0 ? '+' : ''}${diff.toFixed(2)} ₪)`,
-                status: 'GREEN'
-            };
-        } else {
-            console.log(`   ⚠️ הוצאות לא מסבירות: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
-        }
+        console.log(`   ✓ הוצאות: ${diff.toFixed(2)} ₪`);
     }
     
     // ======================================
-    // בדיקה 4: תשלום חד פעמי (91013) - עם בדיקת התאמה!
-    // ======================================
-    
-    const current_91013 = current[91013] || 0;
-    const previous_91013 = previous[91013] || 0;
+// בדיקה 4: תשלום חד פעמי (91013)
+// ======================================
 
-    if (current_91013 > 0 || previous_91013 > 0) {
-        const diff = current_91013 - previous_91013;
-        
-        // 🎯 בדיקת התאמה
-        if (Math.abs(diff - totalChange) <= 100) {
-            console.log(`   ✅ חד פעמי - ההסבר מתאים (${diff.toFixed(2)} ≈ ${totalChange.toFixed(2)})`);
-            
-            const oneTimeAnalysis = analyzeOneTimePayments(employee);
-            
-            return {
-                code: 'ONE_TIME',
-                text: 'תשלום חד פעמי',
-                detail: oneTimeAnalysis,
-                status: 'GREEN'
-            };
-        } else {
-            console.log(`   ⚠️ חד פעמי לא מסביר: ${diff.toFixed(2)} לא תואם ${totalChange.toFixed(2)}`);
-        }
+const current_91013 = current[91013] || 0;
+const previous_91013 = previous[91013] || 0;
+
+if (current_91013 > 0 || previous_91013 > 0) {
+    const diff = current_91013 - previous_91013;
+    
+    // 🎯 הפחת את החלק שכבר נכלל בפנסיה!
+    // אם הגדרנו pensionOneTime קודם, השתמש בו. אחרת, הגדר כאן.
+    let pensionOnTimeDiff = 0;
+    if (typeof pensionOneTime !== 'undefined') {
+        pensionOnTimeDiff = pensionOneTime.diff;
     }
-
+    
+    const nonPensionDiff = diff - pensionOnTimeDiff;
+    
+    console.log(`   💳 תשלום חד פעמי כולל: ${diff.toFixed(2)} ₪`);
+    console.log(`   ➖ כבר נספר בפנסיה: ${pensionOnTimeDiff.toFixed(2)} ₪`);
+    console.log(`   ✅ חד פעמי נוסף (לא פנסיוני): ${nonPensionDiff.toFixed(2)} ₪`);
+    
+    if (Math.abs(nonPensionDiff) > 0.01) {
+        const oneTimeAnalysis = analyzeOneTimePayments(employee);
+        
+        foundExplanations.push({
+            code: 'ONE_TIME',
+            text: 'תשלום חד פעמי',
+            detail: oneTimeAnalysis,
+            amount: nonPensionDiff  // ← תוקן!
+        });
+        totalExplained += nonPensionDiff;
+        
+        console.log(`   ✓ חד פעמי: ${nonPensionDiff.toFixed(2)} ₪`);
+    } else {
+        console.log(`   ℹ️ אין תשלום חד פעמי נוסף (הכל כבר נספר בפנסיה)`);
+    }
+}
+    
     // ======================================
-    // לא נמצא הסבר מתאים
+    // 🎯 חישוב הפרש והחלטה סופית
     // ======================================
     
-    console.log(`   ❌ לא נמצא הסבר מתאים לשינוי של ${totalChange.toFixed(2)}`);
+    const gap = Math.abs(totalChange - totalExplained);
+    
+    console.log(`   📊 סה"כ שינוי: ${totalChange.toFixed(2)}`);
+    console.log(`   ✅ סה"כ הוסבר: ${totalExplained.toFixed(2)}`);
+    console.log(`   📏 הפרש: ${gap.toFixed(2)}`);
+    
+    if (foundExplanations.length === 0) {
+        // לא נמצא שום הסבר
+        return {
+            code: 'UNKNOWN',
+            text: 'ללא הסבר',
+            explanation_detail: 'לא נמצא הסבר לשינוי - דורש בדיקה ידנית',
+            status: 'RED',
+            categories: ['UNKNOWN']
+        };
+    }
+    
+    // בניית הסבר מפורט
+    const detailParts = foundExplanations.map(exp => 
+        `${exp.text}: ${exp.detail} (${exp.amount > 0 ? '+' : ''}${exp.amount.toFixed(2)} ₪)`
+    );
+    
+    let explanation_detail = detailParts.join(' | ');
+    
+    // הוספת הפרש אם קיים
+    if (gap > 300) {
+        explanation_detail += ` | 🔴 נותרו ${gap.toFixed(2)} ₪ ללא הסבר`;
+    } else if (gap > 0.01) {
+        explanation_detail += ` | ✓ הפרש קטן: ${gap.toFixed(2)} ₪`;
+    }
+    
+    // החלטה: GREEN אם ההפרש קטן מ-300
+    const status = gap <= 300 ? 'GREEN' : 'RED';
+    
+    // קוד ראשי
+    const code = foundExplanations.length === 1 ? foundExplanations[0].code : 'MULTIPLE';
+    const text = foundExplanations.length === 1 ? foundExplanations[0].text : 'מספר סיבות';
+    
+    // 🎯 בניית רשימת categories - כולל תת-קטגוריות פנסיוניות
+    let allCategories = [];
+    foundExplanations.forEach(exp => {
+        if (exp.subCategories) {
+            // אם יש תת-קטגוריות (פנסיוני) - הוסף אותן
+            allCategories.push(...exp.subCategories);
+        } else {
+            // אחרת הוסף את הקוד הרגיל
+            allCategories.push(exp.code);
+        }
+    });
+    
+    // אם יש פער > 300, הוסף UNKNOWN
+    if (gap > 300) {
+        allCategories.push('UNKNOWN');
+    }
+    
+    console.log(`   🏁 סטטוס: ${status}, קטגוריות: ${allCategories.join(', ')}`);
     
     return {
-        code: 'UNKNOWN',
-        text: 'ללא הסבר',
-        detail: 'לא נמצא הסבר לשינוי - דורש בדיקה ידנית',
-        status: 'RED'
+        code: code,
+        text: text,
+        explanation_detail: explanation_detail,
+        status: status,
+        categories: allCategories,
+        explanations: foundExplanations,
+        totalExplained: totalExplained,
+        totalChange: totalChange
     };
 }
-
 // ============================================
 // פונקציה נפרדת למציאת הסבר - 91091 (הפרשים)
 // למה העובד קיבל הפרשים?
@@ -1949,12 +2140,7 @@ function analyzeAdditionalExceptions() {
     // ✅ קריאה לעדכון הסרגל החדש
     updateStatsSidebar();
 }
-
-        // ============================================
-        // הצגת תוצאות
-        // ============================================
-
-       function displayResults(filteredData = null) {
+function displayResults(filteredData = null) {
     const data = filteredData || analysisResults;
     const tbody = document.getElementById('resultsBody');
     tbody.innerHTML = '';
@@ -1964,8 +2150,11 @@ function analyzeAdditionalExceptions() {
         return;
     }
 
-    data.forEach(row => {
+    data.forEach((row, index) => {
+        // שורה ראשית
         const tr = document.createElement('tr');
+        tr.className = 'expandable-row';
+        tr.onclick = () => toggleDetailRow(index);
         
         // טיפול בעובד חדש/מופסק
         let statusText, changeClass, statusClass;
@@ -1983,9 +2172,9 @@ function analyzeAdditionalExceptions() {
             changeClass = row.change >= 0 ? 'status-green' : 'status-red';
             statusClass = row.status.toLowerCase();
         }
-                
-                tr.innerHTML = `
-            <td>${row.id_num}</td>
+        
+        tr.innerHTML = `
+            <td>${row.id_num} <span class="expand-icon" id="icon-${index}">▼</span></td>
             <td>${row.office_num}</td>
             <td>${formatCurrency(row.current_regular)}</td>
             <td>${formatCurrency(row.previous_regular)}</td>
@@ -1994,13 +2183,112 @@ function analyzeAdditionalExceptions() {
             <td style="text-align:right;padding-right:20px;">${row.explanation_detail}</td>
             <td class="status-${statusClass}">${statusText}</td>
         `;
-                tbody.appendChild(tr);
-            });
-        }
+        tbody.appendChild(tr);
+        
+        // שורת פירוט מתרחבת
+        const detailTr = document.createElement('tr');
+        detailTr.className = 'detail-row';
+        detailTr.id = `detail-${index}`;
+        
+        // בניית תוכן הפירוט
+        const detailHTML = buildDetailContent(row);
+        
+        detailTr.innerHTML = `
+            <td colspan="8">
+                <div class="detail-content">
+                    ${detailHTML}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(detailTr);
+    });
+}
+// ============================================
+// פתיחה/סגירה של שורת פירוט
+// ============================================
 
-        // ============================================
-        // החלת סינונים
-        // ============================================
+function toggleDetailRow(index) {
+    const detailRow = document.getElementById(`detail-${index}`);
+    const icon = document.getElementById(`icon-${index}`);
+    
+    if (detailRow.classList.contains('open')) {
+        detailRow.classList.remove('open');
+        icon.classList.remove('open');
+    } else {
+        detailRow.classList.add('open');
+        icon.classList.add('open');
+    }
+}
+
+// ============================================
+// בניית תוכן פירוט מצטבר
+// ============================================
+function buildDetailContent(row) {
+    let html = '<div class="detail-section">';
+    
+    // כותרת
+    html += `<strong>📊 פירוט מצטבר לעובד ${row.id_num}:</strong>`;
+    
+    // בדיקה אם יש explanations מפורטות
+    if (!row.explanations || row.explanations.length === 0) {
+        // אין פירוט - כנראה עובד חדש או מופסק
+        html += '<div class="detail-item">';
+        if (row.status === 'NEW') {
+            html += '🆕 עובד חדש - לא היה תשלום בחודש הקודם';
+        } else if (row.status === 'TERMINATED') {
+            html += '⛔ עובד מופסק - אין תשלום בחודש הנוכחי';
+        } else {
+            html += 'ℹ️ לא נמצאו הסברים לשינוי';
+        }
+        html += '</div>';
+    } else {
+        // יש explanations - הצג כל אחד
+        row.explanations.forEach(exp => {
+            const amountClass = exp.amount >= 0 ? 'success' : 'error';
+            const amountFormatted = (exp.amount >= 0 ? '+' : '') + exp.amount.toFixed(2) + ' ₪';
+            
+            html += `<div class="detail-item ${amountClass}">`;
+            html += `✓ ${exp.text}: ${exp.detail} (${amountFormatted})`;
+            html += `</div>`;
+        });
+        
+        // קו הפרדה
+        html += '<div style="border-top: 2px solid #ddd; margin: 10px 0;"></div>';
+        
+        // סיכום מצטבר
+        if (row.totalExplained !== undefined && row.totalChange !== undefined) {
+            const gap = Math.abs(row.totalChange - row.totalExplained);
+            
+            html += `<div class="detail-item"><strong>סה"כ הוסבר:</strong> ${row.totalExplained.toFixed(2)} ₪</div>`;
+            html += `<div class="detail-item"><strong>שינוי בפועל:</strong> ${row.totalChange.toFixed(2)} ₪</div>`;
+            
+            if (gap <= 300) {
+                html += `<div class="detail-item success"><strong>הפרש:</strong> ${gap.toFixed(2)} ₪ ✅</div>`;
+            } else {
+                html += `<div class="detail-item error"><strong>הפרש:</strong> ${gap.toFixed(2)} ₪ 🔴 נדרש הסבר!</div>`;
+            }
+        }
+    }
+    
+    html += '</div>';
+    
+    
+    
+    if (row.status === 'GREEN') {
+        html += `<div class="detail-item success">✅ הסבר מלא נמצא</div>`;
+    } else if (row.status === 'RED') {
+        html += `<div class="detail-item error">❌ נדרשת בדיקה ידנית</div>`;
+    } else if (row.status === 'NEW') {
+        html += `<div class="detail-item success">✅ עובד חדש</div>`;
+    } else if (row.status === 'TERMINATED') {
+        html += `<div class="detail-item">ℹ️ עובד מופסק</div>`;
+    }
+    
+    html += '</div>';
+    
+    return html;
+}
+
 // ============================================
 // הצגת תוצאות - 91091 (הפרשים)
 // ============================================
@@ -3104,7 +3392,6 @@ function toggleStatsSubTab(subId) {
 // ============================================
 // עדכון מספרים בסרגל
 // ============================================
-
 function updateStatsSidebar() {
     // פונקציית עזר - עדכון בטוח
     const safeUpdate = (id, value) => {
@@ -3116,6 +3403,18 @@ function updateStatsSidebar() {
         }
     };
     
+    // 🎯 ספירה חכמה - כל עובד יכול להיות במספר קטגוריות!
+    const categoryCounts = {
+        pension_grade: 0,
+        pension_seniority: 0,
+        pension_position: 0,
+        pension_research: 0,
+        overtime: 0,
+        expenses: 0,
+        one_time: 0,
+        unknown: 0
+    };
+    
     // ============================================
     // שוטף (91090)
     // ============================================
@@ -3123,93 +3422,71 @@ function updateStatsSidebar() {
     const count91090 = analysisResults.length;
     safeUpdate('count91090Total', count91090);
     
-    // פנסיוני
-    const countPension = analysisResults.filter(r => r.reason_code === 'PENSION').length;
+    // 🔄 עבור על כל התוצאות וספור לפי categories
+    analysisResults.forEach(r => {
+        if (r.categories && r.categories.length > 0) {
+            // ✅ שיטה חדשה - categories
+            r.categories.forEach(cat => {
+                if (cat === 'PENSION_GRADE') categoryCounts.pension_grade++;
+                else if (cat === 'PENSION_SENIORITY') categoryCounts.pension_seniority++;
+                else if (cat === 'PENSION_POSITION') categoryCounts.pension_position++;
+                else if (cat === 'PENSION_RESEARCH') categoryCounts.pension_research++;
+                else if (cat === 'OVERTIME') categoryCounts.overtime++;
+                else if (cat === 'EXPENSES') categoryCounts.expenses++;
+                else if (cat === 'ONE_TIME') categoryCounts.one_time++;
+                else if (cat === 'UNKNOWN') categoryCounts.unknown++;
+            });
+        } else {
+            // ⚠️ fallback לשיטה ישנה (למקרה שיש רשומות ישנות)
+            if (r.reason_code === 'PENSION') {
+                if (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('הירוג')) {
+                    categoryCounts.pension_grade++;
+                }
+                if (r.explanation_detail.includes('ותק') && !r.explanation_detail.includes('עובדי מחקר')) {
+                    categoryCounts.pension_seniority++;
+                }
+                if (r.explanation_detail.includes('תפקיד')) {
+                    categoryCounts.pension_position++;
+                }
+                if (r.explanation_detail.includes('עובדי מחקר')) {
+                    categoryCounts.pension_research++;
+                }
+            } else if (r.reason_code === 'OVERTIME') {
+                categoryCounts.overtime++;
+            } else if (r.reason_code === 'EXPENSES') {
+                categoryCounts.expenses++;
+            } else if (r.reason_code === 'ONE_TIME') {
+                categoryCounts.one_time++;
+            } else if (r.reason_code === 'UNKNOWN') {
+                categoryCounts.unknown++;
+            }
+        }
+    });
+    
+    // פנסיוני - סה"כ כל הסוגים
+    const countPension = categoryCounts.pension_grade + 
+                        categoryCounts.pension_seniority + 
+                        categoryCounts.pension_position + 
+                        categoryCounts.pension_research;
     safeUpdate('countPension', countPension);
     
-    // פנסיוני - דרגה
-    const countPensionGrade = analysisResults.filter(r => 
-        r.reason_code === 'PENSION' && 
-        (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('דירוג'))
-    ).length;
-    safeUpdate('countPensionGrade', countPensionGrade);
-    
-    // פנסיוני - ותק
-    const countPensionSeniority = analysisResults.filter(r => 
-        r.reason_code === 'PENSION' && 
-        r.explanation_detail.includes('ותק') &&
-        !r.explanation_detail.includes('עובדי מחקר')
-    ).length;
-    safeUpdate('countPensionSeniority', countPensionSeniority);
-    
-    // פנסיוני - תפקיד
-    const countPensionPosition = analysisResults.filter(r => 
-        r.reason_code === 'PENSION' && 
-        r.explanation_detail.includes('תפקיד')
-    ).length;
-    safeUpdate('countPensionPosition', countPensionPosition);
-    
-    // פנסיוני - מחקר
-    const countPensionResearch = analysisResults.filter(r => 
-        r.reason_code === 'PENSION' && 
-        r.explanation_detail.includes('עובדי מחקר')
-    ).length;
-    safeUpdate('countPensionResearch', countPensionResearch);
+    // פנסיוני - פירוט
+    safeUpdate('countPensionGrade', categoryCounts.pension_grade);
+    safeUpdate('countPensionSeniority', categoryCounts.pension_seniority);
+    safeUpdate('countPensionPosition', categoryCounts.pension_position);
+    safeUpdate('countPensionResearch', categoryCounts.pension_research);
     
     // שעות נוספות
-    const countOvertime = analysisResults.filter(r => r.reason_code === 'OVERTIME').length;
-    safeUpdate('countOvertime', countOvertime);
+    safeUpdate('countOvertime', categoryCounts.overtime);
     
     // הוצאות
-    const countExpenses = analysisResults.filter(r => r.reason_code === 'EXPENSES').length;
-    safeUpdate('countExpenses', countExpenses);
+    safeUpdate('countExpenses', categoryCounts.expenses);
     
     // חד פעמי
-    const countOneTime = analysisResults.filter(r => r.reason_code === 'ONE_TIME').length;
-    safeUpdate('countOneTime', countOneTime);
+    safeUpdate('countOneTime', categoryCounts.one_time);
     
     // ללא הסבר - שוטף
-    const countUnknown91090 = analysisResults.filter(r => r.reason_code === 'UNKNOWN').length;
-    safeUpdate('countUnknown91090', countUnknown91090);
-    
-    // ============================================
-    // הפרשים (91091)
-    // ============================================
-    
-    const count91091 = analysisResults91091.length;
-    safeUpdate('count91091Total', count91091);
-    
-    // רטרואקטיבי דרגה
-    const countRetroGrade = analysisResults91091.filter(r => r.reason_code === 'RETRO_GRADE').length;
-    safeUpdate('countRetroGrade', countRetroGrade);
-    
-    // רטרואקטיבי ותק
-    const countRetroSeniority = analysisResults91091.filter(r => r.reason_code === 'RETRO_SENIORITY').length;
-    safeUpdate('countRetroSeniority', countRetroSeniority);
-    
-    // רטרואקטיבי תפקיד
-    const countRetroPosition = analysisResults91091.filter(r => r.reason_code === 'RETRO_POSITION').length;
-    safeUpdate('countRetroPosition', countRetroPosition);
-    
-    // רטרואקטיבי תעריף
-    const countRetroTariff = analysisResults91091.filter(r => r.reason_code === 'RETRO_TARIFF').length;
-    safeUpdate('countRetroTariff', countRetroTariff);
-    
-    // רטרואקטיבי שעות נוספות
-    const countRetroOvertime = analysisResults91091.filter(r => r.reason_code === 'RETRO_OVERTIME').length;
-    safeUpdate('countRetroOvertime', countRetroOvertime);
-    
-    // רטרואקטיבי הוצאות
-    const countRetroExpenses = analysisResults91091.filter(r => r.reason_code === 'RETRO_EXPENSES').length;
-    safeUpdate('countRetroExpenses', countRetroExpenses);
-    
-    // רטרואקטיבי חד פעמי
-    const countRetroOneTime = analysisResults91091.filter(r => r.reason_code === 'RETRO_ONE_TIME').length;
-    safeUpdate('countRetroOneTime', countRetroOneTime);
-    
-    // ללא הסבר - הפרשים
-    const countUnknown91091 = analysisResults91091.filter(r => r.reason_code === 'UNKNOWN').length;
-    safeUpdate('countUnknown91091', countUnknown91091);
+    safeUpdate('countUnknown91090', categoryCounts.unknown);
     
     // ============================================
     // חדשים ומופסקים
@@ -3229,9 +3506,8 @@ function updateStatsSidebar() {
     safeUpdate('summaryExplained', explained);
     safeUpdate('summaryUnexplained', unexplained);
     
-    console.log('✅ סרגל עודכן בהצלחה');
+    console.log('✅ סרגל עודכן:', categoryCounts);
 }
-
 // ============================================
 // סינון לפי קטגוריה - הלב של המערכת!
 // ============================================
@@ -3256,89 +3532,86 @@ function filterByCategory(category) {
     let filtered = [];
     let targetTab = 'tab91090'; // ברירת מחדל
     
-    // סינון לפי קטגוריה
+    // 🎯 סינון לפי קטגוריה
     switch(category) {
         case 'ALL_91090':
             filtered = analysisResults;
             targetTab = 'tab91090';
             break;
             
-        case 'ALL_91091':
-            filtered = analysisResults91091;
-            targetTab = 'tab91091';
-            break;
-            
         case 'PENSION':
-            filtered = analysisResults.filter(r => r.reason_code === 'PENSION');
+            filtered = analysisResults.filter(r => 
+                (r.categories && r.categories.some(c => c.startsWith('PENSION'))) ||
+                r.reason_code === 'PENSION'
+            );
             targetTab = 'tab91090';
             break;
             
         case 'PENSION_GRADE':
             filtered = analysisResults.filter(r => 
-                r.reason_code === 'PENSION' && 
-                (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('דירוג'))
+                (r.categories && r.categories.includes('PENSION_GRADE')) ||
+                (r.reason_code === 'PENSION' && 
+                 (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('הירוג')))
             );
             targetTab = 'tab91090';
             break;
             
         case 'PENSION_SENIORITY':
             filtered = analysisResults.filter(r => 
-                r.reason_code === 'PENSION' && 
-                r.explanation_detail.includes('ותק') &&
-                !r.explanation_detail.includes('עובדי מחקר')
+                (r.categories && r.categories.includes('PENSION_SENIORITY')) ||
+                (r.reason_code === 'PENSION' && 
+                 r.explanation_detail.includes('ותק') &&
+                 !r.explanation_detail.includes('עובדי מחקר'))
             );
             targetTab = 'tab91090';
             break;
             
         case 'PENSION_POSITION':
             filtered = analysisResults.filter(r => 
-                r.reason_code === 'PENSION' && 
-                r.explanation_detail.includes('תפקיד')
+                (r.categories && r.categories.includes('PENSION_POSITION')) ||
+                (r.reason_code === 'PENSION' && r.explanation_detail.includes('תפקיד'))
             );
             targetTab = 'tab91090';
             break;
             
         case 'PENSION_RESEARCH':
             filtered = analysisResults.filter(r => 
-                r.reason_code === 'PENSION' && 
-                r.explanation_detail.includes('עובדי מחקר')
+                (r.categories && r.categories.includes('PENSION_RESEARCH')) ||
+                (r.reason_code === 'PENSION' && r.explanation_detail.includes('עובדי מחקר'))
             );
             targetTab = 'tab91090';
             break;
             
         case 'OVERTIME':
-            filtered = analysisResults.filter(r => r.reason_code === 'OVERTIME');
+            filtered = analysisResults.filter(r => 
+                (r.categories && r.categories.includes('OVERTIME')) ||
+                r.reason_code === 'OVERTIME'
+            );
             targetTab = 'tab91090';
             break;
             
         case 'EXPENSES':
-            filtered = analysisResults.filter(r => r.reason_code === 'EXPENSES');
+            filtered = analysisResults.filter(r => 
+                (r.categories && r.categories.includes('EXPENSES')) ||
+                r.reason_code === 'EXPENSES'
+            );
             targetTab = 'tab91090';
             break;
             
         case 'ONE_TIME':
-            filtered = analysisResults.filter(r => r.reason_code === 'ONE_TIME');
+            filtered = analysisResults.filter(r => 
+                (r.categories && r.categories.includes('ONE_TIME')) ||
+                r.reason_code === 'ONE_TIME'
+            );
             targetTab = 'tab91090';
             break;
             
         case 'UNKNOWN_91090':
-            filtered = analysisResults.filter(r => r.reason_code === 'UNKNOWN');
+            filtered = analysisResults.filter(r => 
+                (r.categories && r.categories.includes('UNKNOWN')) ||
+                r.reason_code === 'UNKNOWN'
+            );
             targetTab = 'tab91090';
-            break;
-            
-        case 'PENSION_91091':
-            filtered = analysisResults91091.filter(r => r.reason_code === 'PENSION');
-            targetTab = 'tab91091';
-            break;
-            
-        case 'ONE_TIME_91091':
-            filtered = analysisResults91091.filter(r => r.reason_code === 'ONE_TIME');
-            targetTab = 'tab91091';
-            break;
-            
-        case 'UNKNOWN_91091':
-            filtered = analysisResults91091.filter(r => r.reason_code === 'UNKNOWN');
-            targetTab = 'tab91091';
             break;
             
         case 'NEW':
@@ -3359,18 +3632,178 @@ function filterByCategory(category) {
     switchTab(targetTab);
     
     // הצגת התוצאות המסוננות
-    if (category.includes('91091')) {
-        displayResults91091(filtered);
-    } else {
-        displayResults(filtered);
-    }
+    displayResults(filtered);
     
     // הודעה למשתמש
     showMessage('loadMessage', `🔍 מוצגים ${filtered.length} תוצאות מסוננות`, 'info');
     
     console.log(`✅ סוננו ${filtered.length} רשומות`);
 }
+// ============================================
+// 🔍 פונקציית DEBUG לקונסול
+// ============================================
 
+window.debugPensionEmployee = function(idNum) {
+    console.clear();
+    
+    const employee = employeesData[idNum];
+    
+    if (!employee) {
+        console.error(`❌ עובד ${idNum} לא נמצא במערכת!`);
+        return;
+    }
+    
+    const current = employee.current.elements;
+    const previous = employee.previous.elements;
+    const currentQty = employee.current.quantities;
+    const previousQty = employee.previous.quantities;
+    
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`📊 DEBUG - עובד ${idNum} - ניתוח פנסיוני מפורט`);
+    console.log('='.repeat(80));
+    
+    // 1. שינוי כולל
+    const totalChange = (current[91090] || 0) - (previous[91090] || 0);
+    console.log(`\n🎯 שינוי כולל ב-91090: ${totalChange.toFixed(2)} ₪`);
+    console.log(`   • נוכחי: ${(current[91090] || 0).toFixed(2)} ₪`);
+    console.log(`   • קודם: ${(previous[91090] || 0).toFixed(2)} ₪`);
+    
+    // 2. ברוטו פנסיה
+    const current_91025_salaryDate = employee.current.salaryDates[91025] || '';
+    const current_91025_refDate = employee.current.referenceDates[91025] || '';
+    const isCurrent91025Regular = current_91025_salaryDate === current_91025_refDate && current_91025_salaryDate !== '';
+    
+    const previous_91025_salaryDate = employee.previous.salaryDates[91025] || '';
+    const previous_91025_refDate = employee.previous.referenceDates[91025] || '';
+    const isPrevious91025Regular = previous_91025_salaryDate === previous_91025_refDate && previous_91025_salaryDate !== '';
+    
+    const current_91025 = isCurrent91025Regular ? (current[91025] || 0) : 0;
+    const previous_91025 = isPrevious91025Regular ? (previous[91025] || 0) : 0;
+    const bruto_diff = current_91025 - previous_91025;
+    
+    console.log(`\n📊 ברוטו פנסיה (91025):`);
+    console.log(`   • נוכחי: ${current_91025.toFixed(2)} ₪`);
+    console.log(`   • קודם: ${previous_91025.toFixed(2)} ₪`);
+    console.log(`   • שינוי גולמי: ${bruto_diff.toFixed(2)} ₪`);
+    
+    // 3. חד פעמי פנסיוני
+    const pensionOneTime = analyzePensionOneTime(employee);
+    
+    console.log(`\n💳 חד פעמי פנסיוני (91013 עם סמלים 1360, 1342):`);
+    console.log(`   📅 חודש נוכחי:`);
+    if (pensionOneTime.current > 0) {
+        console.log(`      • סה"כ: ${pensionOneTime.current.toFixed(2)} ₪`);
+        pensionOneTime.currentDetails.forEach(d => console.log(`      • ${d}`));
+    } else {
+        console.log(`      • אין תשלומים (0.00 ₪)`);
+    }
+    
+    console.log(`   📅 חודש קודם:`);
+    if (pensionOneTime.previous > 0) {
+        console.log(`      • סה"כ: ${pensionOneTime.previous.toFixed(2)} ₪`);
+        pensionOneTime.previousDetails.forEach(d => console.log(`      • ${d}`));
+    } else {
+        console.log(`      • אין תשלומים (0.00 ₪)`);
+    }
+    
+    console.log(`   💰 שינוי בחד פעמי פנסיוני: ${pensionOneTime.diff.toFixed(2)} ₪`);
+    
+    // 4. חישוב מתוקן
+    const adjustedBrutoDiff = bruto_diff - pensionOneTime.diff;
+    
+    console.log(`\n🧮 חישוב מתוקן:`);
+    console.log(`   ${bruto_diff.toFixed(2)} (ברוטו גולמי) - ${pensionOneTime.diff.toFixed(2)} (שינוי חד פעמי) = ${adjustedBrutoDiff.toFixed(2)} ₪`);
+    console.log(`   ✅ זה הסכום שצריך להתווסף כ"פנסיוני"`);
+    
+    // 5. תעריף מסל
+    const current_91203_salaryDate = employee.current.salaryDates[91203] || '';
+    const current_91203_refDate = employee.current.referenceDates[91203] || '';
+    const isCurrentRegular = current_91203_salaryDate === current_91203_refDate && current_91203_salaryDate !== '';
+    
+    const previous_91203_salaryDate = employee.previous.salaryDates[91203] || '';
+    const previous_91203_refDate = employee.previous.referenceDates[91203] || '';
+    const isPreviousRegular = previous_91203_salaryDate === previous_91203_refDate && previous_91203_salaryDate !== '';
+    
+    const current_91203 = isCurrentRegular ? (employee.current.tariffs[91203] || 0) : 0;
+    const previous_91203 = isPreviousRegular ? (employee.previous.tariffs[91203] || 0) : 0;
+    
+    console.log(`\n📈 תעריף מסל (91203):`);
+    console.log(`   • נוכחי: ${current_91203.toFixed(4)}`);
+    console.log(`   • קודם: ${previous_91203.toFixed(4)}`);
+    console.log(`   • הפרש: ${(current_91203 - previous_91203).toFixed(4)}`);
+    console.log(`   • שינוי משמעותי? ${Math.abs(current_91203 - previous_91203) > 0.01 ? '✓ כן' : '✗ לא'}`);
+    
+    // 6. שינויים פנסיוניים
+    console.log(`\n🔧 שינויים פנסיוניים:`);
+    
+    const current_90144_qty = currentQty[90144] || 0;
+    const previous_90144_qty = previousQty[90144] || 0;
+    console.log(`   📌 דרגה (90144): ${previous_90144_qty} → ${current_90144_qty} ${current_90144_qty !== previous_90144_qty ? '✓ שינוי' : '✗ ללא שינוי'}`);
+    
+    const current_90146_qty = currentQty[90146] || 0;
+    const previous_90146_qty = previousQty[90146] || 0;
+    console.log(`   📌 ותק (90146): ${previous_90146_qty} → ${current_90146_qty} ${current_90146_qty !== previous_90146_qty ? '✓ שינוי' : '✗ ללא שינוי'}`);
+    
+    const current_1507_salaryDate = employee.current.salaryDates[1507] || '';
+    const current_1507_refDate = employee.current.referenceDates[1507] || '';
+    const isCurrent1507Regular = current_1507_salaryDate === current_1507_refDate && current_1507_salaryDate !== '';
+    
+    const previous_1507_salaryDate = employee.previous.salaryDates[1507] || '';
+    const previous_1507_refDate = employee.previous.referenceDates[1507] || '';
+    const isPrevious1507Regular = previous_1507_salaryDate === previous_1507_refDate && previous_1507_salaryDate !== '';
+    
+    const current_1507_qty = isCurrent1507Regular ? (currentQty[1507] || 0) : 0;
+    const previous_1507_qty = isPrevious1507Regular ? (previousQty[1507] || 0) : 0;
+    console.log(`   📌 תפקיד (1507): ${previous_1507_qty} → ${current_1507_qty} ${current_1507_qty !== previous_1507_qty ? '✓ שינוי' : '✗ ללא שינוי'}`);
+    
+    // 7. חד פעמי נוסף (כל 91013)
+    const current_91013 = current[91013] || 0;
+    const previous_91013 = previous[91013] || 0;
+    const diff_91013 = current_91013 - previous_91013;
+    
+    console.log(`\n💵 תשלום חד פעמי כולל (91013):`);
+    console.log(`   • נוכחי: ${current_91013.toFixed(2)} ₪`);
+    console.log(`   • קודם: ${previous_91013.toFixed(2)} ₪`);
+    console.log(`   • שינוי: ${diff_91013.toFixed(2)} ₪`);
+    
+    // 8. שעות נוספות
+    const current_4720_salaryDate = employee.current.salaryDates[4720] || '';
+    const current_4720_refDate = employee.current.referenceDates[4720] || '';
+    const isCurrent4720Regular = current_4720_salaryDate === current_4720_refDate && current_4720_salaryDate !== '';
+    
+    const previous_4720_salaryDate = employee.previous.salaryDates[4720] || '';
+    const previous_4720_refDate = employee.previous.referenceDates[4720] || '';
+    const isPrevious4720Regular = previous_4720_salaryDate === previous_4720_refDate && previous_4720_salaryDate !== '';
+    
+    const current_4720 = isCurrent4720Regular ? (current[4720] || 0) : 0;
+    const previous_4720 = isPrevious4720Regular ? (previous[4720] || 0) : 0;
+    const diff_4720 = current_4720 - previous_4720;
+    
+    console.log(`\n⏰ שעות נוספות (4720):`);
+    console.log(`   • נוכחי: ${current_4720.toFixed(2)} ₪`);
+    console.log(`   • קודם: ${previous_4720.toFixed(2)} ₪`);
+    console.log(`   • שינוי: ${diff_4720.toFixed(2)} ₪`);
+    
+    // 9. סיכום
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`📋 סיכום - מה צריך להיות מוסבר:`);
+    console.log('='.repeat(80));
+    console.log(`   ✓ פנסיוני (adjustedBrutoDiff): ${adjustedBrutoDiff.toFixed(2)} ₪`);
+    console.log(`   ✓ חד פעמי (91013): ${diff_91013.toFixed(2)} ₪`);
+    console.log(`   ✓ שעות נוספות (4720): ${diff_4720.toFixed(2)} ₪`);
+    console.log(`   📊 סה"כ מוסבר: ${(adjustedBrutoDiff + diff_91013 + diff_4720).toFixed(2)} ₪`);
+    console.log(`   📊 שינוי בפועל (91090): ${totalChange.toFixed(2)} ₪`);
+    console.log(`   📏 הפרש: ${(totalChange - (adjustedBrutoDiff + diff_91013 + diff_4720)).toFixed(2)} ₪`);
+    console.log('='.repeat(80) + '\n');
+    
+    // 10. הצגת תוצאת findExplanation
+    console.log(`\n🎯 תוצאת findExplanation בפועל:`);
+    const explanation = findExplanation(employee);
+    console.log(explanation);
+    console.log('\n');
+};
+
+console.log('✅ פונקציית debug מוכנה! הקלד: debugPensionEmployee("מספר_תז")');
     </script>
     <!-- סרגל חריגים -->
     <div class="exceptions-sidebar" id="exceptionsSidebar">
