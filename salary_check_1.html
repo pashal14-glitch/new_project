@@ -1380,6 +1380,97 @@ function analyzePensionOneTime(employee) {
         previousDetails: previousDetails
     };
 }
+// ============================================
+// ניתוח תשלומים חד פעמיים שנכללים בהוצאות
+// ============================================
+
+function analyzeExpensesOneTime(employee) {
+    const empId = employee.id_num;
+    
+    // 🎯 רשימה של QUANTITY שנכללים בהחזרי הוצאות (4717)
+    const EXPENSES_ONE_TIME_SYMBOLS = [
+        1491,  // ביטוח רכב (הוצאות)
+        1492,  // ביטוח רכב (הוצאות)
+        1493   // ביטוח רכב (הוצאות)
+    ];
+    
+    console.log(`🔍 בודק תשלומים חד פעמיים בהוצאות לעובד ${empId}...`);
+    
+    // =========================================
+    // בדיקת חודש נוכחי
+    // =========================================
+    const currentRecords = rawData.filter(row => 
+        row.id_num === empId && 
+        row.SALARY_ELEMENT_NUM === 91013 &&
+        row.SALARY_DATE === currentMonth &&
+        row.REFERENCE_DATE === currentMonth
+    );
+    
+    let currentTotal = 0;
+    const currentDetails = [];
+    
+    currentRecords.forEach(record => {
+        const quantity = record.QUANTITY || 0;
+        const amount = record.AMOUNT || 0;
+        
+        if (EXPENSES_ONE_TIME_SYMBOLS.includes(quantity)) {
+            currentTotal += amount;
+            
+            let symbolName = `ביטוח רכב (${quantity})`;
+            
+            currentDetails.push(`${symbolName}: ${amount.toFixed(2)} ₪`);
+            console.log(`  ✓ חודש נוכחי - ${symbolName}: ${amount.toFixed(2)} ₪`);
+        }
+    });
+    
+    // =========================================
+    // בדיקת חודש קודם
+    // =========================================
+    let previousTotal = 0;
+    const previousDetails = [];
+    
+    if (previousMonth && previousMonth !== null) {
+        const previousRecords = rawData.filter(row => 
+            row.id_num === empId && 
+            row.SALARY_ELEMENT_NUM === 91013 &&
+            row.SALARY_DATE === previousMonth &&
+            row.REFERENCE_DATE === previousMonth
+        );
+        
+        previousRecords.forEach(record => {
+            const quantity = record.QUANTITY || 0;
+            const amount = record.AMOUNT || 0;
+            
+            if (EXPENSES_ONE_TIME_SYMBOLS.includes(quantity)) {
+                previousTotal += amount;
+                
+                let symbolName = `ביטוח רכב (${quantity})`;
+                
+                previousDetails.push(`${symbolName}: ${amount.toFixed(2)} ₪`);
+                console.log(`  ✓ חודש קודם - ${symbolName}: ${amount.toFixed(2)} ₪`);
+            }
+        });
+    } else {
+        console.log(`  ℹ️ אין חודש קודם - מדלגים על בדיקה`);
+    }
+    
+    // =========================================
+    // חישוב השינוי בחד פעמי הוצאות
+    // =========================================
+    const diff = currentTotal - previousTotal;
+    
+    console.log(`  📊 חד פעמי הוצאות נוכחי: ${currentTotal.toFixed(2)} ₪`);
+    console.log(`  📊 חד פעמי הוצאות קודם: ${previousTotal.toFixed(2)} ₪`);
+    console.log(`  💰 שינוי בחד פעמי הוצאות: ${diff.toFixed(2)} ₪`);
+    
+    return {
+        current: currentTotal,
+        previous: previousTotal,
+        diff: diff,
+        currentDetails: currentDetails,
+        previousDetails: previousDetails
+    };
+}
 function analyzeOneTimePayments(employee) {
     const empId = employee.id_num;
     
@@ -1408,10 +1499,10 @@ function analyzeOneTimePayments(employee) {
         console.log(`  📌 QUANTITY=${quantity}, AMOUNT=${amount}, REF_DATE=${refDate}`);
         
         // התעלם מסמלים 8000-9000
-        if (quantity >= 8000 && quantity <= 9000) {
-            console.log(`  ⏭️  מתעלם מסמל ${quantity} (טווח 8000-9000)`);
-            return;
-        }
+       // if (quantity >= 8000 && quantity <= 9000) {
+            //console.log(`  ⏭️  מתעלם מסמל ${quantity} (טווח 8000-9000)`);
+           // return;
+      //  }
         
         if (!byReferenceDate[refDate]) {
             byReferenceDate[refDate] = {
@@ -1503,10 +1594,36 @@ function findExplanation(employee) {
     const totalChange = (current[91090] || 0) - (previous[91090] || 0);
     
     console.log(`🔍 עובד ${employee.id_num}: שינוי כולל = ${totalChange.toFixed(2)}`);
+         // 🎯 חשב את התשלומים החד פעמיים פעם אחת בהתחלה!
+const pensionOneTime = analyzePensionOneTime(employee);
+const expensesOneTime = analyzeExpensesOneTime(employee);
+
+// 🎯 חישוב 91013 - כל התשלומים השוטפים (לא רטרו)!
+const current_91013_all = rawData
+    .filter(r => 
+        r.id_num === employee.id_num && 
+        r.SALARY_ELEMENT_NUM === 91013 && 
+        r.SALARY_DATE === currentMonth &&
+        r.REFERENCE_DATE === currentMonth  // ← שוטף בלבד!
+    )
+    .reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+
+const previous_91013_all = rawData
+    .filter(r => 
+        r.id_num === employee.id_num && 
+        r.SALARY_ELEMENT_NUM === 91013 && 
+        r.SALARY_DATE === previousMonth &&
+        r.REFERENCE_DATE === previousMonth  // ← שוטף בלבד!
+    )
+    .reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+
+console.log(`📊 91013 נוכחי (כולל): ${current_91013_all.toFixed(2)} ₪`);
+console.log(`📊 91013 קודם (כולל): ${previous_91013_all.toFixed(2)} ₪`);
     
     // 🎯 מערך לאיסוף כל ההסברים
     let foundExplanations = [];
     let totalExplained = 0;
+ 
     
     // ======================================
     // בדיקה 1: שינוי בתעריף מסל (91203)
@@ -1538,22 +1655,7 @@ function findExplanation(employee) {
         const previous_91025 = isPrevious91025Regular ? (previous[91025] || 0) : 0;
         const bruto_diff = current_91025 - previous_91025;
         
-        // 🎯 בדיקת תשלומים חד פעמיים שנכללים בפנסיה
-        const pensionOneTime = analyzePensionOneTime(employee);
-        const adjustedBrutoDiff = bruto_diff - pensionOneTime.diff;  // ← תוקן!
-        
-        console.log(`  📊 ברוטו פנסיה גולמי: ${bruto_diff.toFixed(2)} ₪`);
-        if (pensionOneTime.diff !== 0) {  // ← תוקן!
-            console.log(`  ➖ שינוי בחד פעמי פנסיוני: ${pensionOneTime.diff.toFixed(2)} ₪`);
-            if (pensionOneTime.current > 0) {
-                console.log(`     • נוכחי: ${pensionOneTime.current.toFixed(2)} ₪ (${pensionOneTime.currentDetails.join(', ')})`);
-            }
-            if (pensionOneTime.previous > 0) {
-                console.log(`     • קודם: ${pensionOneTime.previous.toFixed(2)} ₪ (${pensionOneTime.previousDetails.join(', ')})`);
-            }
-            console.log(`  ✅ ברוטו פנסיה מתוקן: ${adjustedBrutoDiff.toFixed(2)} ₪`);
-        }
-  
+
         // 🎯 מערך לאיסוף סוגי השינויים הפנסיוניים
         let pensionTypes = [];
         
@@ -1700,76 +1802,92 @@ function findExplanation(employee) {
         
         console.log(`   ✓ שעות נוספות: ${diff.toFixed(2)} ₪`);
     }
-    
     // ======================================
-    // בדיקה 3: החזרי הוצאות (4717)
-    // ======================================
+// בדיקה 3: החזרי הוצאות (4717)
+// ======================================
+
+const current_4717_salaryDate = employee.current.salaryDates[4717] || '';
+const current_4717_refDate = employee.current.referenceDates[4717] || '';
+const isCurrent4717Regular = current_4717_salaryDate === current_4717_refDate && current_4717_salaryDate !== '';
+
+const previous_4717_salaryDate = employee.previous.salaryDates[4717] || '';
+const previous_4717_refDate = employee.previous.referenceDates[4717] || '';
+const isPrevious4717Regular = previous_4717_salaryDate === previous_4717_refDate && previous_4717_salaryDate !== '';
+
+const current_4717 = isCurrent4717Regular ? (current[4717] || 0) : 0;
+const previous_4717 = isPrevious4717Regular ? (previous[4717] || 0) : 0;
+
+if ((isCurrent4717Regular || isPrevious4717Regular) && Math.abs(current_4717 - previous_4717) > 0.01) {
+    const diff_4717_total = current_4717 - previous_4717;
     
-    const current_4717_salaryDate = employee.current.salaryDates[4717] || '';
-    const current_4717_refDate = employee.current.referenceDates[4717] || '';
-    const isCurrent4717Regular = current_4717_salaryDate === current_4717_refDate && current_4717_salaryDate !== '';
+    // 🎯 הפחת את החד פעמי שכבר נכלל בהוצאות
+    const adjustedExpensesDiff = diff_4717_total - expensesOneTime.diff;
     
-    const previous_4717_salaryDate = employee.previous.salaryDates[4717] || '';
-    const previous_4717_refDate = employee.previous.referenceDates[4717] || '';
-    const isPrevious4717Regular = previous_4717_salaryDate === previous_4717_refDate && previous_4717_salaryDate !== '';
-    
-    const current_4717 = isCurrent4717Regular ? (current[4717] || 0) : 0;
-    const previous_4717 = isPrevious4717Regular ? (previous[4717] || 0) : 0;
-    
-    if ((isCurrent4717Regular || isPrevious4717Regular) && Math.abs(current_4717 - previous_4717) > 0.01) {
-        const diff = current_4717 - previous_4717;
-        foundExplanations.push({
-            code: 'EXPENSES',
-            text: 'החזרי הוצאות',
-            detail: `מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)}`,
-            amount: diff
-        });
-        totalExplained += diff;
-        
-        console.log(`   ✓ הוצאות: ${diff.toFixed(2)} ₪`);
+    console.log(`   📊 החזרי הוצאות גולמי: ${diff_4717_total.toFixed(2)} ₪`);
+    if (expensesOneTime.diff !== 0) {
+        console.log(`   ➖ שינוי בחד פעמי הוצאות: ${expensesOneTime.diff.toFixed(2)} ₪`);
+        if (expensesOneTime.current > 0) {
+            console.log(`      • נוכחי: ${expensesOneTime.current.toFixed(2)} ₪ (${expensesOneTime.currentDetails.join(', ')})`);
+        }
+        if (expensesOneTime.previous > 0) {
+            console.log(`      • קודם: ${expensesOneTime.previous.toFixed(2)} ₪ (${expensesOneTime.previousDetails.join(', ')})`);
+        }
+        console.log(`   ✅ החזרי הוצאות מתוקן: ${adjustedExpensesDiff.toFixed(2)} ₪`);
     }
     
-    // ======================================
+    let expensesDetail = `מ-${previous_4717.toFixed(2)} ל-${current_4717.toFixed(2)}`;
+    
+    // הוסף פירוט אם יש חד פעמי הוצאות
+    if (expensesOneTime.current > 0 || expensesOneTime.previous > 0) {
+        let details = [];
+        if (expensesOneTime.current > 0) {
+            details.push(`נוכחי: ${expensesOneTime.currentDetails.join(', ')}`);
+        }
+        if (expensesOneTime.previous > 0) {
+            details.push(`קודם: ${expensesOneTime.previousDetails.join(', ')}`);
+        }
+        expensesDetail += ` | חד פעמי הוצאות: ${details.join(' | ')}`;
+    }
+    
+    foundExplanations.push({
+        code: 'EXPENSES',
+        text: 'החזרי הוצאות',
+        detail: expensesDetail,
+        amount: adjustedExpensesDiff  // ← מתוקן!
+    });
+    totalExplained += adjustedExpensesDiff;
+    
+    console.log(`   ✓ הוצאות: ${expensesDetail} (${adjustedExpensesDiff.toFixed(2)} ₪)`);
+}// ======================================
+// ======================================
 // בדיקה 4: תשלום חד פעמי (91013)
 // ======================================
 
-const current_91013 = current[91013] || 0;
-const previous_91013 = previous[91013] || 0;
+const current_91013 = current_91013_all;
+const previous_91013 = previous_91013_all;
 
-if (current_91013 > 0 || previous_91013 > 0) {
-    const diff = current_91013 - previous_91013;
+if (current_91013 !== 0 || previous_91013 !== 0) {
+    const diff_91013_total = current_91013 - previous_91013;
     
-    // 🎯 הפחת את החלק שכבר נכלל בפנסיה!
-    // אם הגדרנו pensionOneTime קודם, השתמש בו. אחרת, הגדר כאן.
-    let pensionOnTimeDiff = 0;
-    if (typeof pensionOneTime !== 'undefined') {
-        pensionOnTimeDiff = pensionOneTime.diff;
-    }
+    console.log(`   💳 תשלום חד פעמי (91013):`);
+    console.log(`      • סה"כ שינוי: ${diff_91013_total.toFixed(2)} ₪`);
     
-    const nonPensionDiff = diff - pensionOnTimeDiff;
-    
-    console.log(`   💳 תשלום חד פעמי כולל: ${diff.toFixed(2)} ₪`);
-    console.log(`   ➖ כבר נספר בפנסיה: ${pensionOnTimeDiff.toFixed(2)} ₪`);
-    console.log(`   ✅ חד פעמי נוסף (לא פנסיוני): ${nonPensionDiff.toFixed(2)} ₪`);
-    
-    if (Math.abs(nonPensionDiff) > 0.01) {
+    // 🎯 תמיד נספר את המלא!
+    if (Math.abs(diff_91013_total) > 0.01) {
         const oneTimeAnalysis = analyzeOneTimePayments(employee);
         
         foundExplanations.push({
             code: 'ONE_TIME',
             text: 'תשלום חד פעמי',
             detail: oneTimeAnalysis,
-            amount: nonPensionDiff  // ← תוקן!
+            amount: diff_91013_total  // ← הסכום המלא! ✅
         });
-        totalExplained += nonPensionDiff;
+        totalExplained += diff_91013_total;
         
-        console.log(`   ✓ חד פעמי: ${nonPensionDiff.toFixed(2)} ₪`);
-    } else {
-        console.log(`   ℹ️ אין תשלום חד פעמי נוסף (הכל כבר נספר בפנסיה)`);
+        console.log(`   ✓ חד פעמי: ${oneTimeAnalysis} (${diff_91013_total.toFixed(2)} ₪)`);
     }
 }
-    
-    // ======================================
+        // ======================================
     // 🎯 חישוב הפרש והחלטה סופית
     // ======================================
     
@@ -3756,15 +3874,29 @@ window.debugPensionEmployee = function(idNum) {
     const previous_1507_qty = isPrevious1507Regular ? (previousQty[1507] || 0) : 0;
     console.log(`   📌 תפקיד (1507): ${previous_1507_qty} → ${current_1507_qty} ${current_1507_qty !== previous_1507_qty ? '✓ שינוי' : '✗ ללא שינוי'}`);
     
-    // 7. חד פעמי נוסף (כל 91013)
-    const current_91013 = current[91013] || 0;
-    const previous_91013 = previous[91013] || 0;
-    const diff_91013 = current_91013 - previous_91013;
-    
-    console.log(`\n💵 תשלום חד פעמי כולל (91013):`);
-    console.log(`   • נוכחי: ${current_91013.toFixed(2)} ₪`);
-    console.log(`   • קודם: ${previous_91013.toFixed(2)} ₪`);
-    console.log(`   • שינוי: ${diff_91013.toFixed(2)} ₪`);
+    // 💵 תשלום חד פעמי כולל (91013)
+const current_91013_debug = rawData
+    .filter(r => 
+          r.id_num === idNum &&  // ← נכון! ✅
+        r.SALARY_ELEMENT_NUM === 91013 && 
+        r.SALARY_DATE === currentMonth &&
+        r.REFERENCE_DATE === currentMonth
+    )
+    .reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+
+const previous_91013_debug = rawData
+    .filter(r => 
+            r.id_num === idNum &&  // ← נכון! ✅
+        r.SALARY_ELEMENT_NUM === 91013 && 
+        r.SALARY_DATE === previousMonth &&
+        r.REFERENCE_DATE === previousMonth
+    )
+    .reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+
+console.log(`\n💵 תשלום חד פעמי כולל (91013):`);
+console.log(`   • נוכחי: ${current_91013_debug.toFixed(2)} ₪`);
+console.log(`   • קודם: ${previous_91013_debug.toFixed(2)} ₪`);
+console.log(`   • שינוי: ${(current_91013_debug - previous_91013_debug).toFixed(2)} ₪`);
     
     // 8. שעות נוספות
     const current_4720_salaryDate = employee.current.salaryDates[4720] || '';
@@ -3783,6 +3915,7 @@ window.debugPensionEmployee = function(idNum) {
     console.log(`   • נוכחי: ${current_4720.toFixed(2)} ₪`);
     console.log(`   • קודם: ${previous_4720.toFixed(2)} ₪`);
     console.log(`   • שינוי: ${diff_4720.toFixed(2)} ₪`);
+    const diff_91013 = current_91013_debug - previous_91013_debug;  // ← הוסף את זה!
     
     // 9. סיכום
     console.log(`\n${'='.repeat(80)}`);
