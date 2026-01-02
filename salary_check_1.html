@@ -1597,7 +1597,9 @@ function findExplanation(employee) {
          // 🎯 חשב את התשלומים החד פעמיים פעם אחת בהתחלה!
 const pensionOneTime = analyzePensionOneTime(employee);
 const expensesOneTime = analyzeExpensesOneTime(employee);
-
+    
+// 🎯 הגדרת ברוטו פנסיה - ייעשה חישוב אמיתי רק אם יש שינוי תעריף
+let adjustedBrutoDiff = 0;  // ← הוסף את זה! ✅
 // 🎯 חישוב 91013 - כל התשלומים השוטפים (לא רטרו)!
 const current_91013_all = rawData
     .filter(r => 
@@ -4138,3 +4140,4 @@ console.log('✅ פונקציית debug מוכנה! הקלד: debugPensionEmploy
 </div>   
 </body>
 </html>
+
