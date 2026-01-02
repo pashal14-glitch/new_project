@@ -1657,7 +1657,20 @@ console.log(`📊 91013 קודם (כולל): ${previous_91013_all.toFixed(2)} �
         const previous_91025 = isPrevious91025Regular ? (previous[91025] || 0) : 0;
         const bruto_diff = current_91025 - previous_91025;
         
+// 🎯 בדיקת תשלומים חד פעמיים שנכללים בפנסיה
+adjustedBrutoDiff = bruto_diff - pensionOneTime.diff;  // ← הוסף את זה!
 
+console.log(`  📊 ברוטו פנסיה גולמי: ${bruto_diff.toFixed(2)} ₪`);
+if (pensionOneTime.diff !== 0) {
+    console.log(`  ➖ שינוי בחד פעמי פנסיוני: ${pensionOneTime.diff.toFixed(2)} ₪`);
+    if (pensionOneTime.current > 0) {
+        console.log(`     • נוכחי: ${pensionOneTime.current.toFixed(2)} ₪ (${pensionOneTime.currentDetails.join(', ')})`);
+    }
+    if (pensionOneTime.previous > 0) {
+        console.log(`     • קודם: ${pensionOneTime.previous.toFixed(2)} ₪ (${pensionOneTime.previousDetails.join(', ')})`);
+    }
+    console.log(`  ✅ ברוטו פנסיה מתוקן: ${adjustedBrutoDiff.toFixed(2)} ₪`);
+}
         // 🎯 מערך לאיסוף סוגי השינויים הפנסיוניים
         let pensionTypes = [];
         
@@ -4140,4 +4153,5 @@ console.log('✅ פונקציית debug מוכנה! הקלד: debugPensionEmploy
 </div>   
 </body>
 </html>
+
 
