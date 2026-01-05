@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 מודול שליפת אוכלוסיות - עבודה עם סמלי שכר</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            padding-right: 270px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        /* סרגל צד ימני */
+        .stats-sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 250px;
+            height: 100vh;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+        }
+        
+        .stats-sidebar h2 {
+            color: white;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .symbol-category {
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .symbol-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .symbol-item:hover {
+            background: rgba(52, 152, 219, 0.3);
+            transform: translateX(-5px);
+        }
+        
+        .symbol-number {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .symbol-count {
+            background: #3498db;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+        
+        /* סעיפים ראשיים */
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        /* אזור החיפוש */
+        .search-area {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-field {
+            margin-bottom: 15px;
+        }
+        
+        .search-field label {
+            display: block;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .search-field input,
+        .search-field select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        
+        .search-field input:focus,
+        .search-field select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        /* כפתורים */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        /* טבלת תוצאות */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* הודעות */
+        .data-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .data-status.success {
+            background: #d5f4e6;
+            border: 2px solid #27ae60;
+            color: #27ae60;
+        }
+        
+        .data-status.error {
+            background: #fadbd8;
+            border: 2px solid #e74c3c;
+            color: #e74c3c;
+        }
+        
+        .data-status.info {
+            background: #e3f2fd;
+            border: 2px solid #3498db;
+            color: #3498db;
+        }
+        
+        /* הסתרה */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* סטטיסטיקות */
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+
+    <!-- סרגל צד ימני -->
+    <div class="stats-sidebar">
+        <h2>📊 ניתוח סמלי שכר</h2>
+        
+  <div class="symbol-category">
+            <h3>🔢 סמלים נפוצים</h3>
+            <div id="commonSymbols">
+                <!-- יתמלא דינמית -->
+            </div>
+        </div>
+
+    
+   
+        <div class="symbol-category">
+            <h3>📈 סטטיסטיקות</h3>
+            <div id="statsInfo">
+                <div class="symbol-item">
+                    <span>סה"כ שורות:</span>
+                    <span id="totalRows">0</span>
+                </div>
+                <div class="symbol-item">
+                    <span>סה"כ עובדים:</span>
+                    <span id="totalEmployees">0</span>
+                </div>
+                <div class="symbol-item">
+                    <span>סמלים שונים:</span>
+                    <span id="totalSymbols">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="btn btn-warning" style="width: 100%; margin-top: 20px;" onclick="loadRawData()">
+            🔄 רענן נתונים
+        </button>
+    </div>
+
+    <!-- המיכל הראשי -->
+    <div class="container">
+        <div class="header">
+            <h1>🔍 מודול שליפת אוכלוסיות - סמלי שכר</h1>
+            <div id="dataStatus"></div>
+        </div>
+
+        <!-- סעיף חיפוש לפי סמלים -->
+        <div class="section">
+            <h2>🔍 חיפוש לפי סמלי שכר</h2>
+            
+            <div class="search-area">
+                <div class="search-grid">
+                    <div class="search-field">
+                        <label>מספר סמל:</label>
+                        <input type="number" id="symbolSearch" placeholder="למשל: 91090">
+                        <small style="color: #666;">91090=שוטף, 91091=הפרשים, 91092=תשלומים</small>
+                    </div>
+                    
+                    <div class="search-field">
+                        <label>ערך מינימלי:</label>
+                        <input type="number" id="amountMin" placeholder="למשל: 1000">
+                    </div>
+                    
+                    <div class="search-field">
+                        <label>ערך מקסימלי:</label>
+                        <input type="number" id="amountMax" placeholder="למשל: 50000">
+                    </div>
+                    
+                    <div class="search-field">
+                        <label>חודש:</label>
+                        <select id="monthFilter">
+                            <option value="">כל החודשים</option>
+                            <option value="current">חודש נוכחי</option>
+                            <option value="previous">חודש קודם</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- סמלים נפוצים לבחירה מהירה -->
+                <div style="margin-top: 20px;">
+                    <strong>סמלים מהירים:</strong>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="quickSearch(91090)">91090 - שכר שוטף</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91091)">91091 - הפרשים</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91092)">91092 - תשלומים</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91095)">91095 - ניכויים</button>
+                        <button class="btn btn-primary" onclick="quickSearch(43)">43 - דירוג</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-success" onclick="searchBySymbol()" style="font-size: 1.2em;">
+                        🔍 בצע חיפוש
+                    </button>
+                    <button class="btn btn-warning" onclick="clearSearch()">
+                        🔄 נקה חיפוש
+                    </button>
+                    <button class="btn btn-success" id="exportBtn" onclick="exportToExcel()" style="display:none;">
+                        📥 ייצוא לאקסל
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- סעיף תוצאות -->
+        <div class="section" id="resultsSection" style="display:none;">
+            <h2>📋 תוצאות החיפוש</h2>
+            <div id="resultsSummary" style="margin-bottom: 20px;"></div>
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>ת.ז</th>
+                            <th>משרד</th>
+                            <th>סמל</th>
+                            <th>שם סמל</th>
+                            <th>סכום</th>
+                            <th>כמות</th>
+                            <th>אחוז</th>
+                            <th>תעריף</th>
+                            <th>תאריך שכר</th>
+                            <th>תאריך ייחוס</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- יתמלא דינמית -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // משתנים גלובליים
+        let rawData = [];
+        let currentResults = [];
+        let currentMonth = null;
+        let previousMonth = null;
+        let dbConnection = null;
+
+        // ============================================
+        // פונקציות IndexedDB
+        // ============================================
+
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('SharedSalaryDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    dbConnection = request.result;
+                    resolve(dbConnection);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('sharedData')) {
+                        db.createObjectStore('sharedData');
+                    }
+                };
+            });
+        }
+
+        async function loadRawData() {
+            try {
+                console.log('🔄 טוען נתונים גולמיים מ-IndexedDB...');
+                
+                const db = await initDB();
+                const transaction = db.transaction(['sharedData'], 'readonly');
+                const store = transaction.objectStore('sharedData');
+                const request = store.get('currentData');
+                
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        if (request.result && request.result.rawData) {
+                            const data = request.result;
+                            rawData = data.rawData;
+                            currentMonth = data.currentMonth;
+                            previousMonth = data.previousMonth;
+                            
+                            console.log(`✅ נטענו ${rawData.length} שורות נתונים`);
+                            
+                            showStatus('success', 
+                                `✅ נתונים נטענו בהצלחה | 
+                                 📊 ${data.totalRows} שורות | 
+                                 👥 ${data.uniqueEmployees} עובדים | 
+                                 🕐 ${new Date(data.timestamp).toLocaleString('he-IL')}`
+                            );
+                            
+                            updateSidebarStats();
+                            resolve(true);
+                        } else {
+                            console.log('⚠️ לא נמצאו נתונים ב-DB');
+                            showStatus('error', '❌ לא נמצאו נתונים. יש לטעון קבצים במודול ההשוואה תחילה.');
+                            resolve(false);
+                        }
+                    };
+                    
+                    request.onerror = () => {
+                        console.error('❌ שגיאה בקריאה:', request.error);
+                        reject(request.error);
+                    };
+                });
+            } catch (error) {
+                console.error('❌ Error loading raw data:', error);
+                showStatus('error', '❌ שגיאה בטעינת נתונים: ' + error);
+                return false;
+            }
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('dataStatus');
+            statusDiv.className = `data-status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        // ============================================
+        // פונקציות ניתוח וסטטיסטיקה
+        // ============================================
+const symbolsConfig = {
+    "דירוג": {
+        symbolNum: 90144,
+        valueField: "AMOUNT",  // הערך שמעניין אותך
+        displayName: "דירוג",
+        icon: "📊"
+    },
+    "משרד": {
+        symbolNum: 90145,  // דוגמה
+        valueField: "AMOUNT",
+        displayName: "משרד",
+        icon: "🏢"
+    },
+    // כאן תוסיפי עוד סמלים שחשובים לך
+};
+
+// מסנן רק את השורות עם הסמלים שהגדרת
+const relevantRows = rawData.filter(row => 
+    Object.values(symbolsConfig).some(config => 
+        row.SALARY_ELEMENT_NUM == config.symbolNum
+    )
+);
+        function updateSidebarStats() {
+            if (!rawData || rawData.length === 0) return;
+            
+            // ספירות בסיסיות
+            const uniqueEmployees = [...new Set(rawData.map(row => row.id_num))];
+            const symbolCounts = {};
+            
+            
+            // ספירת סמלים
+            rawData.forEach(row => {
+                const symbol = row.SALARY_ELEMENT_NUM;
+                if (!symbolCounts[symbol]) {
+                    symbolCounts[symbol] = {
+                        count: 0,
+                        name: row.ELEMENT_NAME || `סמל ${symbol}`,
+                        totalAmount: 0
+                    };
+                }
+                symbolCounts[symbol].count++;
+                symbolCounts[symbol].totalAmount += (row.AMOUNT || 0);
+            });
+            
+            // עדכון סטטיסטיקות
+            document.getElementById('totalRows').textContent = rawData.length;
+            document.getElementById('totalEmployees').textContent = uniqueEmployees.length;
+            document.getElementById('totalSymbols').textContent = Object.keys(symbolCounts).length;
+            
+            // הצגת סמלים נפוצים (10 הראשונים)
+            const commonSymbolsDiv = document.getElementById('commonSymbols');
+            commonSymbolsDiv.innerHTML = '';
+            
+            const sortedSymbols = Object.entries(symbolCounts)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 10);
+            
+            sortedSymbols.forEach(([symbol, data]) => {
+                const item = document.createElement('div');
+                item.className = 'symbol-item';
+                item.onclick = () => quickSearch(symbol);
+                item.innerHTML = `
+                    <span>
+                        <span class="symbol-number">${symbol}</span>
+                        <br>
+                        <small>${data.name}</small>
+                    </span>
+                    <span class="symbol-count">${data.count}</span>
+                `;
+                commonSymbolsDiv.appendChild(item);
+            });
+        }
+        // לכל קטגוריה (דירוג, משרד וכו') - ספירת ערכים
+function analyzeCategory(categoryName) {
+    const config = symbolsConfig[categoryName];
+    
+    // מסנן רק שורות של הסמל הזה
+    const categoryRows = rawData.filter(row => 
+        row.SALARY_ELEMENT_NUM == config.symbolNum &&
+        row.SALARY_DATE == currentMonth  // רק חודש נוכחי
+    );
+    
+    // קיבוץ לפי ערך וספירה
+    const valueGroups = {};
+    categoryRows.forEach(row => {
+        const value = row[config.valueField];
+        if (!valueGroups[value]) {
+            valueGroups[value] = {
+                count: 0,
+                employees: []
+            };
+        }
+        valueGroups[value].count++;
+        valueGroups[value].employees.push(row.id_num);
+    });
+    
+    return valueGroups;
+}
+
+        // ============================================
+        // פונקציות חיפוש
+        // ============================================
+
+        function searchBySymbol() {
+            if (!rawData || rawData.length === 0) {
+                alert('יש לטעון נתונים תחילה');
+                return;
+            }
+            
+            const symbolNum = document.getElementById('symbolSearch').value;
+            const amountMin = parseFloat(document.getElementById('amountMin').value) || -Infinity;
+            const amountMax = parseFloat(document.getElementById('amountMax').value) || Infinity;
+            const monthFilter = document.getElementById('monthFilter').value;
+            
+            // סינון הנתונים
+            currentResults = rawData.filter(row => {
+                // סינון לפי סמל (אם הוזן)
+                if (symbolNum && row.SALARY_ELEMENT_NUM != symbolNum) {
+                    return false;
+                }
+                
+                // סינון לפי סכום
+                const amount = row.AMOUNT || 0;
+                if (amount < amountMin || amount > amountMax) {
+                    return false;
+                }
+                
+                // סינון לפי חודש
+                if (monthFilter === 'current' && row.SALARY_DATE !== currentMonth) {
+                    return false;
+                }
+                if (monthFilter === 'previous' && row.SALARY_DATE !== previousMonth) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            displayResults();
+        }
+
+        function quickSearch(symbolNum) {
+            document.getElementById('symbolSearch').value = symbolNum;
+            searchBySymbol();
+        }
+
+        function clearSearch() {
+            document.getElementById('symbolSearch').value = '';
+            document.getElementById('amountMin').value = '';
+            document.getElementById('amountMax').value = '';
+            document.getElementById('monthFilter').value = '';
+            
+            currentResults = [];
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('exportBtn').style.display = 'none';
+        }
+
+        // ============================================
+        // פונקציות תצוגה
+        // ============================================
+
+        function displayResults() {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+            
+            if (currentResults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;color:#999;">לא נמצאו תוצאות</td></tr>';
+                document.getElementById('resultsSection').style.display = 'block';
+                document.getElementById('exportBtn').style.display = 'none';
+                updateResultsSummary(0, 0, 0);
+                return;
+            }
+            
+            // קיבוץ לפי עובדים
+            const employeeGroups = {};
+            let totalAmount = 0;
+            
+            currentResults.forEach(row => {
+                const empId = row.id_num;
+                if (!employeeGroups[empId]) {
+                    employeeGroups[empId] = [];
+                }
+                employeeGroups[empId].push(row);
+                totalAmount += (row.AMOUNT || 0);
+            });
+            
+            // הצגת התוצאות
+            currentResults.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                
+                // צביעת שורות לפי עובד
+                if (index > 0 && currentResults[index - 1].id_num !== row.id_num) {
+                    tr.style.borderTop = '3px solid #3498db';
+                }
+                
+                tr.innerHTML = `
+                    <td><strong>${row.id_num}</strong></td>
+                    <td>${row.OFFICE_NUM || '-'}</td>
+                    <td><span class="symbol-number">${row.SALARY_ELEMENT_NUM}</span></td>
+                    <td>${row.ELEMENT_NAME || '-'}</td>
+                    <td style="font-weight:bold;">${formatNumber(row.AMOUNT)}</td>
+                    <td>${formatNumber(row.QUANTITY)}</td>
+                    <td>${formatNumber(row.PERCENTAGE)}%</td>
+                    <td>${formatNumber(row.TARIFF)}</td>
+                    <td>${formatDate(row.SALARY_DATE)}</td>
+                    <td>${formatDate(row.REFERENCE_DATE)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            updateResultsSummary(currentResults.length, Object.keys(employeeGroups).length, totalAmount);
+            
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('exportBtn').style.display = 'inline-block';
+        }
+
+        function updateResultsSummary(rows, employees, totalAmount) {
+            const summaryDiv = document.getElementById('resultsSummary');
+            summaryDiv.innerHTML = `
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; display: flex; justify-content: space-around;">
+                    <div>
+                        <strong>שורות:</strong> ${rows}
+                    </div>
+                    <div>
+                        <strong>עובדים:</strong> ${employees}
+                    </div>
+                    <div>
+                        <strong>סכום כולל:</strong> ${formatCurrency(totalAmount)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // פונקציות עזר
+        // ============================================
+
+        function formatNumber(num) {
+            if (num === null || num === undefined || num === 0) return '-';
+            return num.toLocaleString('he-IL', { maximumFractionDigits: 2 });
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('he-IL', {
+                style: 'currency',
+                currency: 'ILS',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount || 0);
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            try {
+                return new Date(date).toLocaleDateString('he-IL');
+            } catch {
+                return date;
+            }
+        }
+
+        // ============================================
+        // ייצוא לאקסל
+        // ============================================
+
+        function exportToExcel() {
+            if (currentResults.length === 0) {
+                alert('אין תוצאות לייצוא');
+                return;
+            }
+            
+            // הכנת הנתונים לייצוא
+            const exportData = currentResults.map(row => ({
+                'ת.ז': row.id_num,
+                'משרד': row.OFFICE_NUM || '',
+                'מספר סמל': row.SALARY_ELEMENT_NUM,
+                'שם סמל': row.ELEMENT_NAME || '',
+                'סכום': row.AMOUNT || 0,
+                'כמות': row.QUANTITY || 0,
+                'אחוז': row.PERCENTAGE || 0,
+                'תעריף': row.TARIFF || 0,
+                'תאריך שכר': row.SALARY_DATE || '',
+                'תאריך ייחוס': row.REFERENCE_DATE || '',
+                'DATE_FROM': row.DATE_FROM || ''
+            }));
+            
+            // יצירת גיליון
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'שליפת סמלים');
+            
+            // שמירת הקובץ
+            const fileName = `שליפת_סמלים_${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // ============================================
+        // אתחול
+        // ============================================
+
+        window.onload = async function() {
+            console.log('🚀 מאתחל מודול שליפת סמלי שכר...');
+            
+            // טעינת נתונים מ-IndexedDB
+            const dataLoaded = await loadRawData();
+            
+            if (!dataLoaded) {
+                showStatus('error', 
+                    `❌ לא נמצאו נתונים במערכת. 
+                    <br><br>
+                    <button class="btn btn-primary" onclick="window.open('salary_check_new_version.html', '_blank')">
+                        📊 עבור למודול ההשוואה לטעינת נתונים
+                    </button>`
+                );
+            }
+        };
+
+        // האזנה לשינויים ב-storage
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'sharedDataUpdated') {
+                console.log('🔄 זוהו נתונים חדשים, טוען מחדש...');
+                loadRawData();
+            }
+        });
+    </script>
+</body>
+</html>
