@@ -736,6 +736,14 @@
     <div id="loadMessage" style="margin-top: 10px;"></div>
 </div>
 
+<div style="text-align: center; margin-top: 15px;">
+        <button id="populationBtn" class="btn-primary" onclick="openPopulationQuery()" 
+                style="background: #9b59b6;">
+            🔍 פתח מודול שליפת אוכלוסיות
+        </button>
+      
+</div>
+
 <div class="section hidden" id="statsSection" style="display: none !important;">
             <h2>📊 סטטיסטיקות</h2>
             <div class="stats-grid">
@@ -780,7 +788,12 @@
         <select id="filterOffice" style="width: 100px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
             <option value="">כל המשרדים</option>
         </select>
-        
+
+            <input type="text" id="filterGrade" placeholder="דירוג" 
+               style="width: 120px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+                <input type="text" id="filterMaamad" placeholder="מעמד" 
+               style="width: 120px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
+
         <select id="filterStatus" style="width: 120px; padding: 8px; border: 2px solid #ddd; border-radius: 5px; font-size: 0.9em;">
             <option value="">הכל</option>
             <option value="GREEN">נמצא הסבר ✅</option>
@@ -834,12 +847,14 @@
                 <thead>
                     <tr>
                         <th>מספר זהות</th>
-                        <th>משרד</th>
+                         <th>משרד</th>
+                        <th>דירוג</th>
+                        <th>מעמד</th>
                         <th>שוטף נוכחי</th>
                         <th>שוטף קודם</th>
                         <th>שינוי</th>
                         <th>סיבת שינוי</th>
-                        <th>הסבר מפורט</th>
+                  
                         <th>סטטוס</th>
                     </tr>
                 </thead>
@@ -958,39 +973,41 @@ const exceptionTypes = [
 
         // ============================================
         // טעינת קובץ
-  document.getElementById('fileInput').addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            // ✨ הוסיפי את זה כאן! ✨
+ document.getElementById('fileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    
     if (file) {
         document.getElementById('fileNameDisplay').innerHTML = `
             <strong style="color: #27ae60;">✅ ${file.name}</strong>
         `;
     }
-            if (!file) {
-                showMessage('loadMessage', 'לא נבחר קובץ', 'error');
-                return;
-            }
+    
+    if (!file) {
+        showMessage('loadMessage', 'לא נבחר קובץ', 'error');
+        return;
+    }
 
-       
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        rawData = XLSX.utils.sheet_to_json(firstSheet);
 
-            try {
-                const data = await file.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                rawData = XLSX.utils.sheet_to_json(firstSheet);
+        console.log(`✅ נטענו ${rawData.length} רשומות גולמיות`);
 
-                console.log(`✅ נטענו ${rawData.length} רשומות גולמיות`);
+        identifyMonths();
+        organizeDataByEmployee();
+        analyzeData();
+        updateUIAfterLoad();
+        
+        // 🆕 שמירה אוטומטית של הנתונים הגולמיים
+        saveRawDataToDB();
 
-                identifyMonths();
-                organizeDataByEmployee();
-                analyzeData();
-                updateUIAfterLoad();
-
-            } catch (error) {
-                console.error('❌ שגיאה:', error);
-                showMessage('loadMessage', '❌ שגיאה בטעינת הקובץ: ' + error.message, 'error');
-            }
-        });
+    } catch (error) {
+        console.error('❌ שגיאה:', error);
+        showMessage('loadMessage', '❌ שגיאה בטעינת הקובץ: ' + error.message, 'error');
+    }
+});
 
 function formatChange(number) {
             return number.toLocaleString('he-IL', { minimumFractionDigits: 2, signDisplay: 'always' }) + ' ₪';
@@ -1024,57 +1041,94 @@ function formatChange(number) {
         // ============================================
         // ארגון נתונים לפי עובד - שמירת כל השדות!
         // ============================================
+function organizeDataByEmployee() {
+    employeesData = {};
 
-        function organizeDataByEmployee() {
-            employeesData = {};
+    rawData.forEach(row => {
+        const empId = row.id_num;
 
-            rawData.forEach(row => {
-                const empId = row.id_num;
-
-                // יצירת רשומת עובד אם לא קיימת
-                if (!employeesData[empId]) {
-                    employeesData[empId] = {
-                        id_num: empId,
-                        office_num: row.OFFICE_NUM,
-                        current: {
-                            elements: {},      // AMOUNT
-                            quantities: {},    // QUANTITY
-                            percentages: {},   // PERCENTAGE
-                            tariffs: {},       // TARIFF
-                            elementNames: {},  // ELEMENT_NAME
-                            salaryDates: {},   // SALARY_DATE
-                            referenceDates: {}, // REFERENCE_DATE
-                             dateFroms: {}      // ← DATE_FROM (הוסיפי!)
-                        },
-                        previous: {
-                            elements: {},
-                            quantities: {},
-                            percentages: {},
-                            tariffs: {},
-                            elementNames: {},
-                            salaryDates: {},
-                            referenceDates: {},
-                             dateFroms: {}      // ← DATE_FROM (הוסיפי!)
-                        }
-                    };
+        // יצירת רשומת עובד אם לא קיימת
+        if (!employeesData[empId]) {
+            employeesData[empId] = {
+                id_num: empId,
+                office_num: row.OFFICE_NUM || '',
+                grade: null,
+                maamad: null,
+                current: {
+                    elements: {},
+                    quantities: {},
+                    percentages: {},
+                    tariffs: {},
+                    elementNames: {},
+                    salaryDates: {},
+                    referenceDates: {},
+                    dateFroms: {}
+                },
+                previous: {
+                    elements: {},
+                    quantities: {},
+                    percentages: {},
+                    tariffs: {},
+                    elementNames: {},
+                    salaryDates: {},
+                    referenceDates: {},
+                    dateFroms: {}
                 }
-
-                // קביעת סוג חודש
-                const monthType = row.SALARY_DATE === currentMonth ? 'current' : 'previous';
-                const elementNum = row.SALARY_ELEMENT_NUM;
-
-               employeesData[empId][monthType].elements[elementNum] = row.AMOUNT || 0;
-employeesData[empId][monthType].quantities[elementNum] = row.QUANTITY || 0;
-employeesData[empId][monthType].percentages[elementNum] = row.PERCENTAGE || 0;
-employeesData[empId][monthType].tariffs[elementNum] = row.TARIFF || 0;
-employeesData[empId][monthType].elementNames[elementNum] = row.ELEMENT_NAME || '';
-employeesData[empId][monthType].salaryDates[elementNum] = row.SALARY_DATE || '';
-employeesData[empId][monthType].referenceDates[elementNum] = row.REFERENCE_DATE || '';
-employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  // ← הוסיפי!
-            });
-
-            console.log(`👥 מאורגנים ${Object.keys(employeesData).length} עובדים`);
+            };
         }
+
+        // קביעת סוג חודש
+        const monthType = row.SALARY_DATE === currentMonth ? 'current' : 'previous';
+
+        // 🔒 נרמול אלמנט למספר
+        const elementNum = Number(row.SALARY_ELEMENT_NUM);
+
+        // שמירת נתוני אלמנטים
+        employeesData[empId][monthType].elements[elementNum] = Number(row.AMOUNT) || 0;
+        employeesData[empId][monthType].quantities[elementNum] = Number(row.QUANTITY) || 0;
+        employeesData[empId][monthType].percentages[elementNum] = Number(row.PERCENTAGE) || 0;
+        employeesData[empId][monthType].tariffs[elementNum] = Number(row.TARIFF) || 0;
+        employeesData[empId][monthType].elementNames[elementNum] = row.ELEMENT_NAME || '';
+        employeesData[empId][monthType].salaryDates[elementNum] = row.SALARY_DATE || '';
+        employeesData[empId][monthType].referenceDates[elementNum] = row.REFERENCE_DATE || '';
+        employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';
+
+
+
+        // ===============================
+        // חילוץ GRADE מתוך אלמנט 90144
+        // ===============================
+        if (elementNum === 90144) {
+            // נוכחי קודם
+          if (monthType === 'current') {
+                employeesData[empId].grade = row.AMOUNT;
+            }
+            // fallback – אם אין נוכחי
+            else if (employeesData[empId].grade == null) {
+                employeesData[empId].grade = row.AMOUNT;
+            }
+        }
+        
+        // ===============================
+        // חילוץ maamad מתוך אלמנט 90150
+        // ===============================
+        if (elementNum === 90150) {
+            // נוכחי קודם
+          if (monthType === 'current') {
+                employeesData[empId].maamad = row.QUANTITY;
+            }
+            // fallback – אם אין נוכחי
+            else if (employeesData[empId].maamad == null) {
+                employeesData[empId].maamad = row.QUANTITY;
+            }
+        }
+
+
+      });
+   
+    console.log(`👥 מאורגנים ${Object.keys(employeesData).length} עובדים`);
+}
+
 
         // ============================================
         // ניתוח נתונים
@@ -1171,6 +1225,8 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
         const current_91090 = employee.current.elements[91090] || 0;
         const previous_91090 = employee.previous.elements[91090] || 0;
         const change = current_91090 - previous_91090;
+       const grade = employee.grade || '';
+      const maamad = employee.maamad || '';
 
         // ======================================
         // זיהוי עובד חדש / מופסק
@@ -1181,6 +1237,8 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
             const result = {
                 id_num: employee.id_num,
                 office_num: employee.office_num,
+                grade,
+                 maamad,
                 current_regular: 0,
                 previous_regular: previous_91090,
                 change: -previous_91090,
@@ -1201,6 +1259,8 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
             const result = {
                 id_num: employee.id_num,
                 office_num: employee.office_num,
+                grade,
+    maamad,
                 current_regular: current_91090,
                 previous_regular: 0,
                 change: current_91090,
@@ -1218,10 +1278,12 @@ employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';  //
                 if (Math.abs(change) > 100) {
                     // מציאת הסבר לשינוי - פונקציה נפרדת!
                     const explanation = findExplanation(employee);
-                    
+             
                     const result = {
                         id_num: employee.id_num,
                         office_num: employee.office_num,
+                         grade: employee.grade,
+                         maamad: employee.maamad,
                         current_regular: current_91090,
                         previous_regular: previous_91090,
                         change: change,
@@ -2250,7 +2312,7 @@ function analyzeAdditionalExceptions() {
         // עדכון UI אחרי טעינה
         // ============================================
 
-        function updateUIAfterLoad() {
+         function updateUIAfterLoad() {
     console.log('📊 מתחיל ניתוח...');
     
     // 1️⃣ ניתוח שינויים בשוטף (91090)
@@ -2276,6 +2338,11 @@ function analyzeAdditionalExceptions() {
     loadSnapshotsList();
     updateExceptionsSidebar();
     saveSnapshot();
+    // שמירה אוטומטית ל-IndexedDB
+     saveSharedData();
+    
+    // הצגת כפתור למודול השליפות
+    //showPopulationButton();
 }
 
         // ============================================
@@ -2294,6 +2361,18 @@ function analyzeAdditionalExceptions() {
                 select.appendChild(option);
             });
         }
+        function populateGradeFilter(results) {
+    const gradeSelect = document.getElementById('filterGrade');
+    // חילוץ דרגות ייחודיות, סינון nullים ומיון
+    const grades = [...new Set(results.map(r => r.grade))]
+                    .filter(g => g != null)
+                    .sort((a, b) => a - b);
+
+    gradeSelect.innerHTML = '<option value="">כל הדרגות</option>';
+    grades.forEach(grade => {
+        gradeSelect.innerHTML += `<option value="${grade}">${grade}</option>`;
+    });
+}
 
         // ============================================
         // עדכון סטטיסטיקות
@@ -2331,7 +2410,7 @@ function displayResults(filteredData = null) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:30px;color:#999;">לא נמצאו תוצאות</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;color:#999;">לא נמצאו תוצאות</td></tr>';
         return;
     }
 
@@ -2361,11 +2440,13 @@ function displayResults(filteredData = null) {
         tr.innerHTML = `
             <td>${row.id_num} <span class="expand-icon" id="icon-${index}">▼</span></td>
             <td>${row.office_num}</td>
+             <td>${row.grade}</td>           <!-- 🆕 חדש -->
+             <td>${row.maamad}</td>      
             <td>${formatCurrency(row.current_regular)}</td>
             <td>${formatCurrency(row.previous_regular)}</td>
             <td class="${changeClass}">${formatChange(row.change)}</td>
             <td><strong>${row.reason_text}</strong></td>
-            <td style="text-align:right;padding-right:20px;">${row.explanation_detail}</td>
+          
             <td class="status-${statusClass}">${statusText}</td>
         `;
         tbody.appendChild(tr);
@@ -2379,7 +2460,7 @@ function displayResults(filteredData = null) {
         const detailHTML = buildDetailContent(row);
         
         detailTr.innerHTML = `
-            <td colspan="8">
+            <td colspan="9">
                 <div class="detail-content">
                     ${detailHTML}
                 </div>
@@ -2532,14 +2613,17 @@ function displayResults91091(filteredData = null) {
       function applyFilters() {
     const filterEmployee = document.getElementById('filterEmployee').value.trim();
     const filterOffice = document.getElementById('filterOffice').value;
+     const filterGrade = document.getElementById('filterGrade').value;
     const filterStatus = document.getElementById('filterStatus').value;
     const filterReason = document.getElementById('filterReason').value;
 
     let filtered = analysisResults.filter(row => {
         if (filterEmployee && !row.id_num.toString().includes(filterEmployee)) return false;
         if (filterOffice && row.office_num.toString() !== filterOffice) return false;
+         if (filterGrade && (row.grade === null || row.grade === undefined || row.grade.toString() !== filterGrade)) return false;
         if (filterStatus && row.status !== filterStatus) return false;
         
+
         // סינון לפי סיבת שינוי
         if (filterReason) {
             if (filterReason === 'PENSION') {
@@ -2595,7 +2679,7 @@ function displayResults91091(filteredData = null) {
             const rows = tbody.getElementsByTagName('tr');
 
             // כותרות
-            data.push(['מספר זהות', 'משרד', 'שוטף נוכחי', 'שוטף קודם', 'שינוי', 'סיבת שינוי', 'הסבר מפורט', 'סטטוס']);
+            data.push(['מספר זהות', 'דירוג', 'מעמד', 'שוטף נוכחי', 'שוטף קודם', 'שינוי', 'סיבת שינוי', 'הסבר מפורט', 'סטטוס']);
 
             // נתונים
             Array.from(rows).forEach(row => {
@@ -4034,6 +4118,165 @@ console.log(`   • שינוי: ${(current_91013_debug - previous_91013_debug).t
 };
 
 console.log('✅ פונקציית debug מוכנה! הקלד: debugPensionEmployee("מספר_תז")');
+// ============================================
+// פונקציות לשיתוף נתונים עם מודול השליפות
+// ============================================
+
+async function initSharedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('SharedSalaryDB', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('sharedData')) {
+                db.createObjectStore('sharedData');
+                console.log('✅ טבלת sharedData נוצרה לשיתוף נתונים');
+            }
+        };
+    });
+}
+
+async function saveSharedData() {
+    try {
+        console.log('🔄 שומר נתונים לשיתוף...');
+        
+        // בדיקה שיש נתונים
+        if (!employeesData || Object.keys(employeesData).length === 0) {
+            console.error('❌ אין נתונים לשמירה!');
+            return false;
+        }
+        
+        const db = await initSharedDB();
+        const transaction = db.transaction(['sharedData'], 'readwrite');
+        const store = transaction.objectStore('sharedData');
+        
+        const dataPackage = {
+            employeesData: employeesData,
+            currentMonth: currentMonth,
+            previousMonth: previousMonth,
+            timestamp: new Date().toISOString(),
+            totalEmployees: Object.keys(employeesData).length,
+            rawData: rawData // שמירת הנתונים הגולמיים אם נצרך
+        };
+        
+        console.log(`📦 שומר ${dataPackage.totalEmployees} עובדים לשיתוף...`);
+        
+        const request = store.put(dataPackage, 'currentData');
+        
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                console.log('✅ נתונים נשמרו בהצלחה לשיתוף!');
+                // הודעה לחלונות אחרים שהנתונים עודכנו
+                localStorage.setItem('sharedDataUpdated', new Date().toISOString());
+                resolve(true);
+            };
+            request.onerror = () => {
+                console.error('❌ שגיאה בשמירה:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('❌ שגיאה בשמירת נתונים לשיתוף:', error);
+        return false;
+    }
+}
+
+async function saveRawDataToDB() {
+    try {
+        console.log('🔄 שומר נתונים גולמיים לשיתוף...');
+        
+        // בדיקה שיש נתונים
+        if (!rawData || rawData.length === 0) {
+            console.error('❌ אין נתונים גולמיים לשמירה!');
+            return false;
+        }
+        
+        const db = await initSharedDB();
+        const transaction = db.transaction(['sharedData'], 'readwrite');
+        const store = transaction.objectStore('sharedData');
+        
+        // שמירת הנתונים הגולמיים כמו שהם
+        const dataPackage = {
+            rawData: rawData,  // ← כל הנתונים מהאקסל!
+            currentMonth: currentMonth,
+            previousMonth: previousMonth,
+            timestamp: new Date().toISOString(),
+            totalRows: rawData.length,
+            
+            // נתונים נוספים שעשויים לעזור
+            uniqueEmployees: [...new Set(rawData.map(row => row.id_num))].length,
+            uniqueSymbols: [...new Set(rawData.map(row => row.SALARY_ELEMENT_NUM))],
+            
+            // גם שומרים את הנתונים המעובדים אם רוצים
+            employeesData: employeesData  // אופציונלי
+        };
+        
+        console.log(`📦 שומר ${dataPackage.totalRows} שורות נתונים...`);
+        console.log(`👥 ${dataPackage.uniqueEmployees} עובדים ייחודיים`);
+        console.log(`🔢 ${dataPackage.uniqueSymbols.length} סמלי שכר שונים`);
+        
+        const request = store.put(dataPackage, 'currentData');
+        
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                console.log('✅ נתונים גולמיים נשמרו בהצלחה!');
+                
+                // הודעה לחלונות אחרים שהנתונים עודכנו
+                localStorage.setItem('sharedDataUpdated', new Date().toISOString());
+                
+                // הצגת הודעה למשתמש
+                showDataSavedMessage();
+                
+                resolve(true);
+            };
+            request.onerror = () => {
+                console.error('❌ שגיאה בשמירה:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('❌ שגיאה בשמירת נתונים:', error);
+        return false;
+    }
+}
+
+// פונקציה להצגת הודעה על שמירה מוצלחת
+function showDataSavedMessage() {
+    // אם יש כבר אזור הודעות, השתמש בו
+    const messageArea = document.getElementById('loadMessage') || 
+                       document.querySelector('.message');
+    
+    if (messageArea) {
+        messageArea.innerHTML = `
+            <div class="message success">
+                ✅ הנתונים נשמרו ונגישים למודול השליפות | 
+                ${rawData.length} שורות | 
+                ${[...new Set(rawData.map(r => r.id_num))].length} עובדים
+            </div>
+        `;
+    }
+}
+
+// פונקציה לפתיחת מודול השליפות
+function openPopulationQuery() {
+    // קודם נוודא שיש נתונים
+    if (!rawData || rawData.length === 0) {
+        alert('יש לטעון קבצים תחילה');
+        return;
+    }
+    
+    // שומרים את הנתונים העדכניים ביותר
+    saveRawDataToDB().then(() => {
+        console.log('📂 פותח מודול שליפות...');
+        window.open('population_query.html', '_blank');
+    }).catch(error => {
+        console.error('❌ שגיאה:', error);
+        alert('שגיאה בשמירת נתונים. נסי שוב.');
+    });
+}
     </script>
     <!-- סרגל חריגים -->
     <div class="exceptions-sidebar" id="exceptionsSidebar">
