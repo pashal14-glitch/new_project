@@ -95,7 +95,44 @@
             border-radius: 12px;
             font-size: 0.9em;
         }
-        
+
+        /* מנגנון אקורדיון לקטגוריות */
+        .category-header {
+            cursor: pointer;
+            user-select: none;
+            padding: 8px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-header:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .category-toggle {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #3498db;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0;
+        }
+
+        .category-content.open {
+            max-height: 500px;
+            padding-top: 10px;
+        }
+
         /* סעיפים ראשיים */
         .section {
             padding: 30px;
@@ -275,15 +312,12 @@
     <div class="stats-sidebar">
         <h2>📊 ניתוח סמלי שכר</h2>
         
-  <div class="symbol-category">
-            <h3>🔢 סמלים נפוצים</h3>
-            <div id="commonSymbols">
-                <!-- יתמלא דינמית -->
-            </div>
+  <div id="categoriesContainer">
+            <!-- יתמלא דינמית עם כל הקטגוריות -->
         </div>
 
-    
-   
+
+
         <div class="symbol-category">
             <h3>📈 סטטיסטיקות</h3>
             <div id="statsInfo">
@@ -326,6 +360,13 @@
                         <small style="color: #666;">91090=שוטף, 91091=הפרשים, 91092=תשלומים</small>
                     </div>
                     
+
+   <div class="search-field">
+                        <label>שם הסמל :</label>
+                        <input type="text" id="symbolNameSearch" placeholder="למשל: דרוג">
+                    </div>
+
+
                     <div class="search-field">
                         <label>ערך מינימלי:</label>
                         <input type="number" id="amountMin" placeholder="למשל: 1000">
@@ -352,9 +393,10 @@
                     <div style="margin-top: 10px;">
                         <button class="btn btn-primary" onclick="quickSearch(91090)">91090 - שכר שוטף</button>
                         <button class="btn btn-primary" onclick="quickSearch(91091)">91091 - הפרשים</button>
-                        <button class="btn btn-primary" onclick="quickSearch(91092)">91092 - תשלומים</button>
-                        <button class="btn btn-primary" onclick="quickSearch(91095)">91095 - ניכויים</button>
-                        <button class="btn btn-primary" onclick="quickSearch(43)">43 - דירוג</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91092)">91092 - סה"כ תשלומים</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91095)">91095 - סה"כ ניכויים</button>
+                        <button class="btn btn-primary" onclick="quickSearch(91096)">91096 - סה"כ נטו לתשלום</button>
+
                     </div>
                 </div>
                 
@@ -485,106 +527,173 @@
         }
 
         // ============================================
-        // פונקציות ניתוח וסטטיסטיקה
+        // פונקציות ניתוח וסטטיסטיקה - מערכת גנרית
         // ============================================
-const symbolsConfig = {
-    "דירוג": {
-        symbolNum: 90144,
-        valueField: "AMOUNT",  // הערך שמעניין אותך
-        displayName: "דירוג",
-        icon: "📊"
-    },
-    "משרד": {
-        symbolNum: 90145,  // דוגמה
-        valueField: "AMOUNT",
-        displayName: "משרד",
-        icon: "🏢"
-    },
-    // כאן תוסיפי עוד סמלים שחשובים לך
-};
 
-// מסנן רק את השורות עם הסמלים שהגדרת
-const relevantRows = rawData.filter(row => 
-    Object.values(symbolsConfig).some(config => 
-        row.SALARY_ELEMENT_NUM == config.symbolNum
-    )
-);
+        // הגדרת כל הקטגוריות במקום אחד
+        const CATEGORIES = [
+            {
+                id: 'grade',
+                name: 'דירוגים',
+                icon: '📊',
+                symbol: 90144,
+                field: 'AMOUNT',
+                sortOrder: 'desc'
+            },
+            {
+                id: 'employeeStatus',
+                name: 'מעמד עובד',
+                icon: '👤',
+                symbol: 90150,
+                field: 'QUANTITY',
+                sortOrder: 'asc'
+            },
+            {
+                id: 'jobScope',
+                name: 'חלקיות משרה',
+                icon: '⏰',
+                symbol: 90148,
+                field: 'PERCENTAGE',
+                sortOrder: 'desc'
+            }
+        ];
+
+        // יצירת HTML דינמית לכל הקטגוריות
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+
+            CATEGORIES.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'symbol-category';
+                categoryDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCategory('${category.id}')">
+                        <span>${category.icon} ${category.name}</span>
+                        <span class="category-toggle" id="${category.id}Toggle">+</span>
+                    </div>
+                    <div class="category-content" id="${category.id}Content">
+                        <div id="${category.id}Items">
+                            <!-- יתמלא דינמית -->
+                        </div>
+                    </div>
+                `;
+                container.appendChild(categoryDiv);
+            });
+        }
+
+        // עדכון קטגוריה ספציפית
+        function updateCategory(category) {
+            const itemsDiv = document.getElementById(`${category.id}Items`);
+            if (!itemsDiv) return; // אם הקטגוריה עוד לא נוצרה
+
+            itemsDiv.innerHTML = '';
+
+            // סינון שורות לפי הסמל והחודש
+            const categoryRows = rawData.filter(row =>
+                row.SALARY_ELEMENT_NUM == category.symbol &&
+                row.SALARY_DATE == currentMonth
+            );
+
+            if (categoryRows.length === 0) {
+                itemsDiv.innerHTML = `<div style="padding:10px;opacity:0.7;">אין נתוני ${category.name}</div>`;
+                return;
+            }
+
+            // קיבוץ לפי ערך וספירת עובדים
+            const valueGroups = {};
+            categoryRows.forEach(row => {
+                const value = row[category.field];
+                if (value === null || value === undefined) return;
+
+                if (!valueGroups[value]) {
+                    valueGroups[value] = new Set();
+                }
+                valueGroups[value].add(row.id_num);
+            });
+
+            // מיון
+            const sortedValues = Object.entries(valueGroups).sort((a, b) => {
+                const numA = parseFloat(a[0]);
+                const numB = parseFloat(b[0]);
+                return category.sortOrder === 'desc' ? numB - numA : numA - numB;
+            });
+
+            // הצגת הערכים
+            sortedValues.forEach(([value, employeeSet]) => {
+                const item = document.createElement('div');
+                item.className = 'symbol-item';
+                item.onclick = () => searchByCategory(category, value);
+                item.innerHTML = `
+                    <span>
+                        <span class="symbol-number">${category.name} ${value}</span>
+                    </span>
+                    <span class="symbol-count">${employeeSet.size}</span>
+                `;
+                itemsDiv.appendChild(item);
+            });
+        }
+
+        // עדכון כל הקטגוריות
+        function updateAllCategories() {
+            CATEGORIES.forEach(category => {
+                updateCategory(category);
+            });
+        }
+
+        // פתיחה/סגירה של קטגוריה
+        function toggleCategory(categoryId) {
+            const content = document.getElementById(`${categoryId}Content`);
+            const toggle = document.getElementById(`${categoryId}Toggle`);
+
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                toggle.textContent = '+';
+            } else {
+                content.classList.add('open');
+                toggle.textContent = '-';
+            }
+        }
+
+        // חיפוש לפי קטגוריה וערך
+        function searchByCategory(category, value) {
+            document.getElementById('symbolSearch').value = category.symbol;
+
+            if (category.field === 'AMOUNT') {
+                document.getElementById('amountMin').value = value;
+                document.getElementById('amountMax').value = value;
+            } else {
+                document.getElementById('amountMin').value = '';
+                document.getElementById('amountMax').value = '';
+            }
+
+            document.getElementById('monthFilter').value = 'current';
+            searchBySymbol();
+        }
+
+        // עדכון סטטיסטיקות כללית
         function updateSidebarStats() {
             if (!rawData || rawData.length === 0) return;
-            
+
             // ספירות בסיסיות
             const uniqueEmployees = [...new Set(rawData.map(row => row.id_num))];
             const symbolCounts = {};
-            
-            
-            // ספירת סמלים
+
             rawData.forEach(row => {
                 const symbol = row.SALARY_ELEMENT_NUM;
                 if (!symbolCounts[symbol]) {
-                    symbolCounts[symbol] = {
-                        count: 0,
-                        name: row.ELEMENT_NAME || `סמל ${symbol}`,
-                        totalAmount: 0
-                    };
+                    symbolCounts[symbol] = { count: 0 };
                 }
                 symbolCounts[symbol].count++;
-                symbolCounts[symbol].totalAmount += (row.AMOUNT || 0);
             });
-            
-            // עדכון סטטיסטיקות
+
+            // עדכון סטטיסטיקות כלליות
             document.getElementById('totalRows').textContent = rawData.length;
             document.getElementById('totalEmployees').textContent = uniqueEmployees.length;
             document.getElementById('totalSymbols').textContent = Object.keys(symbolCounts).length;
-            
-            // הצגת סמלים נפוצים (10 הראשונים)
-            const commonSymbolsDiv = document.getElementById('commonSymbols');
-            commonSymbolsDiv.innerHTML = '';
-            
-            const sortedSymbols = Object.entries(symbolCounts)
-                .sort((a, b) => b[1].count - a[1].count)
-                .slice(0, 10);
-            
-            sortedSymbols.forEach(([symbol, data]) => {
-                const item = document.createElement('div');
-                item.className = 'symbol-item';
-                item.onclick = () => quickSearch(symbol);
-                item.innerHTML = `
-                    <span>
-                        <span class="symbol-number">${symbol}</span>
-                        <br>
-                        <small>${data.name}</small>
-                    </span>
-                    <span class="symbol-count">${data.count}</span>
-                `;
-                commonSymbolsDiv.appendChild(item);
-            });
+
+            // עדכון כל הקטגוריות
+            updateAllCategories();
         }
-        // לכל קטגוריה (דירוג, משרד וכו') - ספירת ערכים
-function analyzeCategory(categoryName) {
-    const config = symbolsConfig[categoryName];
-    
-    // מסנן רק שורות של הסמל הזה
-    const categoryRows = rawData.filter(row => 
-        row.SALARY_ELEMENT_NUM == config.symbolNum &&
-        row.SALARY_DATE == currentMonth  // רק חודש נוכחי
-    );
-    
-    // קיבוץ לפי ערך וספירה
-    const valueGroups = {};
-    categoryRows.forEach(row => {
-        const value = row[config.valueField];
-        if (!valueGroups[value]) {
-            valueGroups[value] = {
-                count: 0,
-                employees: []
-            };
-        }
-        valueGroups[value].count++;
-        valueGroups[value].employees.push(row.id_num);
-    });
-    
-    return valueGroups;
-}
 
         // ============================================
         // פונקציות חיפוש
@@ -788,7 +897,10 @@ function analyzeCategory(categoryName) {
 
         window.onload = async function() {
             console.log('🚀 מאתחל מודול שליפת סמלי שכר...');
-            
+
+            // יצירת הקטגוריות דינמית
+            renderCategories();
+
             // טעינת נתונים מ-IndexedDB
             const dataLoaded = await loadRawData();
             
