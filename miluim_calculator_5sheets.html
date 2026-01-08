@@ -1,4 +1,6 @@
-      
+
+        
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -945,6 +947,24 @@ td[onclick*="showGapDetails"]:hover {
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="monthFilter">חודש:</label>
+                    <select id="monthFilter">
+                        <option value="">כל החודשים</option>
+                        <option value="01">ינואר</option>
+                        <option value="02">פברואר</option>
+                        <option value="03">מרץ</option>
+                        <option value="04">אפריל</option>
+                        <option value="05">מאי</option>
+                        <option value="06">יוני</option>
+                        <option value="07">יולי</option>
+                        <option value="08">אוגוסט</option>
+                        <option value="09">ספטמבר</option>
+                        <option value="10">אוקטובר</option>
+                        <option value="11">נובמבר</option>
+                        <option value="12">דצמבר</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -3070,6 +3090,7 @@ const recommendedValue = calculateRecommendedValue(
         employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null,
         paidAmount91220: originalMiluim ? originalMiluim.paidAmount91220 : 0,
         totalpaidAmount: originalMiluim ? originalMiluim.totalpaidAmount : 0,
+        paidAmount40percent: originalMiluim ? originalMiluim.paidAmount40percent : 0,
      
     };
 }
@@ -5124,8 +5145,7 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>מעמד</th>
                         <th>ערך91220</th>
                         <th>סהכ שולם בשכר</th>
-
-
+                        <th>40% שולם בשכר</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -5190,6 +5210,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${result.employeeStatus}</strong></td>
                <td>${result.paidAmount91220 || 0}</td>
                <td>${result.totalpaidAmount || 0}</td>
+              <td><strong>${formatCurrency(result.totalpaidAmount - (result.paidAmount * (result.miluimDays || 0)))}</strong></td>
 
             </tr>
         `;
@@ -5434,6 +5455,7 @@ function exportToExcel() {
     // החל אותן סינונים שקיימים במממשק
     const employeeFilter = document.getElementById('employeeFilter').value.trim();
     const yearFilter = document.getElementById('yearFilter').value;
+    const monthFilter = document.getElementById('monthFilter').value;
     const miluimTypeFilter = document.getElementById('miluimTypeFilter').value;
    
     
@@ -5450,6 +5472,18 @@ function exportToExcel() {
         );
     }
     
+    // סינון לפי שנה וחודש
+    if (yearFilter || monthFilter) {
+        dataToExport = dataToExport.filter(result => {
+            const resultYear = result.startDate.getFullYear().toString();
+            const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+            
+            if (yearFilter && resultYear !== yearFilter) return false;
+            if (monthFilter && resultMonth !== monthFilter) return false;
+            
+            return true;
+        });
+    }
     if (miluimTypeFilter) {
         dataToExport = dataToExport.filter(result => {
             switch (miluimTypeFilter) {
@@ -5580,8 +5614,7 @@ function exportToExcel() {
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }
-
-        // Event listeners
+ // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             setupFileUpload();
             
@@ -5593,111 +5626,167 @@ function exportToExcel() {
             console.log('✅ תוקן: GetBrutoForMonth מחיל ברוטו מינימלי');
             console.log('✅ תוקן: calculateBasicDailyValue משתמש בגבולות סופיים');
             
-            document.getElementById('calculateBtn').addEventListener('click', function() {
-    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
-    
-    console.log(`מספר עובדים לחישוב: ${uniqueEmployees.length}`);
-    
-    // אם יש יותר מ-100 עובדים, השתמש בגרסה המקוטעת
-    if (uniqueEmployees.length > 100) {
-        console.log('משתמש בחישוב מקוטע (Batched)');
-        calculateMiluim({
-            batchSize: 20,
-            showProgress: true,
-            enableCancel: true
-        });
-    } else {
-        console.log('îùúîù áçéùåá øâéì');
-        calculateMiluim({
-            batchSize: 0,
-            showProgress: false
-        });
-    }
-});
+            // Calculate Button - עם בדיקה
+            if (document.getElementById('calculateBtn')) {
+                document.getElementById('calculateBtn').addEventListener('click', function() {
+                    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
+                    
+                    console.log(`מספר עובדים לחישוב: ${uniqueEmployees.length}`);
+                    
+                    // אם יש יותר מ-100 עובדים, השתמש בגרסה המקוטעת
+                    if (uniqueEmployees.length > 100) {
+                        console.log('משתמש בחישוב מקוטע (Batched)');
+                        calculateMiluim({
+                            batchSize: 20,
+                            showProgress: true,
+                            enableCancel: true
+                        });
+                    } else {
+                        console.log('משתמש בחישוב רגיל');
+                        calculateMiluim({
+                            batchSize: 0,
+                            showProgress: false
+                        });
+                    }
+                });
+            }
 
-            // Event listeners לעובד בודד
-if (document.getElementById('employeeInput')) {
-    document.getElementById('employeeInput').addEventListener('input', validateEmployee);
-    document.getElementById('employeeInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !document.getElementById('calculateSingleBtn').disabled) {
-           const selectedEmployee = document.getElementById('employeeInput').value.trim();
-    calculateMiluim({
-        employeeIds: [selectedEmployee],
-        addEmployeeHeader: true,
-        batchSize: 0
-    });
-        }
-    });
-}
+            // Event listeners לעובד בודד - עם בדיקה
+            if (document.getElementById('employeeInput')) {
+                document.getElementById('employeeInput').addEventListener('input', validateEmployee);
+                document.getElementById('employeeInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const calculateSingleBtn = document.getElementById('calculateSingleBtn');
+                        if (calculateSingleBtn && !calculateSingleBtn.disabled) {
+                            const selectedEmployee = document.getElementById('employeeInput').value.trim();
+                            calculateMiluim({
+                                employeeIds: [selectedEmployee],
+                                addEmployeeHeader: true,
+                                batchSize: 0
+                            });
+                        }
+                    }
+                });
+            }
             
-            document.getElementById('clearBtn').addEventListener('click', function() {
-                miluimData = [];
-                salaryData = [];
-                attendanceData = [];
-                calculationResults = [];
-           // 🆕 איפוס סטטוסי פערים
-            gapStatuses = {};
-            saveGapStatusesToIndexedDB();
-                
-                // Reset upload status
-                document.querySelector('.upload-card').classList.remove('uploaded');
-                updateUploadStatus(false);
-                
-                // Reset sheet status
-                updateSheetStatus('sheet1Status', false, '📊 גליון מילואים: ❌');
-                updateSheetStatus('sheet2Status', false, '💰 גליון שכר: ❌');
-                updateSheetStatus('sheet3Status', false, '📅 גליון נוכחות: ❌');
-                document.getElementById('sheetsStatus').style.display = 'none';
-                
-                // Clear file input
-                document.getElementById('excelFile').value = '';
-                
-                // Remove messages
-                document.querySelectorAll('.success, .error').forEach(msg => msg.remove());
-                
-                // Reset UI
-                document.getElementById('calculateBtn').disabled = true;
-                document.getElementById('resultsContainer').innerHTML = '';
-                document.getElementById('summaryStats').style.display = 'none';
-                document.getElementById('exportSection').style.display = 'none';
-            });
+            // Clear Button - עם בדיקה
+            if (document.getElementById('clearBtn')) {
+                document.getElementById('clearBtn').addEventListener('click', function() {
+                    miluimData = [];
+                    salaryData = [];
+                    attendanceData = [];
+                    calculationResults = [];
+                    gapStatuses = {};
+                    saveGapStatusesToIndexedDB();
+                    
+                    // Reset upload status
+                    const uploadCard = document.querySelector('.upload-card');
+                    if (uploadCard) {
+                        uploadCard.classList.remove('uploaded');
+                    }
+                    updateUploadStatus(false);
+                    
+                    // Reset sheet status
+                    updateSheetStatus('sheet1Status', false, '📊 גליון מילואים: ❌');
+                    updateSheetStatus('sheet2Status', false, '💰 גליון שכר: ❌');
+                    updateSheetStatus('sheet3Status', false, '📅 גליון נוכחות: ❌');
+                    
+                    const sheetsStatus = document.getElementById('sheetsStatus');
+                    if (sheetsStatus) {
+                        sheetsStatus.style.display = 'none';
+                    }
+                    
+                    // Clear file input
+                    const excelFile = document.getElementById('excelFile');
+                    if (excelFile) {
+                        excelFile.value = '';
+                    }
+                    
+                    // Remove messages
+                    document.querySelectorAll('.success, .error').forEach(msg => msg.remove());
+                    
+                    // Reset UI
+                    const calculateBtn = document.getElementById('calculateBtn');
+                    if (calculateBtn) {
+                        calculateBtn.disabled = true;
+                    }
+                    
+                    const resultsContainer = document.getElementById('resultsContainer');
+                    if (resultsContainer) {
+                        resultsContainer.innerHTML = '';
+                    }
+                    
+                    const summaryStats = document.getElementById('summaryStats');
+                    if (summaryStats) {
+                        summaryStats.style.display = 'none';
+                    }
+                    
+                    const exportSection = document.getElementById('exportSection');
+                    if (exportSection) {
+                        exportSection.style.display = 'none';
+                    }
+                });
+            }
             
-            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            // Export Button - עם בדיקה
+            if (document.getElementById('exportBtn')) {
+                document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            }
             
-            // Modal close
-            document.querySelector('.close').addEventListener('click', function() {
-                document.getElementById('detailsModal').style.display = 'none';
-            });
+            // Modal close button - עם בדיקה
+            const closeButton = document.querySelector('.close');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    const detailsModal = document.getElementById('detailsModal');
+                    if (detailsModal) {
+                        detailsModal.style.display = 'none';
+                    }
+                });
+            }
             
+            // Modal click outside - עם בדיקה
             window.addEventListener('click', function(event) {
                 const modal = document.getElementById('detailsModal');
-                if (event.target === modal) {
+                if (modal && event.target === modal) {
                     modal.style.display = 'none';
                 }
             });
             
-            // Filters - עם פונקציה גלובלית
-            document.getElementById('employeeFilter').addEventListener('input', applyFilters);
-document.getElementById('yearFilter').addEventListener('change', applyFilters);
-document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+            // Filters - עם בדיקות
+            if (document.getElementById('employeeFilter')) {
+                document.getElementById('employeeFilter').addEventListener('input', applyFilters);
+            }
 
-// 🆕 הוסף את 2 האלה:
-if (document.getElementById('statusFilter')) {
-    document.getElementById('statusFilter').addEventListener('change', applyFilters);
-}
-if (document.getElementById('orModeFilter')) {
-    document.getElementById('orModeFilter').addEventListener('change', function() {
-        const indicator = document.getElementById('orModeIndicator');
-        if (indicator) {
-            indicator.style.display = this.checked ? 'block' : 'none';
-        }
-        applyFilters();
-    });
-}
-           
+            if (document.getElementById('yearFilter')) {
+                document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('monthFilter')) {
+                document.getElementById('monthFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('miluimTypeFilter')) {
+                document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('statusFilter')) {
+                document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('orModeFilter')) {
+                document.getElementById('orModeFilter').addEventListener('change', function() {
+                    const indicator = document.getElementById('orModeIndicator');
+                    if (indicator) {
+                        indicator.style.display = this.checked ? 'block' : 'none';
+                    }
+                    applyFilters();
+                });
+            }
+
             // הוספת פונקציה גלובלית
             window.clearFilters = clearFilters;
         });
+
 // משתנה גלובלי
 let filterWorker = null;
 
@@ -8915,4 +9004,3 @@ function openReportsModule() {
 </script>
 </body>
 </html>
-
