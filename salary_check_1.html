@@ -1138,23 +1138,19 @@ function organizeDataByEmployee() {
          console.log('🔎 identifyExceptions רץ לעובד:', row.id_num);
         const exceptions = [];
          
-            // חריג 1: לא נמצא הסבר ← זה החריג שלך!
-            if (row.reason_code === 'UNKNOWN') {
-                exceptions.push({
-                    severity: 'error',
-                    type: 'no_explanation',
-                    reason: 'לא נמצא הסבר לשינוי בשכר'
-                });
-            }
-            
-            // חריג 2: שינוי פנסיוני ללא הסבר נוסף ← זה החריג שלך!
-            if (row.reason_code === 'PENSION' && row.explanation_detail.includes('ללא הסבר נוסף')) {
-                exceptions.push({
-                    severity: 'warning',
-                    type: 'pension_unexplained',
-                    reason: 'שינוי פנסיוני ללא זיהוי סיבה מדויקת'
-                });
-            }
+          // חריג: שינוי לא מוסבר (gap > 500)
+if (row.totalChange !== undefined && row.totalExplained !== undefined) {
+    const gap = Math.abs(row.totalChange - row.totalExplained);
+    
+    if (gap > 500) {  // ← אותו הסף כמו בצד שמאל!
+        exceptions.push({
+            severity: 'error',
+            type: 'no_explanation',
+            reason: `שינוי לא מוסבר: פער של ${gap.toFixed(2)} ₪`,
+            gap: gap
+        });
+    }
+}
         // ======================================
         // חריג 1: שינוי דרגה/דירוג + ירידה בשכר
         // ======================================
@@ -1205,7 +1201,8 @@ function organizeDataByEmployee() {
         // ======================================
         // חריג 6: שינוי גדול מאוד (מעל 5000 ₪)
         // ======================================
-        if (Math.abs(row.change) > 5000) {
+        if (Math.abs(row.change) > 20000) {
+             console.log('🔔 זוהה חריג שינוי גדול לעובד:', row.id_num);
             exceptions.push({
                 severity: 'warning',
                 type: 'large_change',
@@ -1294,7 +1291,9 @@ function organizeDataByEmployee() {
                        categories: explanation.categories || [],
     explanations: explanation.explanations || [],      // ← 🎯 הוסיפי!
     totalExplained: explanation.totalExplained || 0,   // ← 🎯 הוסיפי!
-    totalChange: explanation.totalChange || 0          // ← 🎯 הוסיפי!
+    totalChange: explanation.totalChange || 0,
+   subCategory_oneTime: getOneTimePaymentSubCategory(employee) 
+ 
                     };
                     
                     // זיהוי חריגים - כאן!
@@ -1647,6 +1646,49 @@ function analyzeOneTimePayments(employee) {
     return result;
 }
 
+// ============================================
+// פונקציה חדשה: חלוקה לתת-קטגוריות של תשלומים חד-פעמיים
+// ============================================
+
+function getOneTimePaymentSubCategory(employee) {
+    const empId = employee.id_num;
+    
+    // מציאת כל הרשומות של 91013 עבור עובד זה
+    const emp91013Records = rawData.filter(row => 
+        row.id_num === empId && 
+        row.SALARY_ELEMENT_NUM === 91013 &&
+        row.SALARY_DATE === row.REFERENCE_DATE
+    );
+    
+    if (emp91013Records.length === 0) {
+        return null;  // אין תשלומים חד-פעמיים
+    }
+    
+    // סיווג לפי QUANTITY - מצא את התת-קטגוריה הראשונית
+    let primarySubCategory = null;
+    
+    for (let record of emp91013Records) {
+        const quantity = record.QUANTITY || 0;
+        
+        // סדר עדיפויות:
+        if ([1491, 1492, 1493].includes(quantity)) {
+            primarySubCategory = 'VEHICLE';
+            break;  // ← עצור בראשון שמוצא
+        } else if (quantity === 1342) {
+            primarySubCategory = 'HEALTH';
+            break;
+        } else if (quantity === 1360) {
+            primarySubCategory = 'JUBILEE';
+            break;
+        } else if (quantity === 1320) {
+            primarySubCategory = 'CLOTHING';
+            break;
+        }
+    }
+    
+    // אם לא נמצא, החזר OTHER
+    return primarySubCategory || 'OTHER';
+}
 function findExplanation(employee) {
     const current = employee.current.elements;
     const previous = employee.previous.elements;
@@ -1973,11 +2015,13 @@ if (current_91013 !== 0 || previous_91013 !== 0) {
     // 🎯 תמיד נספר את המלא!
     if (Math.abs(diff_91013_total) > 0.01) {
         const oneTimeAnalysis = analyzeOneTimePayments(employee);
+        const oneTimeSubCategory = getOneTimePaymentSubCategory(employee);
         
         foundExplanations.push({
             code: 'ONE_TIME',
             text: 'תשלום חד פעמי',
             detail: oneTimeAnalysis,
+             subCategory: oneTimeSubCategory,  // ← הוסף את זה!
             amount: diff_91013_total  // ← הסכום המלא! ✅
         });
         totalExplained += diff_91013_total;
@@ -2614,6 +2658,7 @@ function displayResults91091(filteredData = null) {
     const filterEmployee = document.getElementById('filterEmployee').value.trim();
     const filterOffice = document.getElementById('filterOffice').value;
      const filterGrade = document.getElementById('filterGrade').value;
+      const filterMaamad = document.getElementById('filterMaamad').value;
     const filterStatus = document.getElementById('filterStatus').value;
     const filterReason = document.getElementById('filterReason').value;
 
@@ -2621,6 +2666,7 @@ function displayResults91091(filteredData = null) {
         if (filterEmployee && !row.id_num.toString().includes(filterEmployee)) return false;
         if (filterOffice && row.office_num.toString() !== filterOffice) return false;
          if (filterGrade && (row.grade === null || row.grade === undefined || row.grade.toString() !== filterGrade)) return false;
+            if (filterGrade && (row.grade === null || row.grade === undefined || row.grade.toString() !== filterGrade)) return false;
         if (filterStatus && row.status !== filterStatus) return false;
         
 
@@ -2912,21 +2958,29 @@ function updateReviewCount() {
         // עדכון הסרגל עם מספרי חריגים
         // ============================================
         
-       function updateExceptionsSidebar() {
+function updateExceptionsSidebar() {
     const withExceptions = analysisResults.filter(r => r.hasExceptions);
     
-    // ספירה דינמית - אוטומטית! 🎯
+    // ספירה - כל עובד בקטגוריה אחת בלבד!
     const exceptionCounts = {};
     exceptionTypes.forEach(et => {
         exceptionCounts[et.type] = 0;
     });
     
+    // 🎯 כל עובד - קטגוריה אחת בלבד לפי סדר עדיפויות!
     withExceptions.forEach(row => {
-        row.exceptions.forEach(ex => {
-            if (exceptionCounts.hasOwnProperty(ex.type)) {
-                exceptionCounts[ex.type]++;
+        // מצא את ה-type הראשון (בסדר עדיפויות)
+        let primaryType = null;
+        for (let et of exceptionTypes) {
+            if (row.exceptions.some(ex => ex.type === et.type)) {
+                primaryType = et.type;
+                break;  // ← עצור! זו הקטגוריה הראשונית!
             }
-        });
+        }
+        // ספור רק בקטגוריה הראשונית
+        if (primaryType && exceptionCounts.hasOwnProperty(primaryType)) {
+            exceptionCounts[primaryType]++;
+        }
     });
     
     // ספירת מאושרים
@@ -2941,22 +2995,63 @@ function updateReviewCount() {
     document.getElementById('existingCount').textContent = approved;
     document.getElementById('resolvedCount').textContent = 0;
     
-    // פילוח מפורט - אוטומטי! 🎯
+    // פילוח לפי קטגוריות
     const breakdown = document.getElementById('exceptionsBreakdown');
     let html = '';
+    let hasExceptions = false;
     
+    // בדיקה אם יש קטגוריות
+    for (let count of Object.values(exceptionCounts)) {
+        if (count > 0) hasExceptions = true;
+    }
+    
+    if (!hasExceptions) {
+        breakdown.innerHTML = '<div style="color:#999;">אין חריגים</div>';
+        return;
+    }
+    
+    // כותרת עם toggle
+    html = '<div style="cursor:pointer; padding:8px; background:rgba(255,255,255,0.1); border-radius:5px; margin-bottom:10px; user-select:none;" onclick="toggleExceptionsCategories()"><strong>📊 קטגוריות חריגים</strong> <span style="float:left; font-weight:bold;" id="catToggle">−</span></div>';
+    html += '<div id="exceptionsCatList" style="display:block; margin-left:10px;">';
+    
+    // הצגת קטגוריות
     exceptionTypes.forEach(et => {
         const count = exceptionCounts[et.type];
         if (count > 0) {
-            html += `<div class="breakdown-item" onclick="openDetailPanel('${et.type}')">
+            html += `<div class="breakdown-item" onclick="openDetailPanel('${et.type}')" style="cursor:pointer; padding:6px; margin:5px 0; background:rgba(255,255,255,0.05); border-radius:4px;">
                 ${et.icon} ${et.label}: <strong>${count}</strong>
             </div>`;
         }
     });
     
-    breakdown.innerHTML = html || '<div style="color:#999;">אין חריגים</div>';
+    html += '</div>';
+    breakdown.innerHTML = html;
     
     console.log('✅ עודכן הסרגל:', exceptionCounts);
+}
+
+function toggleExceptionsCategories() {
+    const list = document.getElementById('exceptionsCatList');
+    const toggle = document.getElementById('catToggle');
+    if (list.style.display === 'none') {
+        list.style.display = 'block';
+        toggle.textContent = '−';
+    } else {
+        list.style.display = 'none';
+        toggle.textContent = '+';
+    }
+}
+function toggleExceptionsCategories() {
+    const list = document.getElementById('exceptionsCatList');
+    const toggle = document.getElementById('catToggle');
+    
+    if (list.style.display === 'none') {
+        list.style.display = 'block';
+        toggle.textContent = '−';
+    } else {
+        list.style.display = 'none';
+        toggle.textContent = '+';
+    }
 }
         // ============================================
         // הצגת חריגים בפאנל - גרסה פשוטה
@@ -2964,12 +3059,20 @@ function updateReviewCount() {
          function showExceptionsInPanel(type) {
             let withExceptions = analysisResults.filter(r => r.hasExceptions);
             
-            // סינון לפי סוג אם נדרש
             if (type !== 'all' && type !== 'new' && type !== 'existing' && type !== 'resolved') {
-                withExceptions = withExceptions.filter(r => 
-                    r.exceptions.some(ex => ex.type === type)
-                );
+    withExceptions = withExceptions.filter(r => {
+        // מצא את ה-primary type של העובד
+        let primaryType = null;
+        for (let et of exceptionTypes) {
+            if (r.exceptions.some(ex => ex.type === et.type)) {
+                primaryType = et.type;
+                break;
             }
+        }
+        // הצג רק אם זה ה-primary type!
+        return primaryType === type;
+    });
+}
             
             const content = document.getElementById('detailPanelContent');
             
@@ -3682,6 +3785,11 @@ function updateStatsSidebar() {
         overtime: 0,
         expenses: 0,
         one_time: 0,
+        one_time_vehicle: 0,      // ← הוסף
+        one_time_health: 0,       // ← הוסף
+        one_time_jubilee: 0,      // ← הוסף
+        one_time_clothing: 0,     // ← הוסף
+        one_time_other: 0,        // ← הוסף
         family_status: 0,
         new_employees: 0,      // ← הוסיפי!
         terminated_employees: 0, // ← הוסיפי!
@@ -3707,7 +3815,7 @@ function updateStatsSidebar() {
                 else if (cat === 'PENSION_RESEARCH') categoryCounts.pension_research++;
                 else if (cat === 'OVERTIME') categoryCounts.overtime++;
                 else if (cat === 'EXPENSES') categoryCounts.expenses++;
-                else if (cat === 'ONE_TIME') categoryCounts.one_time++;  // ← תוקן!
+                else if (cat === 'ONE_TIME') categoryCounts.one_time++;  // ← תוקן!  
                 else if (cat === 'FAMILY_STATUS') categoryCounts.family_status++;                      
                 else if (cat === 'NEW') categoryCounts.new_employees++;
                 else if (cat === 'TERMINATED') categoryCounts.terminated_employees++;
@@ -3751,6 +3859,13 @@ function updateStatsSidebar() {
                 categoryCounts.unknown++;
             }
         }
+         if (r.reason_code === 'ONE_TIME' && r.subCategory_oneTime) {
+        if (r.subCategory_oneTime === 'VEHICLE') categoryCounts.one_time_vehicle++;
+        else if (r.subCategory_oneTime === 'HEALTH') categoryCounts.one_time_health++;
+        else if (r.subCategory_oneTime === 'JUBILEE') categoryCounts.one_time_jubilee++;
+        else if (r.subCategory_oneTime === 'CLOTHING') categoryCounts.one_time_clothing++;
+        else categoryCounts.one_time_other++;
+    }
     });
     
     // פנסיוני - סה"כ כל הסוגים
@@ -3774,6 +3889,11 @@ function updateStatsSidebar() {
     
     // חד פעמי
     safeUpdate('countOneTime', categoryCounts.one_time);
+    safeUpdate('countOneTimeVehicle', categoryCounts.one_time_vehicle);
+safeUpdate('countOneTimeHealth', categoryCounts.one_time_health);
+safeUpdate('countOneTimeJubilee', categoryCounts.one_time_jubilee);
+safeUpdate('countOneTimeClothing', categoryCounts.one_time_clothing);
+safeUpdate('countOneTimeOther', categoryCounts.one_time_other);
     // ← חסר! הוסיפי את זה:
 safeUpdate('countFamilyStatus', categoryCounts.family_status);
 safeUpdate('countPensionStatus', categoryCounts.pension_status);
@@ -3890,13 +4010,30 @@ function filterByCategory(category) {
             targetTab = 'tab91090';
             break;
             
-        case 'ONE_TIME':
-            filtered = analysisResults.filter(r => 
-                (r.categories && r.categories.includes('ONE_TIME')) ||
-                r.reason_code === 'ONE_TIME'
-            );
-            targetTab = 'tab91090';
-            break;
+      case 'ONE_TIME_VEHICLE':
+    filtered = analysisResults.filter(r => r.subCategory_oneTime === 'VEHICLE');
+    targetTab = 'tab91090';
+    break;
+    
+case 'ONE_TIME_HEALTH':
+    filtered = analysisResults.filter(r => r.subCategory_oneTime === 'HEALTH');
+    targetTab = 'tab91090';
+    break;
+    
+case 'ONE_TIME_JUBILEE':
+    filtered = analysisResults.filter(r => r.subCategory_oneTime === 'JUBILEE');
+    targetTab = 'tab91090';
+    break;
+    
+case 'ONE_TIME_CLOTHING':
+    filtered = analysisResults.filter(r => r.subCategory_oneTime === 'CLOTHING');
+    targetTab = 'tab91090';
+    break;
+    
+case 'ONE_TIME_OTHER':
+    filtered = analysisResults.filter(r => r.subCategory_oneTime === 'OTHER');
+    targetTab = 'tab91090';
+    break;
             case 'FAMILY_STATUS':  // ← הוסיפי!
     filtered = analysisResults.filter(r => 
         (r.categories && r.categories.includes('FAMILY_STATUS')) ||
@@ -4286,7 +4423,13 @@ function openPopulationQuery() {
             <div class="exception-stat-number" id="newCount">0</div>
             <div class="exception-stat-label">🆕 חריגים חדשים</div>
         </div>
-        
+        <!-- פילוח לפי קטגוריות -->
+<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+    <h3 style="font-size: 1em; margin-bottom: 10px;">📊 פילוח לפי סוג:</h3>
+    <div id="exceptionsBreakdown" style="font-size: 0.85em; line-height: 1.8;">
+        <!-- יתמלא דינמית -->
+    </div>
+</div>
         <div class="exception-stat exception-existing" onclick="openDetailPanel('existing')">
             <div class="exception-stat-number" id="existingCount">0</div>
             <div class="exception-stat-label">↔️ חריגים קיימים</div>
@@ -4400,12 +4543,36 @@ function openPopulationQuery() {
                 <span class="stats-item-count" id="countExpenses">0</span>
             </div>
             
-            <!-- חד פעמי -->
-            <div class="stats-category-item" onclick="filterByCategory('ONE_TIME')">
-                <span class="stats-item-icon">💳</span>
-                <span class="stats-item-label">תשלום חד פעמי</span>
-                <span class="stats-item-count" id="countOneTime">0</span>
-            </div>
+           <!-- תשלום חד פעמי -->
+<div class="stats-category-item" onclick="toggleStatsSubTab('subOneTime'); filterByCategory('ONE_TIME')">
+    <span class="stats-item-icon">💳</span>
+    <span class="stats-item-label">תשלום חד פעמי</span>
+    <span class="stats-item-count" id="countOneTime">0</span>
+    <span class="stats-sub-arrow" id="arrowOneTime">▸</span>
+</div>
+
+<div class="stats-sub-content" id="subOneTime">
+    <div class="stats-sub-item" onclick="filterByCategory('ONE_TIME_VEHICLE')">
+        <span class="stats-sub-label">├─ 🚗 ביטוח רכב</span>
+        <span class="stats-sub-count" id="countOneTimeVehicle">0</span>
+    </div>
+    <div class="stats-sub-item" onclick="filterByCategory('ONE_TIME_HEALTH')">
+        <span class="stats-sub-label">├─ 💊 הבראה</span>
+        <span class="stats-sub-count" id="countOneTimeHealth">0</span>
+    </div>
+    <div class="stats-sub-item" onclick="filterByCategory('ONE_TIME_JUBILEE')">
+        <span class="stats-sub-label">├─ 🎉 מענק יובל</span>
+        <span class="stats-sub-count" id="countOneTimeJubilee">0</span>
+    </div>
+    <div class="stats-sub-item" onclick="filterByCategory('ONE_TIME_CLOTHING')">
+        <span class="stats-sub-label">├─ 👔 ביגוד</span>
+        <span class="stats-sub-count" id="countOneTimeClothing">0</span>
+    </div>
+    <div class="stats-sub-item" onclick="filterByCategory('ONE_TIME_OTHER')">
+        <span class="stats-sub-label">└─ 💵 אחר</span>
+        <span class="stats-sub-count" id="countOneTimeOther">0</span>
+    </div>
+</div>
             <!-- מצב משפחתי/ילדים - חדש! -->
     <div class="stats-category-item" onclick="filterByCategory('FAMILY_STATUS')">
         <span class="stats-item-icon">👨‍👩‍👧‍👦</span>
