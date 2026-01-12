@@ -653,23 +653,26 @@
                 toggle.textContent = '-';
             }
         }
+function searchByCategory(category, value) {
+    console.log('🔍 DEBUG searchByCategory:', {
+        categoryName: category.name,
+        symbol: category.symbol,
+        field: category.field,
+        value: value
+    });
 
-        // חיפוש לפי קטגוריה וערך
-        function searchByCategory(category, value) {
-            document.getElementById('symbolSearch').value = category.symbol;
+    document.getElementById('symbolSearch').value = category.symbol;
+    
+    // ← תמיד עדכן! לא משנה איזה field!
+    document.getElementById('amountMin').value = value;
+    document.getElementById('amountMax').value = value;
 
-            if (category.field === 'AMOUNT') {
-                document.getElementById('amountMin').value = value;
-                document.getElementById('amountMax').value = value;
-            } else {
-                document.getElementById('amountMin').value = '';
-                document.getElementById('amountMax').value = '';
-            }
-
-            document.getElementById('monthFilter').value = 'current';
-            searchBySymbol();
-        }
-
+    document.getElementById('monthFilter').value = 'current';
+    console.log('📤 Calling searchBySymbol with field:', category.field);
+    console.log('✅ Set amountMin and amountMax to:', value);
+    
+    searchBySymbol(category.field);
+}
         // עדכון סטטיסטיקות כללית
         function updateSidebarStats() {
             if (!rawData || rawData.length === 0) return;
@@ -694,49 +697,70 @@
             // עדכון כל הקטגוריות
             updateAllCategories();
         }
-
-        // ============================================
+     // ============================================
         // פונקציות חיפוש
         // ============================================
 
-        function searchBySymbol() {
-            if (!rawData || rawData.length === 0) {
-                alert('יש לטעון נתונים תחילה');
-                return;
-            }
-            
-            const symbolNum = document.getElementById('symbolSearch').value;
-            const amountMin = parseFloat(document.getElementById('amountMin').value) || -Infinity;
-            const amountMax = parseFloat(document.getElementById('amountMax').value) || Infinity;
-            const monthFilter = document.getElementById('monthFilter').value;
-            
-            // סינון הנתונים
-            currentResults = rawData.filter(row => {
-                // סינון לפי סמל (אם הוזן)
-                if (symbolNum && row.SALARY_ELEMENT_NUM != symbolNum) {
-                    return false;
-                }
-                
-                // סינון לפי סכום
-                const amount = row.AMOUNT || 0;
-                if (amount < amountMin || amount > amountMax) {
-                    return false;
-                }
-                
-                // סינון לפי חודש
-                if (monthFilter === 'current' && row.SALARY_DATE !== currentMonth) {
-                    return false;
-                }
-                if (monthFilter === 'previous' && row.SALARY_DATE !== previousMonth) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            displayResults();
+   function searchBySymbol(selectedField = 'AMOUNT') {
+    if (!rawData || rawData.length === 0) {
+        alert('יש לטעון נתונים תחילה');
+        return;
+    }
+    
+    const symbolNum = document.getElementById('symbolSearch').value;
+    const amountMin = parseFloat(document.getElementById('amountMin').value) || -Infinity;
+    const amountMax = parseFloat(document.getElementById('amountMax').value) || Infinity;
+    const monthFilter = document.getElementById('monthFilter').value;
+    
+    console.log('🔥 searchBySymbol called');
+    console.log('📊 Parameters:', { 
+        symbolNum, 
+        selectedField, 
+        amountMin, 
+        amountMax, 
+        monthFilter, 
+        currentMonth 
+    });
+    
+    // סינון הנתונים
+    currentResults = rawData.filter(row => {
+        // סינון לפי סמל (אם הוזן)
+        if (symbolNum && row.SALARY_ELEMENT_NUM != symbolNum) {
+            return false;
         }
-
+        
+        // סינון לפי השדה הנבחר (AMOUNT / QUANTITY / PERCENTAGE)
+        const fieldValue = row[selectedField] || 0;
+        console.log('🔍 Checking row:', { 
+            SALARY_ELEMENT_NUM: row.SALARY_ELEMENT_NUM, 
+            [selectedField]: fieldValue,
+            min: amountMin,
+            max: amountMax,
+            pass: fieldValue >= amountMin && fieldValue <= amountMax
+        });
+        
+        if (fieldValue < amountMin || fieldValue > amountMax) {
+            return false;
+        }
+        
+        // סינון לפי חודש
+        if (monthFilter === 'current' && row.SALARY_DATE !== currentMonth) {
+            return false;
+        }
+        if (monthFilter === 'previous' && row.SALARY_DATE !== previousMonth) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    console.log(`✅ Found ${currentResults.length} matching rows`);
+    if (currentResults.length > 0) {
+        console.log('📋 First result:', currentResults[0]);
+    }
+    
+    displayResults();
+}
         function quickSearch(symbolNum) {
             document.getElementById('symbolSearch').value = symbolNum;
             searchBySymbol();
