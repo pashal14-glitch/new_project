@@ -3843,8 +3843,7 @@ function updateStatsSidebar() {
                 categoryCounts.overtime++;
             } else if (r.reason_code === 'EXPENSES') {
                 categoryCounts.expenses++;
-            } else if (r.reason_code === 'ONE_TIME') {
-                categoryCounts.one_time++;
+            
                } else if (r.reason_code === 'FAMILY_STATUS') {
                 categoryCounts.family_status++;   
                 
@@ -3859,13 +3858,16 @@ function updateStatsSidebar() {
                 categoryCounts.unknown++;
             }
         }
-         if (r.reason_code === 'ONE_TIME' && r.subCategory_oneTime) {
-        if (r.subCategory_oneTime === 'VEHICLE') categoryCounts.one_time_vehicle++;
-        else if (r.subCategory_oneTime === 'HEALTH') categoryCounts.one_time_health++;
-        else if (r.subCategory_oneTime === 'JUBILEE') categoryCounts.one_time_jubilee++;
-        else if (r.subCategory_oneTime === 'CLOTHING') categoryCounts.one_time_clothing++;
-        else categoryCounts.one_time_other++;
-    }
+       
+       // ספור לפי subCategory_oneTime, בלי תלות ב-reason_code
+if (r.subCategory_oneTime) {
+    categoryCounts.one_time++;
+    if (r.subCategory_oneTime === 'VEHICLE') categoryCounts.one_time_vehicle++;
+    else if (r.subCategory_oneTime === 'HEALTH') categoryCounts.one_time_health++;
+    else if (r.subCategory_oneTime === 'JUBILEE') categoryCounts.one_time_jubilee++;
+    else if (r.subCategory_oneTime === 'CLOTHING') categoryCounts.one_time_clothing++;
+    else categoryCounts.one_time_other++;
+}
     });
     
     // פנסיוני - סה"כ כל הסוגים
@@ -3916,6 +3918,34 @@ safeUpdate('countTerminatedEmployees', categoryCounts.terminated_employees);
 // ============================================
 // סינון לפי קטגוריה - הלב של המערכת!
 // ============================================
+
+
+// ==================== הסברים לקטגוריות ====================
+const categoryHelp = {
+    'PENSION_GRADE': { title: 'שינוי פנסיוני - דירוג', help: 'בדוק אירוע 90144' },
+    'PENSION_SENIORITY': { title: 'שינוי פנסיוני - ותק', help: 'בדוק אירוע 90146' },
+    'PENSION_POSITION': { title: 'שינוי פנסיוני - תפקיד', help: 'בדוק אירוע תפקיד' },
+    'PENSION_STATUS': { title: 'שינוי פנסיוני - מעמד', help: 'בדוק את מעמד התעסוקה' },
+    'PENSION_RESEARCH': { title: 'עובדי מחקר', help: 'בדוק את אירוע עובדי מחקר' },
+    'ONE_TIME_VEHICLE': { 
+    title: 'ביטוח רכב', 
+    help: `
+בדוק 90342 בעלות על רכב
+בדוק 90202 ביטוחי רכב
+בדוק 90340 רישיון נהיגה
+מספר רכב באירוע 90202 חייב להיות זהה לאירוע 90340
+    `
+},
+    'ONE_TIME_HEALTH': { title: 'הבראה', help: 'בדוק אירוע 1342' },
+    'ONE_TIME_JUBILEE': { title: 'מענק יובל', help: 'בדוק אירוע 1360' },
+    'ONE_TIME_CLOTHING': { title: 'ביגוד', help: 'בדוק אירוע 1320' },
+    'ONE_TIME': { title: 'תשלום חד-פעמי', help: 'בדוק אירועים של תשלומים חד-פעמיים' },
+    'OVERTIME': { title: 'שעות נוספות', help: 'בדוק דיווח באירוע 90999, סמלי שכר 900 עד 950' },
+    'EXPENSES': { title: 'החזרי הוצאות', help: 'בדוק אירועי החזרי הוצאות' },
+    'FAMILY_STATUS': { title: 'מצב משפחתי', help: 'בדוק אירוע 90014' },
+    'NEW': { title: 'עובדים חדשים', help: 'בדוק תאריך התחלה חדש' },
+    'TERMINATED': { title: 'עובדים מופסקים', help: 'בדוק אירוע 90158' }
+};
 
 function filterByCategory(category) {
     // ⭐ עצירת event propagation - חובה!
@@ -4001,12 +4031,17 @@ function filterByCategory(category) {
             );
             targetTab = 'tab91090';
             break;
+
             
         case 'EXPENSES':
             filtered = analysisResults.filter(r => 
                 (r.categories && r.categories.includes('EXPENSES')) ||
                 r.reason_code === 'EXPENSES'
             );
+            targetTab = 'tab91090';
+            break;
+             case 'ONE_TIME':  // ← הוסף את זה!
+            filtered = analysisResults.filter(r => r.reason_code === 'ONE_TIME');
             targetTab = 'tab91090';
             break;
             
@@ -4069,11 +4104,54 @@ case 'ONE_TIME_OTHER':
     
     // הצגת התוצאות המסוננות
     displayResults(filtered);
+    // הצג עזרה אם קיימת לקטגוריה
+if (categoryHelp[category]) {
+    showHelpBanner(category);
+}
     
     // הודעה למשתמש
     showMessage('loadMessage', `🔍 מוצגים ${filtered.length} תוצאות מסוננות`, 'info');
     
     console.log(`✅ סוננו ${filtered.length} רשומות`);
+}
+function showHelpBanner(category) {
+    const help = categoryHelp[category];
+    if (!help) return;
+    
+    // הסר עזרה ישנה אם קיימת
+    const oldBanner = document.getElementById('helpBanner');
+    if (oldBanner) oldBanner.remove();
+    
+    // בנה banner חדש
+    const banner = document.createElement('div');
+    banner.id = 'helpBanner';
+    banner.style.cssText = `
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    banner.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+                <h3 style="margin: 0 0 10px 0; font-size: 1.2em;">📚 ${help.title}</h3>
+                <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">${help.help}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="padding: 5px 10px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer; margin-left: 20px;">
+                ✕
+            </button>
+        </div>
+    `;
+ 
+const resultsContainer = document.querySelector('.result-grid') || 
+                         document.querySelector('[class*="result"]') || 
+                         document.querySelector('[id*="result"]');
+    if (resultsContainer) {
+        resultsContainer.insertBefore(banner, resultsContainer.firstChild);
+    }
 }
 // ============================================
 // 🔍 פונקציית DEBUG לקונסול
