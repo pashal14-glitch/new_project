@@ -829,15 +829,26 @@
     <!-- כותרת ראשית -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0;">📋 תוצאות ניתוח</h2>
-        
-        <!-- טאבים -->
+             <!-- טאבים -->
         <div class="tabs-container-inline">
             <button class="tab-btn active" onclick="switchTab('tab91090')">
                 📊 שוטף (91090)
                 <span class="tab-badge" id="badge91090">0</span>
-            </button>
-            
+            </button>          
         </div>
+          <div class="tabs-container-inline">
+            <button class="tab-btn active" onclick="switchTab('tab91091')">
+                📊 הפרשים 91091 
+                <span class="tab-badge" id="badge91091">0</span>
+            </button>          
+        </div>
+    <div class="tabs-container-inline">
+    <button class="tab-btn" onclick="switchTab('tabZikufim')">
+        🚗 זקיפות
+        <span class="tab-badge" id="badgeZikufim">0</span>
+    </button>
+</div>
+   
     </div>
 
     <!-- תוכן טאב 91090 -->
@@ -872,8 +883,10 @@
                     <tr>
                         <th>מספר זהות</th>
                         <th>משרד</th>
+                        <th>דירוג</th>
+                        <th>מעמד</th>
                         <th>סה"כ הפרשים</th>
-<th>-</th>
+
                         <th>שינוי</th>
                         <th>סיבת שינוי</th>
                         <th>הסבר מפורט</th>
@@ -885,6 +898,27 @@
             </table>
         </div>
     </div>
+    <!-- תוכן טאב זקיפות -->
+<div id="tabZikufim" class="tab-content">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>מספר זהות</th>
+                    <th>משרד</th>
+                    <th>דירוג</th>
+                    <th>מעמד</th>
+                    <th>סכום</th>
+                    <th>סיבת שינוי</th>
+                    <th>הסבר מפורט</th>
+                    <th>סטטוס</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBodyZikufim">
+            </tbody>
+        </table>
+    </div>
+</div>
 </div>
     <script>
         // ============================================
@@ -894,6 +928,7 @@
         let employeesData = {};        // נתונים מאורגנים לפי עובד
         let analysisResults = [];      // תוצאות הניתוח
         let analysisResults91091 = [];  // תוצאות 91091 - חדש!
+        let analysisResultsZikufim = [];  // תוצאות זקיפות רטרואקטיביות
         let currentMonth = null;
         let previousMonth = null;
         let currentSnapshotId = null;
@@ -908,6 +943,7 @@ const exceptionTypes = [
     { type: 'position_decrease', label: 'תפקיד + ירידה', icon: '⚠️' },
     { type: 'large_change', label: 'שינוי גדול', icon: '⚠️' },
     { type: 'payment_without_deduction', label: 'תשלומים ללא ניכויים', icon: '⚠️' }
+    
 ];
 
         // ============================================
@@ -1272,7 +1308,7 @@ if (row.totalChange !== undefined && row.totalExplained !== undefined) {
             return;
         }
                 // ניתוח רק אם יש שינוי
-                if (Math.abs(change) > 100) {
+                if (Math.abs(change) > 500) {
                     // מציאת הסבר לשינוי - פונקציה נפרדת!
                     const explanation = findExplanation(employee);
              
@@ -1314,11 +1350,22 @@ function analyzeData91091() {
     analysisResults91091 = [];
 
     Object.values(employeesData).forEach(employee => {
-        // סכום הפרשים בחודש נוכחי
-        const current_91091 = employee.current.elements[91091] || 0;
+        const empId = employee.id_num;
         
-        // ✅ רק עובדים עם הפרשים > 100
-        if (current_91091 > 100) {
+        // חפש רשומות 91091 בחודש הנוכחי
+        const retro91091Records = rawData.filter(row => 
+            row.id_num === empId && 
+            row.SALARY_ELEMENT_NUM === 91091 &&
+            row.SALARY_DATE === currentMonth
+        );
+        
+        // סכום כל הרשומות
+        const current_91091 = retro91091Records.reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+        
+        console.log(`💰 עובד ${empId}: ${retro91091Records.length} רשומות 91091, סה"כ: ${current_91091}`);
+        
+        // ✅ רק עובדים עם הפרשים > 300
+        if (Math.abs(current_91091) > 300) {
             
             // ניתוח למה קיבל הפרשים
             const explanation = findExplanation91091(employee);
@@ -1326,16 +1373,17 @@ function analyzeData91091() {
             const result = {
                 id_num: employee.id_num,
                 office_num: employee.office_num,
-                current_regular: current_91091,       // סכום ההפרשים
-                previous_regular: 0,                  // לא רלוונטי
-                change: current_91091,                // ההפרשים עצמם
+                 grade: employee.current?.grade || employee.grade || '-',
+                 maamad: employee.current?.maamad || employee.maamad || '-',
+                current_regular: current_91091,
+                previous_regular: 0,
+                change: current_91091,
                 reason_code: explanation.code,
                 reason_text: explanation.text,
                 explanation_detail: explanation.detail,
                 status: explanation.status
             };
             
-            // זיהוי חריגים
             result.exceptions = identifyExceptions(result);
             result.hasExceptions = result.exceptions.length > 0;
             
@@ -1348,6 +1396,48 @@ function analyzeData91091() {
     console.log(`⚠️ מתוכם ${withExceptions} עם חריגים`);
 }
 
+function analyzeDataZikufim() {
+    analysisResultsZikufim = [];
+    
+    Object.values(employeesData).forEach(employee => {
+        const empId = employee.id_num;
+        
+        // חפש רשומות 91403 (שווי רכב) רטרואקטיביות
+        const vehicleRetroRecords = rawData.filter(row => 
+            row.id_num === empId && 
+            row.SALARY_ELEMENT_NUM === 91403 &&
+            row.SALARY_DATE === currentMonth &&
+            row.REFERENCE_DATE !== currentMonth &&
+            row.REFERENCE_DATE !== '' &&
+            row.REFERENCE_DATE !== null
+        );
+        
+        if (vehicleRetroRecords.length > 0) {
+            const totalAmount = vehicleRetroRecords.reduce((sum, r) => sum + (r.QUANTITY || 0), 0);
+            const months = [...new Set(vehicleRetroRecords.map(r => r.REFERENCE_DATE))].length;
+            
+            if (Math.abs(totalAmount) > 300) {
+                analysisResultsZikufim.push({
+                    id_num: empId,
+                    office_num: employee.office_num,
+                    grade: employee.current?.grade || employee.grade || '-',
+                    maamad: employee.current?.maamad || employee.maamad || '-',
+                    current_regular: totalAmount,
+                    previous_regular: 0,
+                    change: totalAmount,
+                    reason_code: 'ZIKUF_VEHICLE',
+                    reason_text: 'הפרשי זקיפה - שווי רכב',
+                    explanation_detail: `הפרשי שווי רכב ל-${months} חודשים (סמל 91403) 🚗`,
+                    status: 'GREEN',
+                    exceptions: [],
+                    hasExceptions: false
+                });
+            }
+        }
+    });
+    
+    console.log(`🚗 נמצאו ${analysisResultsZikufim.length} עובדים עם הפרשי זקיפות`);
+}
 // ============================================
 // ניתוח תשלומים חד פעמיים שנכללים בפנסיה
 // ============================================
@@ -1575,7 +1665,7 @@ function analyzeOneTimePayments(employee) {
         }
         
         // סיווג לפי QUANTITY
-        if ([1491, 1492, 1493].includes(quantity)) {
+        if ([1491, 1492, 1493, 8007].includes(quantity)) {
             byReferenceDate[refDate].carInsurance.symbols.push(quantity);
             byReferenceDate[refDate].carInsurance.total += amount;
             console.log(`  🚗 ביטוח רכב: +${amount}`);
@@ -1671,7 +1761,7 @@ function getOneTimePaymentSubCategory(employee) {
         const quantity = record.QUANTITY || 0;
         
         // סדר עדיפויות:
-        if ([1491, 1492, 1493].includes(quantity)) {
+        if ([1491, 1492, 1493, 8007].includes(quantity)) {
             primarySubCategory = 'VEHICLE';
             break;  // ← עצור בראשון שמוצא
         } else if (quantity === 1342) {
@@ -2193,7 +2283,7 @@ function findExplanation91091(employee) {
             retroByType.expenses.push({ refDate, amount });
         } else if (element === 91013) {
             retroByType.oneTime.push({ refDate, amount, qty });
-        }
+         }
     });
     
     // ✅ בניית הסבר לפי סדר עדיפות
@@ -2273,6 +2363,7 @@ function findExplanation91091(employee) {
             status: 'GREEN'
         };
     }
+   
     
     // 7. תשלום חד פעמי רטרואקטיבי
     if (retroByType.oneTime.length > 0) {
@@ -2362,6 +2453,7 @@ function analyzeAdditionalExceptions() {
     // 1️⃣ ניתוח שינויים בשוטף (91090)
     analyzeData();
      analyzeData91091();  
+     analyzeDataZikufim();
     
     // 2️⃣ חריגים נוספים (91092, 91095, וכו')
     analyzeAdditionalExceptions();
@@ -2372,6 +2464,7 @@ function analyzeAdditionalExceptions() {
     updateStatsSidebar(); // ← הוסיפי את זה!
     displayResults();
     displayResults91091();
+    displayResultsZikufim();
     // 🆕 עדכון תגיות הטאבים
     updateTabBadges();
     
@@ -2639,11 +2732,12 @@ function displayResults91091(filteredData = null) {
             statusClass = row.status.toLowerCase();
         }
         
-        tr.innerHTML = `
+       tr.innerHTML = `
     <td>${row.id_num}</td>
     <td>${row.office_num}</td>
+    <td>${row.grade || '-'}</td>
+    <td>${row.maamad || '-'}</td>
     <td>${formatCurrency(row.current_regular)}</td>
-    <td>-</td>  <!-- ← לא רלוונטי -->
     <td class="${changeClass}">${formatCurrency(row.change)}</td>
     <td><strong>${row.reason_text}</strong></td>
     <td style="text-align:right;padding-right:20px;">${row.explanation_detail}</td>
@@ -2654,7 +2748,45 @@ function displayResults91091(filteredData = null) {
     
     console.log(`📊 הוצגו ${data.length} שורות בטבלת 91091`);
 }
-      function applyFilters() {
+    function displayResultsZikufim(filteredData = null) {
+    const data = filteredData || analysisResultsZikufim;
+    const tbody = document.getElementById('resultsBodyZikufim');
+    
+    if (!tbody) {
+        console.error('❌ לא נמצא resultsBodyZikufim');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;color:#999;">לא נמצאו תוצאות</td></tr>';
+        return;
+    }
+
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        const changeClass = row.change >= 0 ? 'status-green' : 'status-red';
+        
+      tr.innerHTML = `
+    <td>${row.id_num}</td>
+    <td>${row.office_num}</td>
+    <td>${row.grade || '-'}</td>
+    <td>${row.maamad || '-'}</td>
+    <td class="${changeClass}">${formatCurrency(row.change)}</td>
+    <td><strong>${row.reason_text}</strong></td>
+    <td style="text-align:right;padding-right:20px;">${row.explanation_detail}</td>
+    <td class="status-green">✅ נמצא הסבר</td>
+`;
+        tbody.appendChild(tr);
+    });
+    
+    console.log(`📊 הוצגו ${data.length} שורות בטבלת זקיפות`);
+}
+
+
+
+function applyFilters() {
     const filterEmployee = document.getElementById('filterEmployee').value.trim();
     const filterOffice = document.getElementById('filterOffice').value;
      const filterGrade = document.getElementById('filterGrade').value;
@@ -3682,29 +3814,31 @@ function convertExcelDateToReadable(excelDate) {
 function switchTab(tabId) {
     console.log('🔄 switchTab:', tabId);
     
-    // מציאת האלמנט של הטאב
+    // סגור את כל הטאבים
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    // הסר active מכל הכפתורים
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // פתח את הטאב הנבחר
     const tabContent = document.getElementById(tabId);
-    
-    if (!tabContent) {
-        console.error('❌ לא נמצא טאב:', tabId);
-        return;
-    }
-    
-    // בדיקה אם הטאב פתוח או סגור
-    const isOpen = tabContent.style.display === 'block';
-    
-    if (isOpen) {
-        // סגירת הטאב
-        tabContent.style.display = 'none';
-        console.log('🔽 סוגר טאב:', tabId);
-    } else {
-        // פתיחת הטאב
+    if (tabContent) {
         tabContent.style.display = 'block';
-        console.log('🔼 פותח טאב:', tabId);
-        
-        // 🎯 כאן אנחנו רק פותחים את הטאב - לא מסננים!
-        // הסינון קורה רק כשלוחצים על קטגוריה פנימית
+        tabContent.classList.add('active');
     }
+    
+    // סמן את הכפתור המתאים כפעיל
+    const tabBtn = document.querySelector(`[onclick*="${tabId}"]`);
+    if (tabBtn) {
+        tabBtn.classList.add('active');
+    }
+    
+    console.log('✅ טאב פעיל:', tabId);
 }
 // ============================================
 // עדכון תגיות מספרים בטאבים
@@ -3726,6 +3860,12 @@ function updateTabBadges() {
     }
     
     console.log(`🔢 תגיות עודכנו: 91090=${count91090}, 91091=${count91091}`);
+    // עדכון טאב זקיפות
+    const countZikufim = analysisResultsZikufim ? analysisResultsZikufim.length : 0;
+    const badgeZikufim = document.getElementById('badgeZikufim');
+    if (badgeZikufim) {
+        badgeZikufim.textContent = countZikufim;
+    }
 }
 // ============================================
 // פונקציות לטאבים בסרגל
@@ -3760,22 +3900,64 @@ function toggleStatsSubTab(subId) {
         arrow.classList.add('open');
     }
 }
+// ============================================
+// הסברים לקטגוריות - HELP SYSTEM
+// ============================================
+
+const categoryHelp = {
+    'PENSION_GRADE': { title: 'שינוי פנסיוני - דירוג', help: 'בדוק אירוע 90144' },
+    'PENSION_SENIORITY': { title: 'שינוי פנסיוני - ותק', help: 'בדוק אירוע 90146' },
+    'PENSION_POSITION': { title: 'שינוי פנסיוני - תפקיד', help: 'בדוק אירוע תפקיד' },
+    'PENSION_STATUS': { title: 'שינוי פנסיוני - מעמד', help: 'בדוק את מעמד התעסוקה' },
+    'PENSION_RESEARCH': { title: 'עובדי מחקר', help: 'בדוק את אירוע עובדי מחקר' },
+    'ONE_TIME_VEHICLE': { title: 'ביטוח רכב', help: 'בדוק אירועים 1491, 1492, 1493' },
+    'ONE_TIME_HEALTH': { title: 'הבראה', help: 'בדוק אירוע 1342' },
+    'ONE_TIME_JUBILEE': { title: 'מענק יובל', help: 'בדוק אירוע 1360' },
+    'ONE_TIME_CLOTHING': { title: 'ביגוד', help: 'בדוק אירוע 1320' },
+    'ONE_TIME': { title: 'תשלום חד-פעמי', help: 'בדוק אירועים של תשלומים חד-פעמיים' },
+    'OVERTIME': { title: 'שעות נוספות', help: 'בדוק דיווח באירוע 90999' },
+    'EXPENSES': { title: 'החזרי הוצאות', help: 'בדוק אירועי החזרי הוצאות' },
+    'FAMILY_STATUS': { title: 'מצב משפחתי', help: 'בדוק אירוע 90014' },
+    'NEW': { title: 'עובדים חדשים', help: 'בדוק תאריך התחלה חדש' },
+    'TERMINATED': { title: 'עובדים מופסקים', help: 'בדוק אירוע 90158' },
+    'RETRO_GRADE': { title: 'רטרואקטיבי - דירוג', help: 'בדוק אירוע 90144 רטרואקטיבי' },
+    'RETRO_SENIORITY': { title: 'רטרואקטיבי - ותק', help: 'בדוק אירוע 90146 רטרואקטיבי' },
+    'RETRO_POSITION': { title: 'רטרואקטיבי - תפקיד', help: 'בדוק אירוע תפקיד רטרואקטיבי' },
+    'RETRO_TARIFF': { title: 'רטרואקטיבי - תעריף', help: 'בדוק אירוע 91203 רטרואקטיבי' },
+    'RETRO_OVERTIME': { title: 'רטרואקטיבי - שעות נוספות', help: 'בדוק שעות נוספות רטרואקטיביות' },
+    'RETRO_EXPENSES': { title: 'רטרואקטיבי - הוצאות', help: 'בדוק החזרי הוצאות רטרואקטיביות' },
+    'RETRO_ONE_TIME': { title: 'רטרואקטיבי - חד פעמי', help: 'בדוק תשלומים חד-פעמיים רטרואקטיביים' },
+    'ZIKUF_VEHICLE': { title: 'הפרשי זקיפה - שווי רכב', help: 'בדוק אירוע 90253' }
+};
+
+function showHelpBanner(category) {
+    if (!categoryHelp || !categoryHelp[category]) return;
+    
+    const help = categoryHelp[category];
+    const oldBanner = document.getElementById('helpBanner');
+    if (oldBanner) oldBanner.remove();
+    
+    const banner = document.createElement('div');
+    banner.id = 'helpBanner';
+    banner.style.cssText = 'background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; margin: 10px; border-radius: 8px;';
+    banner.innerHTML = `<h3>📚 ${help.title}</h3><p style="white-space: pre-wrap;">${help.help}</p><button onclick="this.parentElement.remove()" style="background: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer;">סגור</button>`;
+    
+    document.body.insertBefore(banner, document.body.firstChild);
+}
 
 // ============================================
 // עדכון מספרים בסרגל
 // ============================================
 function updateStatsSidebar() {
-    // פונקציית עזר - עדכון בטוח
     const safeUpdate = (id, value) => {
         const el = document.getElementById(id);
-        if (el) {
-            el.textContent = value;
-        } else {
-            console.warn(`⚠️ אלמנט ${id} לא נמצא ב-HTML`);
-        }
+        if (el) el.textContent = value;
     };
     
-    // 🎯 ספירה חכמה - כל עובד יכול להיות במספר קטגוריות!
+    // ============================================
+    // שוטף (91090)
+    // ============================================
+    
     const categoryCounts = {
         pension_grade: 0,
         pension_seniority: 0,
@@ -3785,28 +3967,23 @@ function updateStatsSidebar() {
         overtime: 0,
         expenses: 0,
         one_time: 0,
-        one_time_vehicle: 0,      // ← הוסף
-        one_time_health: 0,       // ← הוסף
-        one_time_jubilee: 0,      // ← הוסף
-        one_time_clothing: 0,     // ← הוסף
-        one_time_other: 0,        // ← הוסף
+        one_time_vehicle: 0,
+        one_time_health: 0,
+        one_time_jubilee: 0,
+        one_time_clothing: 0,
+        one_time_other: 0,
         family_status: 0,
-        new_employees: 0,      // ← הוסיפי!
-        terminated_employees: 0, // ← הוסיפי!
+        new_employees: 0,
+        terminated_employees: 0,
         unknown: 0
     };
-    
-    // ============================================
-    // שוטף (91090)
-    // ============================================
     
     const count91090 = analysisResults.length;
     safeUpdate('count91090Total', count91090);
     
-    // 🔄 עבור על כל התוצאות וספור לפי categories
     analysisResults.forEach(r => {
+        // ספירה לפי categories
         if (r.categories && r.categories.length > 0) {
-            // ✅ שיטה חדשה - categories
             r.categories.forEach(cat => {
                 if (cat === 'PENSION_GRADE') categoryCounts.pension_grade++;
                 else if (cat === 'PENSION_SENIORITY') categoryCounts.pension_seniority++;
@@ -3815,95 +3992,125 @@ function updateStatsSidebar() {
                 else if (cat === 'PENSION_RESEARCH') categoryCounts.pension_research++;
                 else if (cat === 'OVERTIME') categoryCounts.overtime++;
                 else if (cat === 'EXPENSES') categoryCounts.expenses++;
-                else if (cat === 'ONE_TIME') categoryCounts.one_time++;  // ← תוקן!  
-                else if (cat === 'FAMILY_STATUS') categoryCounts.family_status++;                      
+                else if (cat === 'ONE_TIME') categoryCounts.one_time++;
+                else if (cat === 'FAMILY_STATUS') categoryCounts.family_status++;
                 else if (cat === 'NEW') categoryCounts.new_employees++;
                 else if (cat === 'TERMINATED') categoryCounts.terminated_employees++;
                 else if (cat === 'UNKNOWN') categoryCounts.unknown++;
             });
-        } else {
-            // ⚠️ fallback לשיטה ישנה (למקרה שיש רשומות ישנות)
-            if (r.reason_code === 'PENSION') {
-                if (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('הירוג')) {
-                    categoryCounts.pension_grade++;
-                }
-                if (r.explanation_detail.includes('ותק') && !r.explanation_detail.includes('עובדי מחקר')) {
-                    categoryCounts.pension_seniority++;
-                }
-                if (r.explanation_detail.includes('תפקיד')) {
-                    categoryCounts.pension_position++;
-                }
-                 if (r.categories && r.categories.includes('PENSION_STATUS')) {  // ← הוסיפי!
-            categoryCounts.pension_status++;
-                }
-                if (r.explanation_detail.includes('עובדי מחקר')) {
-                    categoryCounts.pension_research++;
-                }
-            } else if (r.reason_code === 'OVERTIME') {
-                categoryCounts.overtime++;
-            } else if (r.reason_code === 'EXPENSES') {
-                categoryCounts.expenses++;
-            
-               } else if (r.reason_code === 'FAMILY_STATUS') {
-                categoryCounts.family_status++;   
-                
-                 // 🎯 עובדים חדשים ומופסקים
-        } else if (r.reason_code  === 'NEW') {
-            categoryCounts.new_employees++;
         }
-           else if (r.reason_code  === 'TERMINATED') {
-            categoryCounts.terminated_employees++;
-        }
-             else if (r.reason_code === 'UNKNOWN') {
-                categoryCounts.unknown++;
+        
+        // ספירה לפי reason_code (בנוסף ל-categories)
+        if (r.reason_code === 'PENSION' && r.explanation_detail) {
+            if (r.explanation_detail.includes('דרגה') || r.explanation_detail.includes('הירוג')) {
+                categoryCounts.pension_grade++;
+            } else if (r.explanation_detail.includes('ותק') && !r.explanation_detail.includes('עובדי מחקר')) {
+                categoryCounts.pension_seniority++;
+            } else if (r.explanation_detail.includes('תפקיד')) {
+                categoryCounts.pension_position++;
+            } else if (r.explanation_detail.includes('מעמד')) {
+                categoryCounts.pension_status++;
+            } else if (r.explanation_detail.includes('עובדי מחקר')) {
+                categoryCounts.pension_research++;
             }
         }
-       
-       // ספור לפי subCategory_oneTime, בלי תלות ב-reason_code
-if (r.subCategory_oneTime) {
-    categoryCounts.one_time++;
-    if (r.subCategory_oneTime === 'VEHICLE') categoryCounts.one_time_vehicle++;
-    else if (r.subCategory_oneTime === 'HEALTH') categoryCounts.one_time_health++;
-    else if (r.subCategory_oneTime === 'JUBILEE') categoryCounts.one_time_jubilee++;
-    else if (r.subCategory_oneTime === 'CLOTHING') categoryCounts.one_time_clothing++;
-    else categoryCounts.one_time_other++;
-}
+        
+        if (r.reason_code === 'OVERTIME') categoryCounts.overtime++;
+        if (r.reason_code === 'EXPENSES') categoryCounts.expenses++;
+        if (r.reason_code === 'ONE_TIME') categoryCounts.one_time++;
+        if (r.reason_code === 'FAMILY_STATUS') categoryCounts.family_status++;
+        if (r.reason_code === 'UNKNOWN') categoryCounts.unknown++;
+        
+        // ספירה לפי status (עבור NEW ו-TERMINATED)
+        if (r.status === 'NEW') categoryCounts.new_employees++;
+        if (r.status === 'TERMINATED') categoryCounts.terminated_employees++;
+        
+        // ספור לפי subCategory_oneTime
+        if (r.subCategory_oneTime) {
+            if (r.subCategory_oneTime === 'VEHICLE') categoryCounts.one_time_vehicle++;
+            else if (r.subCategory_oneTime === 'HEALTH') categoryCounts.one_time_health++;
+            else if (r.subCategory_oneTime === 'JUBILEE') categoryCounts.one_time_jubilee++;
+            else if (r.subCategory_oneTime === 'CLOTHING') categoryCounts.one_time_clothing++;
+            else categoryCounts.one_time_other++;
+        }
     });
     
-    // פנסיוני - סה"כ כל הסוגים
+    // עדכן את ה-HTML של שוטף
     const countPension = categoryCounts.pension_grade + 
                         categoryCounts.pension_seniority + 
                         categoryCounts.pension_position + 
+                        categoryCounts.pension_status +
                         categoryCounts.pension_research;
     safeUpdate('countPension', countPension);
-    
-    // פנסיוני - פירוט
     safeUpdate('countPensionGrade', categoryCounts.pension_grade);
     safeUpdate('countPensionSeniority', categoryCounts.pension_seniority);
     safeUpdate('countPensionPosition', categoryCounts.pension_position);
+    safeUpdate('countPensionStatus', categoryCounts.pension_status);
     safeUpdate('countPensionResearch', categoryCounts.pension_research);
-    
-    // שעות נוספות
     safeUpdate('countOvertime', categoryCounts.overtime);
-    
-    // הוצאות
     safeUpdate('countExpenses', categoryCounts.expenses);
-    
-    // חד פעמי
     safeUpdate('countOneTime', categoryCounts.one_time);
     safeUpdate('countOneTimeVehicle', categoryCounts.one_time_vehicle);
-safeUpdate('countOneTimeHealth', categoryCounts.one_time_health);
-safeUpdate('countOneTimeJubilee', categoryCounts.one_time_jubilee);
-safeUpdate('countOneTimeClothing', categoryCounts.one_time_clothing);
-safeUpdate('countOneTimeOther', categoryCounts.one_time_other);
-    // ← חסר! הוסיפי את זה:
-safeUpdate('countFamilyStatus', categoryCounts.family_status);
-safeUpdate('countPensionStatus', categoryCounts.pension_status);
-safeUpdate('countNewEmployees', categoryCounts.new_employees);
-safeUpdate('countTerminatedEmployees', categoryCounts.terminated_employees);
-    // ללא הסבר - שוטף
+    safeUpdate('countOneTimeHealth', categoryCounts.one_time_health);
+    safeUpdate('countOneTimeJubilee', categoryCounts.one_time_jubilee);
+    safeUpdate('countOneTimeClothing', categoryCounts.one_time_clothing);
+    safeUpdate('countOneTimeOther', categoryCounts.one_time_other);
+    safeUpdate('countFamilyStatus', categoryCounts.family_status);
+    safeUpdate('countNewEmployees', categoryCounts.new_employees);
+    safeUpdate('countTerminatedEmployees', categoryCounts.terminated_employees);
     safeUpdate('countUnknown91090', categoryCounts.unknown);
     
+    // ============================================
+    // הפרשים (91091)
+    // ============================================
+    
+    const retroCounts = {
+        retro_grade: 0,
+        retro_seniority: 0,
+        retro_position: 0,
+        retro_tariff: 0,
+        retro_overtime: 0,
+        retro_expenses: 0,
+        retro_one_time: 0,
+        retro_unknown: 0
+    };
+    
+    const count91091 = analysisResults91091 ? analysisResults91091.length : 0;
+    safeUpdate('count91091Total', count91091);
+    
+    if (analysisResults91091 && analysisResults91091.length > 0) {
+        analysisResults91091.forEach(r => {
+            if (r.reason_code === 'RETRO_GRADE') retroCounts.retro_grade++;
+else if (r.reason_code === 'RETRO_SENIORITY') retroCounts.retro_seniority++;
+else if (r.reason_code === 'RETRO_POSITION') retroCounts.retro_position++;
+else if (r.reason_code === 'RETRO_TARIFF') retroCounts.retro_tariff++;
+else if (r.reason_code === 'RETRO_OVERTIME') retroCounts.retro_overtime++;
+else if (r.reason_code === 'RETRO_EXPENSES') retroCounts.retro_expenses++;
+else if (r.reason_code === 'RETRO_ONE_TIME') retroCounts.retro_one_time++;
+        });
+    }
+    
+    // עדכן את ה-HTML של הפרשים
+    safeUpdate('countRetroGrade', retroCounts.retro_grade);
+    safeUpdate('countRetroSeniority', retroCounts.retro_seniority);
+    safeUpdate('countRetroPosition', retroCounts.retro_position);
+    safeUpdate('countRetroTariff', retroCounts.retro_tariff);
+    safeUpdate('countRetroOvertime', retroCounts.retro_overtime);
+    safeUpdate('countRetroExpenses', retroCounts.retro_expenses);
+    safeUpdate('countRetroOneTime', retroCounts.retro_one_time);
+    safeUpdate('countUnknown91091', retroCounts.retro_unknown);
+    
+
+    // ============================================
+    // הפרשי זקיפות
+    // ============================================
+    
+    const countZikufim = analysisResultsZikufim ? analysisResultsZikufim.length : 0;
+    safeUpdate('countZikufimTotal', countZikufim);
+    
+    const countZikufVehicle = analysisResultsZikufim ? 
+        analysisResultsZikufim.filter(r => r.reason_code === 'ZIKUF_VEHICLE').length : 0;
+    safeUpdate('countZikufVehicle', countZikufVehicle);
     // ============================================
     // סיכום
     // ============================================
@@ -3913,40 +4120,8 @@ safeUpdate('countTerminatedEmployees', categoryCounts.terminated_employees);
     safeUpdate('summaryExplained', explained);
     safeUpdate('summaryUnexplained', unexplained);
     
-    console.log('✅ סרגל עודכן:', categoryCounts);
+    console.log('✅ סרגל עודכן!');
 }
-// ============================================
-// סינון לפי קטגוריה - הלב של המערכת!
-// ============================================
-
-
-// ==================== הסברים לקטגוריות ====================
-const categoryHelp = {
-    'PENSION_GRADE': { title: 'שינוי פנסיוני - דירוג', help: 'בדוק אירוע 90144' },
-    'PENSION_SENIORITY': { title: 'שינוי פנסיוני - ותק', help: 'בדוק אירוע 90146' },
-    'PENSION_POSITION': { title: 'שינוי פנסיוני - תפקיד', help: 'בדוק אירוע תפקיד' },
-    'PENSION_STATUS': { title: 'שינוי פנסיוני - מעמד', help: 'בדוק את מעמד התעסוקה' },
-    'PENSION_RESEARCH': { title: 'עובדי מחקר', help: 'בדוק את אירוע עובדי מחקר' },
-    'ONE_TIME_VEHICLE': { 
-    title: 'ביטוח רכב', 
-    help: `
-בדוק 90342 בעלות על רכב
-בדוק 90202 ביטוחי רכב
-בדוק 90340 רישיון נהיגה
-מספר רכב באירוע 90202 חייב להיות זהה לאירוע 90340
-    `
-},
-    'ONE_TIME_HEALTH': { title: 'הבראה', help: 'בדוק אירוע 1342' },
-    'ONE_TIME_JUBILEE': { title: 'מענק יובל', help: 'בדוק אירוע 1360' },
-    'ONE_TIME_CLOTHING': { title: 'ביגוד', help: 'בדוק אירוע 1320' },
-    'ONE_TIME': { title: 'תשלום חד-פעמי', help: 'בדוק אירועים של תשלומים חד-פעמיים' },
-    'OVERTIME': { title: 'שעות נוספות', help: 'בדוק דיווח באירוע 90999, סמלי שכר 900 עד 950' },
-    'EXPENSES': { title: 'החזרי הוצאות', help: 'בדוק אירועי החזרי הוצאות' },
-    'FAMILY_STATUS': { title: 'מצב משפחתי', help: 'בדוק אירוע 90014' },
-    'NEW': { title: 'עובדים חדשים', help: 'בדוק תאריך התחלה חדש' },
-    'TERMINATED': { title: 'עובדים מופסקים', help: 'בדוק אירוע 90158' }
-};
-
 function filterByCategory(category) {
     // ⭐ עצירת event propagation - חובה!
     if (window.event) {
@@ -4094,7 +4269,68 @@ case 'ONE_TIME_OTHER':
             filtered = analysisResults.filter(r => r.status === 'TERMINATED');
             targetTab = 'tab91090';
             break;
+            case 'ALL_91091':
+            filtered = analysisResults91091;
+            targetTab = 'tab91091';
+            break;
             
+        case 'RETRO_GRADE':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_GRADE');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_SENIORITY':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_SENIORITY');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_POSITION':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_POSITION');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_TARIFF':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_TARIFF');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_OVERTIME':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_OVERTIME');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_EXPENSES':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_EXPENSES');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_VEHICLE_BENEFITS':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_VEHICLE_BENEFITS');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'RETRO_ONE_TIME':
+            filtered = analysisResults91091.filter(r => r.reason_code === 'RETRO_ONE_TIME');
+            targetTab = 'tab91091';
+            break;
+            
+        case 'UNKNOWN_91091':
+            filtered = analysisResults91091.filter(r => 
+                !['RETRO_GRADE', 'RETRO_SENIORITY', 'RETRO_POSITION', 'RETRO_TARIFF', 
+                  'RETRO_OVERTIME', 'RETRO_EXPENSES', 'RETRO_VEHICLE_BENEFITS', 'RETRO_ONE_TIME']
+                .includes(r.reason_code)
+            );
+            targetTab = 'tab91091';
+            break;
+            case 'ALL_ZIKUFIM':
+            filtered = analysisResultsZikufim;
+            targetTab = 'tabZikufim';
+            break;
+            
+        case 'ZIKUF_VEHICLE':
+            filtered = analysisResultsZikufim.filter(r => r.reason_code === 'ZIKUF_VEHICLE');
+            targetTab = 'tabZikufim';
+            break;
         default:
             filtered = analysisResults;
     }
@@ -4102,8 +4338,13 @@ case 'ONE_TIME_OTHER':
     // מעבר לטאב הנכון
     switchTab(targetTab);
     
-    // הצגת התוצאות המסוננות
+   if (targetTab === 'tab91091') {
+    displayResults91091(filtered);
+} else if (targetTab === 'tabZikufim') {
+    displayResultsZikufim(filtered);
+} else {
     displayResults(filtered);
+}
     // הצג עזרה אם קיימת לקטגוריה
 if (categoryHelp[category]) {
     showHelpBanner(category);
@@ -4687,7 +4928,7 @@ function openPopulationQuery() {
         <span class="stats-tab-arrow" id="arrow91091Stats">▼</span>
     </div>
     
-    <div class="stats-tab-content" id="tab91091Stats" style="display: none;">
+<div class="stats-tab-content" id="tab91091Stats">
         <!-- רטרואקטיבי דרגה -->
         <div class="stats-category-item" onclick="event.stopPropagation(); filterByCategory('RETRO_GRADE')">
             <span class="stats-item-icon">🔙</span>
@@ -4743,6 +4984,22 @@ function openPopulationQuery() {
         </div>
         
     </div>
-</div>   
+</div> 
+<!-- טאב: הפרשי זקיפות -->
+<div class="stats-tab-section">
+    <div class="stats-tab-header" onclick="toggleStatsTab('tabZikufimStats'); filterByCategory('ALL_ZIKUFIM')">
+        <span class="stats-tab-title">🚗 הפרשי זקיפות</span>
+        <span class="stats-tab-count" id="countZikufimTotal">0</span>
+        <span class="stats-tab-arrow" id="arrowZikufimStats">▼</span>
+    </div>
+    
+    <div class="stats-tab-content" id="tabZikufimStats">
+        <div class="stats-category-item" onclick="filterByCategory('ZIKUF_VEHICLE')">
+            <span class="stats-item-icon">🚗</span>
+            <span class="stats-item-label">שווי רכב</span>
+            <span class="stats-item-count" id="countZikufVehicle">0</span>
+        </div>
+    </div>
+</div>
 </body>
 </html>
