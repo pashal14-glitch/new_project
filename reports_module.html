@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מודול דוחות - מערכת מילואים</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 15px;
+        }
+
+        .status-item label {
+            font-weight: bold;
+            margin-left: 8px;
+            color: #555;
+        }
+
+        .status-item span {
+            color: #667eea;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .report-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .report-section.active {
+            display: block;
+        }
+
+        .report-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .summary-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .summary-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .summary-card .sub-value {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .data-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f5f5f5;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .filters {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            color: #764ba2;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .controls,
+            .filters,
+            .tabs {
+                display: none;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 מודול דוחות מילואים</h1>
+            <p id="lastUpdate">טוען נתונים...</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <label>סה"כ רשומות:</label>
+                <span id="totalRecords">0</span>
+            </div>
+            <div class="status-item">
+                <label>סה"כ עובדים:</label>
+                <span id="totalEmployees">0</span>
+            </div>
+            <div class="status-item">
+                <label>סה"כ ימי מילואים:</label>
+                <span id="totalDays">0</span>
+            </div>
+            <div class="status-item">
+                <label>סה"כ תשלום:</label>
+                <span id="totalPayment">0</span>
+            </div>
+        </div>
+
+        <div class="controls">
+                       </button>
+           <button class="btn btn-warning" onclick="generateGapReportWithCalculation()">
+    ⚠️ דוח פערים
+</button>
+            <button class="btn btn-info" onclick="showBrutoWithoutMiluimReport()">
+    💰 ברוטו ללא מילואים
+</button>
+            <button class="btn btn-secondary" onclick="exportToExcel()">
+                📥 ייצוא לאקסל
+            </button>
+            <button class="btn btn-secondary" onclick="printReport()">
+                🖨️ הדפסה
+            </button>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>מתאריך:</label>
+                <input type="date" id="fromDate">
+            </div>
+            <div class="filter-group">
+                <label>עד תאריך:</label>
+                <input type="date" id="toDate">
+            </div>
+            <div class="filter-group">
+                <label>מספר עובד:</label>
+                <input type="text" id="employeeFilter" placeholder="הכנס מספר עובד">
+            </div>
+            <div class="filter-group">
+                <label>סטטוס:</label>
+                <select id="statusFilter">
+                    <option value="">הכל</option>
+                    <option value="4410">4410</option>
+                    <option value="1309">1309</option>
+                    <option value="1930">1930</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="applyFilters()">
+                🔍 החל סינון
+            </button>
+            <button class="btn btn-secondary" onclick="clearFilters()">
+                ❌ נקה סינון
+            </button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('summary')">סיכום</button>
+            <button class="tab" onclick="showTab('details')">פירוט</button>
+            <button class="tab" onclick="showTab('charts')">גרפים</button>
+            <button class="tab" onclick="showTab('gaps')">פערים</button>
+        </div>
+
+        <div id="summaryReport" class="report-section active">
+            <h2>סיכום כללי</h2>
+            <div class="summary-cards" id="summaryCards"></div>
+            <div class="chart-container">
+                <canvas id="summaryChart"></canvas>
+            </div>
+        </div>
+
+        <div id="detailsReport" class="report-section">
+            <h2>פירוט רשומות</h2>
+            <table class="data-table" id="detailsTable">
+                <thead>
+                    <tr>
+                        <th>מספר עובד</th>
+                        <th>שם</th>
+                        <th>תאריך התחלה</th>
+                        <th>תאריך סיום</th>
+                        <th>ימים</th>
+                        <th>ערך יומי</th>
+                        <th>סה"כ תשלום</th>
+                        <th>סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody id="detailsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="chartsReport" class="report-section">
+            <h2>ניתוח גרפי</h2>
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="employeeChart"></canvas>
+            </div>
+        </div>
+
+        <div id="gapsReport" class="report-section">
+            <h2>דוח פערים</h2>
+            <div class="summary-cards" id="gapCards"></div>
+            <table class="data-table" id="gapsTable">
+                <thead>
+                    <tr>
+                        <th>מספר עובד</th>
+                        <th>תקופה</th>
+                        <th>סוג פער</th>
+                        <th>סכום צפוי</th>
+                        <th>סכום בפועל</th>
+                        <th>הפרש</th>
+                        <th>סטטוס</th>
+                    </tr>
+                </thead>
+                <tbody id="gapsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>טוען נתונים מהמערכת...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        // משתנים גלובליים
+        let allData = [];
+        let filteredData = [];
+        let gapStatuses = {};
+        let employeeNames = {};
+        let salaryData = [];      
+        let miluimData = [];  
+        
+        // קבועים
+        const DB_NAME = 'MiluimCalculatorDB';
+        const DB_VERSION = 4;
+
+        // פונקציה לפתיחת מסד הנתונים
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                
+                request.onupgradeneeded = (event) => {
+                    // המודול הזה רק קורא נתונים, לא יוצר stores
+                    console.log('Database upgrade needed - handled by main module');
+                };
+            });
+        }
+
+        // טעינת נתונים מ-IndexedDB
+        async function loadDataFromDB() {
+            try {
+                showLoading(true);
+                
+                const db = await openDatabase();
+                
+                // טעינת תוצאות חישוב
+                const transaction = db.transaction(['calculationResults', 'gapStatuses'], 'readonly');
+                const calcStore = transaction.objectStore('calculationResults');
+                const gapStore = transaction.objectStore('gapStatuses');
+                
+                // קריאת נתוני חישוב
+                const calcRequest = calcStore.getAll();
+                const calcData = await new Promise((resolve, reject) => {
+                    calcRequest.onsuccess = () => resolve(calcRequest.result);
+                    calcRequest.onerror = () => reject(calcRequest.error);
+                });
+
+                // קריאת סטטוסי פערים
+                const gapRequest = gapStore.getAll();
+                const gapData = await new Promise((resolve, reject) => {
+                    gapRequest.onsuccess = () => resolve(gapRequest.result);
+                    gapRequest.onerror = () => reject(gapRequest.error);
+                });
+
+                if (calcData && calcData.length > 0) {
+                    const latestData = calcData[calcData.length - 1];
+                    allData = latestData.results || [];
+                    filteredData = [...allData];
+                    salaryData = latestData.salaryData || [];
+                    miluimData = latestData.miluimData || [];
+                    console.log('📊 נטענו נתוני שכר:', salaryData.length, 'רשומות');
+                    
+                    // עדכון סטטוסי פערים
+                    if (gapData && gapData.length > 0) {
+                        gapStatuses = gapData[0].statuses || {};
+                    }
+                    
+                    // עדכון תאריך אחרון
+                    const lastUpdate = new Date(latestData.timestamp);
+                    document.getElementById('lastUpdate').textContent = 
+                        `עודכן לאחרונה: ${lastUpdate.toLocaleDateString('he-IL')} ${lastUpdate.toLocaleTimeString('he-IL')}`;
+                    
+                    updateStatusBar();
+                    generateSummaryReport();
+                    showLoading(false);
+                } else {
+                    throw new Error('לא נמצאו נתונים במערכת');
+                }
+                
+            } catch (error) {
+                console.error('שגיאה בטעינת נתונים:', error);
+                showError('שגיאה בטעינת נתונים מהמערכת. אנא ודא שהרצת חישוב במודול הראשי.');
+                showLoading(false);
+            }
+        }
+
+        // עדכון שורת סטטוס
+        function updateStatusBar() {
+            const totalRecords = filteredData.length;
+            const totalEmployees = new Set(filteredData.map(d => d.employeeId)).size;
+            const totalDays = filteredData.reduce((sum, d) => sum + (d.miluimDays || 0), 0);
+            const totalPayment = filteredData.reduce((sum, d) => 
+                sum + ((d.continuousValue || 0) * (d.miluimDays || 0)), 0);
+            
+            document.getElementById('totalRecords').textContent = totalRecords.toLocaleString('he-IL');
+            document.getElementById('totalEmployees').textContent = totalEmployees.toLocaleString('he-IL');
+            document.getElementById('totalDays').textContent = totalDays.toLocaleString('he-IL');
+            document.getElementById('totalPayment').textContent = '₪ ' + totalPayment.toLocaleString('he-IL', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // יצירת דוח סיכום
+        function generateSummaryReport() {
+            const summaryCards = document.getElementById('summaryCards');
+            
+            // חישובים
+            const employeeStats = {};
+            let totalEmergencyDays = 0;
+            let totalRegularDays = 0;
+            let monthlyData = {};
+            
+            filteredData.forEach(record => {
+                // סטטיסטיקה לפי עובד
+                if (!employeeStats[record.employeeId]) {
+                    employeeStats[record.employeeId] = {
+                        totalDays: 0,
+                        totalPayment: 0,
+                        records: 0
+                    };
+                }
+                employeeStats[record.employeeId].totalDays += record.miluimDays || 0;
+                employeeStats[record.employeeId].totalPayment += 
+                    (record.continuousValue || 0) * (record.miluimDays || 0);
+                employeeStats[record.employeeId].records++;
+                
+                // ימי חירום vs רגיל
+                if (record.emergency40percentage || record.emergencyCompulsion4405) {
+                    totalEmergencyDays += record.miluimDays || 0;
+                } else {
+                    totalRegularDays += record.miluimDays || 0;
+                }
+                
+                // נתונים חודשיים
+                const month = new Date(record.startDate).toLocaleDateString('he-IL', { 
+                    year: 'numeric', 
+                    month: 'long' 
+                });
+                if (!monthlyData[month]) {
+                    monthlyData[month] = {
+                        days: 0,
+                        payment: 0
+                    };
+                }
+                monthlyData[month].days += record.miluimDays || 0;
+                monthlyData[month].payment += (record.continuousValue || 0) * (record.miluimDays || 0);
+            });
+            
+            // יצירת כרטיסי סיכום
+            summaryCards.innerHTML = `
+                <div class="summary-card">
+                    <h3>עובדים פעילים</h3>
+                    <div class="value">${Object.keys(employeeStats).length}</div>
+                    <div class="sub-value">מתוך ${Object.keys(employeeStats).length} עובדים</div>
+                </div>
+                <div class="summary-card">
+                    <h3>ממוצע ימים לעובד</h3>
+                    <div class="value">${(filteredData.reduce((sum, d) => sum + (d.miluimDays || 0), 0) / Object.keys(employeeStats).length).toFixed(1)}</div>
+                    <div class="sub-value">ימי שירות</div>
+                </div>
+                <div class="summary-card">
+                    <h3>ימי חירום</h3>
+                    <div class="value">${totalEmergencyDays}</div>
+                    <div class="sub-value">${((totalEmergencyDays / (totalEmergencyDays + totalRegularDays)) * 100).toFixed(1)}% מהסה"כ</div>
+                </div>
+                <div class="summary-card">
+                    <h3>חודשים פעילים</h3>
+                    <div class="value">${Object.keys(monthlyData).length}</div>
+                    <div class="sub-value">תקופות שירות</div>
+                </div>
+            `;
+            
+            showTab('summary');
+        }
+
+        // יצירת דוח עובדים
+        function generateEmployeeReport() {
+            const tbody = document.getElementById('detailsTableBody');
+            tbody.innerHTML = '';
+            
+            // מיון לפי מספר עובד ותאריך
+            const sortedData = [...filteredData].sort((a, b) => {
+                if (a.employeeId !== b.employeeId) {
+                    return a.employeeId.localeCompare(b.employeeId);
+                }
+                return new Date(a.startDate) - new Date(b.startDate);
+            });
+            
+            sortedData.forEach(record => {
+                const row = document.createElement('tr');
+                const totalPayment = (record.continuousValue || 0) * (record.miluimDays || 0);
+                
+                row.innerHTML = `
+                    <td>${record.employeeId}</td>
+                    <td>${record.employeeName || '-'}</td>
+                    <td>${formatDate(record.startDate)}</td>
+                    <td>${formatDate(record.endDate)}</td>
+                    <td>${record.miluimDays || 0}</td>
+                    <td>₪ ${(record.continuousValue || 0).toLocaleString('he-IL', {minimumFractionDigits: 2})}</td>
+                    <td>₪ ${totalPayment.toLocaleString('he-IL', {minimumFractionDigits: 2})}</td>
+                    <td>${record.employeeStatus || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            showTab('details');
+        }
+
+        // יצירת דוח חודשי
+        function generateMonthlyReport() {
+            const monthlyData = {};
+            
+            filteredData.forEach(record => {
+                const month = new Date(record.startDate).toLocaleDateString('he-IL', { 
+                    year: 'numeric', 
+                    month: '2-digit' 
+                });
+                
+                if (!monthlyData[month]) {
+                    monthlyData[month] = {
+                        records: 0,
+                        days: 0,
+                        payment: 0,
+                        employees: new Set()
+                    };
+                }
+                
+                monthlyData[month].records++;
+                monthlyData[month].days += record.miluimDays || 0;
+                monthlyData[month].payment += (record.continuousValue || 0) * (record.miluimDays || 0);
+                monthlyData[month].employees.add(record.employeeId);
+            });
+            
+            // המרה לטבלה
+            const tbody = document.getElementById('detailsTableBody');
+            tbody.innerHTML = '';
+            
+            Object.keys(monthlyData).sort().forEach(month => {
+                const data = monthlyData[month];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="2">${month}</td>
+                    <td>${data.records} רשומות</td>
+                    <td>${data.employees.size} עובדים</td>
+                    <td>${data.days} ימים</td>
+                    <td colspan="2">₪ ${data.payment.toLocaleString('he-IL', {minimumFractionDigits: 2})}</td>
+                    <td>-</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            showTab('details');
+        }
+
+        // יצירת דוח פערים
+        function generateGapReport() {
+            const gapCards = document.getElementById('gapCards');
+            const tbody = document.getElementById('gapsTableBody');
+            
+            let totalGaps = 0;
+            let reviewedGaps = 0;
+            let completedGaps = 0;
+            let totalGapAmount = 0;
+            
+            tbody.innerHTML = '';
+            
+            // ספירת פערים
+            Object.keys(gapStatuses).forEach(key => {
+                const status = gapStatuses[key];
+                totalGaps++;
+                if (status === 'reviewing') reviewedGaps++;
+                if (status === 'completed') completedGaps++;
+            });
+            
+            // הצגת כרטיסי סיכום
+            gapCards.innerHTML = `
+                <div class="summary-card">
+                    <h3>סה"כ פערים</h3>
+                    <div class="value">${totalGaps}</div>
+                    <div class="sub-value">פערים שזוהו</div>
+                </div>
+                <div class="summary-card">
+                    <h3>בבדיקה</h3>
+                    <div class="value">${reviewedGaps}</div>
+                    <div class="sub-value">${((reviewedGaps / totalGaps) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="summary-card">
+                    <h3>טופלו</h3>
+                    <div class="value">${completedGaps}</div>
+                    <div class="sub-value">${((completedGaps / totalGaps) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="summary-card">
+                    <h3>ממתינים</h3>
+                    <div class="value">${totalGaps - reviewedGaps - completedGaps}</div>
+                    <div class="sub-value">לטיפול</div>
+                </div>
+            `;
+            
+            showTab('gaps');
+        }
+
+        // פונקציות עזר
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('he-IL');
+        }
+
+        function showTab(tabName) {
+            // הסתרת כל הדוחות
+            document.querySelectorAll('.report-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // הצגת הדוח הנבחר
+            const reportMap = {
+                'summary': 'summaryReport',
+                'details': 'detailsReport',
+                'charts': 'chartsReport',
+                'gaps': 'gapsReport'
+            };
+            
+            const reportId = reportMap[tabName];
+            if (reportId) {
+                document.getElementById(reportId).classList.add('active');
+            }
+            
+            // עדכון הטאבים
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.includes(getTabTitle(tabName))) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+
+        function getTabTitle(tabName) {
+            const titles = {
+                'summary': 'סיכום',
+                'details': 'פירוט',
+                'charts': 'גרפים',
+                'gaps': 'פערים'
+            };
+            return titles[tabName] || '';
+        }
+
+        function applyFilters() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const employeeId = document.getElementById('employeeFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            filteredData = allData.filter(record => {
+                let include = true;
+                
+                if (fromDate && new Date(record.startDate) < new Date(fromDate)) {
+                    include = false;
+                }
+                
+                if (toDate && new Date(record.endDate) > new Date(toDate)) {
+                    include = false;
+                }
+                
+                if (employeeId && !record.employeeId.includes(employeeId)) {
+                    include = false;
+                }
+                
+                if (status && record.employeeStatus !== status) {
+                    include = false;
+                }
+                
+                return include;
+            });
+            
+            updateStatusBar();
+            generateSummaryReport();
+        }
+
+        function clearFilters() {
+            document.getElementById('fromDate').value = '';
+            document.getElementById('toDate').value = '';
+            document.getElementById('employeeFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            
+            filteredData = [...allData];
+            updateStatusBar();
+            generateSummaryReport();
+        }
+
+        function exportToExcel() {
+            // יצירת נתונים לייצוא
+            let csvContent = '\ufeff'; // BOM for Hebrew
+            csvContent += 'מספר עובד,שם,תאריך התחלה,תאריך סיום,ימים,ערך יומי,סה"כ תשלום,סטטוס\n';
+            
+            filteredData.forEach(record => {
+                const totalPayment = (record.continuousValue || 0) * (record.miluimDays || 0);
+                csvContent += `${record.employeeId},${record.employeeName || ''},${formatDate(record.startDate)},${formatDate(record.endDate)},${record.miluimDays || 0},${record.continuousValue || 0},${totalPayment},${record.employeeStatus || ''}\n`;
+            });
+            
+            // הורדת הקובץ
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `דוח_מילואים_${new Date().toLocaleDateString('he-IL')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function printReport() {
+            window.print();
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        // המרת תאריך Excel למספר
+function parseExcelDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number') {
+        // מספר סידורי של Excel
+        const excelEpoch = new Date(1899, 11, 30);
+        return new Date(excelEpoch.getTime() + value * 86400000);
+    }
+    if (typeof value === 'string') {
+        return new Date(value);
+    }
+    return null;
+}
+// חישוב ברוטו ללא מילואים
+function calculateBrutoWithoutMiluim() {
+    const results = [];
+    
+    // קיבוץ לפי עובד + חודש
+    const monthlyData = {};
+    
+    // עיבוד נתוני מילואים
+    allData.forEach(record => {
+        const date = new Date(record.startDate);
+        const monthKey = `${record.employeeId}_${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = {
+                employeeId: record.employeeId,
+                year: date.getFullYear(),
+                month: date.getMonth() + 1,
+                miluimDays: 0,
+                paidAmount: 0
+            };
+        }
+        
+        monthlyData[monthKey].miluimDays += record.miluimDays || 0;
+        monthlyData[monthKey].paidAmount += record.paidAmount || 0;
+    });
+    
+    // חיבור עם נתוני שכר
+    Object.values(monthlyData).forEach(data => {
+        // מציאת ברוטו מקורי לאותו חודש
+       const salaryRecord = salaryData.find(s => {
+    const salaryDate = parseExcelDate(s.monthYear);
+            return s.employeeId == data.employeeId && 
+                   salaryDate.getFullYear() === data.year &&
+                   (salaryDate.getMonth() + 1) === data.month;
+        });
+        
+        if (salaryRecord && salaryRecord.bruto > 0) {
+            const bruto = salaryRecord.bruto;
+            const daysInMonth = new Date(data.year, data.month, 0).getDate();
+            const workingDays = daysInMonth - data.miluimDays;
+            
+            // הנוסחה שלך: (ברוטו - סכום_מילואים) / ימים_נותרים * ימי_חודש
+            const brutoWithoutMiluim = workingDays > 0 
+                ? ((bruto - data.paidAmount) / workingDays) * daysInMonth 
+                : 0;
+            
+            results.push({
+                employeeId: data.employeeId,
+                year: data.year,
+                month: data.month,
+                originalBruto: bruto,
+                paidMiluim: data.paidAmount,
+                miluimDays: data.miluimDays,
+                daysInMonth: daysInMonth,
+                workingDays: workingDays,
+                brutoWithoutMiluim: Math.round(brutoWithoutMiluim)
+            });
+        }
+    });
+    
+    // מיון לפי עובד וחודש
+    results.sort((a, b) => {
+        if (a.employeeId !== b.employeeId) return a.employeeId - b.employeeId;
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+    });
+    
+    return results;
+}
+// הצגת דוח ברוטו ללא מילואים
+function showBrutoWithoutMiluimReport() {
+    const results = calculateBrutoWithoutMiluim();
+    
+    if (results.length === 0) {
+        alert('לא נמצאו נתונים לחישוב. וודאי שנטענו נתוני שכר.');
+        return;
+    }
+    
+    const tbody = document.getElementById('detailsTableBody');
+    const table = document.getElementById('detailsTable');
+    
+    // עדכון כותרות הטבלה
+    table.querySelector('thead').innerHTML = `
+        <tr>
+            <th>מספר עובד</th>
+            <th>שנה</th>
+            <th>חודש</th>
+            <th>ברוטו מקורי</th>
+            <th>שולם מילואים</th>
+            <th>ימי מילואים</th>
+            <th>ימים בחודש</th>
+            <th>ברוטו ללא מילואים</th>
+        </tr>
+    `;
+    
+    tbody.innerHTML = '';
+    
+    results.forEach(r => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${r.employeeId}</td>
+            <td>${r.year}</td>
+            <td>${r.month}</td>
+            <td>₪ ${r.originalBruto.toLocaleString('he-IL')}</td>
+            <td>₪ ${r.paidMiluim.toLocaleString('he-IL')}</td>
+            <td>${r.miluimDays}</td>
+            <td>${r.daysInMonth}</td>
+            <td style="font-weight: bold; color: #28a745;">₪ ${r.brutoWithoutMiluim.toLocaleString('he-IL')}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // סיכום
+    const totalOriginal = results.reduce((sum, r) => sum + r.originalBruto, 0);
+    const totalWithout = results.reduce((sum, r) => sum + r.brutoWithoutMiluim, 0);
+    
+    const summaryRow = document.createElement('tr');
+    summaryRow.style.background = '#e9ecef';
+    summaryRow.style.fontWeight = 'bold';
+    summaryRow.innerHTML = `
+        <td colspan="3">סה"כ</td>
+        <td>₪ ${totalOriginal.toLocaleString('he-IL')}</td>
+        <td colspan="3"></td>
+        <td style="color: #28a745;">₪ ${totalWithout.toLocaleString('he-IL')}</td>
+    `;
+    tbody.appendChild(summaryRow);
+    
+    showTab('details');
+    
+    console.log('📊 דוח ברוטו ללא מילואים:', results.length, 'רשומות');
+}
+// חישוב והצגת דוח פערים
+function generateGapReportWithCalculation() {
+    if (allData.length === 0) {
+        alert('לא נמצאו נתונים. וודאי שהרצת חישוב במחשבון.');
+        return;
+    }
+    
+    const gaps = [];
+    
+    allData.forEach(r => {
+        const expected = (r.continuousValue || 0) * (r.miluimDays || 0);
+        const paid = r.paidAmount || 0;
+        const gap = expected - paid;
+        
+        if (Math.abs(gap) > 1) {  // רק פערים מעל 1 ש"ח
+            gaps.push({
+                employeeId: r.employeeId,
+                startDate: r.startDate,
+                endDate: r.endDate,
+                miluimDays: r.miluimDays || 0,
+                dailyValue: r.continuousValue || 0,
+                expected: expected,
+                paid: paid,
+                gap: gap,
+                status: gapStatuses[r.employeeId + '_' + r.startDate] || 'ממתין'
+            });
+        }
+    });
+    
+    // עדכון כרטיסי סיכום
+    const gapCards = document.getElementById('gapCards');
+    const totalGaps = gaps.length;
+    const positiveGaps = gaps.filter(g => g.gap > 0).length;
+    const negativeGaps = gaps.filter(g => g.gap < 0).length;
+    const totalGapAmount = gaps.reduce((sum, g) => sum + g.gap, 0);
+    
+    gapCards.innerHTML = `
+        <div class="summary-card">
+            <h3>סה"כ פערים</h3>
+            <div class="value">${totalGaps}</div>
+        </div>
+        <div class="summary-card">
+            <h3>חוב לעובד</h3>
+            <div class="value" style="color: #dc3545;">${positiveGaps}</div>
+            <div class="sub-value">שולם פחות מהמגיע</div>
+        </div>
+        <div class="summary-card">
+            <h3>חוב למעסיק</h3>
+            <div class="value" style="color: #28a745;">${negativeGaps}</div>
+            <div class="sub-value">שולם יותר מהמגיע</div>
+        </div>
+        <div class="summary-card">
+            <h3>סה"כ הפרש</h3>
+            <div class="value" style="color: ${totalGapAmount >= 0 ? '#dc3545' : '#28a745'};">
+                ₪ ${Math.abs(totalGapAmount).toLocaleString('he-IL', {minimumFractionDigits: 0})}
+            </div>
+            <div class="sub-value">${totalGapAmount >= 0 ? 'לטובת העובדים' : 'לטובת המעסיק'}</div>
+        </div>
+    `;
+    
+    // הצגה בטבלה
+    const tbody = document.getElementById('gapsTableBody');
+    tbody.innerHTML = '';
+    
+    gaps.forEach(g => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${g.employeeId}</td>
+            <td>${formatDate(g.startDate)} - ${formatDate(g.endDate)}</td>
+            <td>${g.miluimDays} ימים × ₪${g.dailyValue.toFixed(0)}</td>
+            <td>₪ ${g.expected.toLocaleString('he-IL', {minimumFractionDigits: 0})}</td>
+            <td>₪ ${g.paid.toLocaleString('he-IL', {minimumFractionDigits: 0})}</td>
+            <td style="font-weight: bold; color: ${g.gap >= 0 ? '#dc3545' : '#28a745'};">
+                ₪ ${g.gap.toLocaleString('he-IL', {minimumFractionDigits: 0})}
+            </td>
+            <td>${g.status}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    showTab('gaps');
+    console.log('📊 דוח פערים:', gaps.length, 'רשומות');
+}
+        // טעינה ראשונית
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromDB();
+        });
+    </script>
+</body>
+</html>
