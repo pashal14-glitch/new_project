@@ -901,15 +901,68 @@ function parseExcelDate(value) {
     }
     return null;
 }
+// פיצול רשומות חוצות-חודש
+function splitCrossMonthRecords(records) {
+    const result = [];
+    
+    records.forEach(record => {
+        const startDate = new Date(record.startDate);
+        const endDate = new Date(record.endDate);
+        
+        // בדיקה אם אותו חודש
+        if (startDate.getFullYear() === endDate.getFullYear() && 
+            startDate.getMonth() === endDate.getMonth()) {
+            // אותו חודש - להוסיף כמו שזה
+            result.push(record);
+        } else {
+            // חוצה חודשים - לפצל
+            const totalDays = record.miluimDays || 1;
+            const dailyPaid = (record.paidAmount || 0) / totalDays;
+            
+            let currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                
+                // תאריך סיום לחודש זה
+                const periodEnd = endDate < monthEnd ? endDate : monthEnd;
+                const periodStart = currentDate;
+                
+                // חישוב ימים בחודש זה
+                const daysInPeriod = Math.floor((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+                
+                result.push({
+                    ...record,
+                    startDate: new Date(periodStart),
+                    endDate: new Date(periodEnd),
+                    miluimDays: daysInPeriod,
+                    paidAmount: dailyPaid * daysInPeriod,
+                    isSplit: true,
+                    originalDays: totalDays
+                });
+                
+                // מעבר לחודש הבא
+                currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            }
+        }
+    });
+    
+    return result;
+}
 // חישוב ברוטו ללא מילואים
 function calculateBrutoWithoutMiluim() {
-    const results = [];
+   const results = [];
     
     // קיבוץ לפי עובד + חודש
     const monthlyData = {};
     
+    // פיצול רשומות חוצות-חודש לפני העיבוד
+    const splitData = splitCrossMonthRecords(allData);
+    console.log('📊 רשומות אחרי פיצול:', splitData.length, '(מקור:', allData.length, ')');
+    
     // עיבוד נתוני מילואים
-    allData.forEach(record => {
+    splitData.forEach(record => {
         const date = new Date(record.startDate);
         const monthKey = `${record.employeeId}_${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, '0')}`;
         
