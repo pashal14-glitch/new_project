@@ -3089,7 +3089,8 @@ const cacheSystem = new MiluimCalculatorCache();
             2022: 6131,
             2023: 6455,
             2024: 6668,
-            2025: 6895
+            2025: 6895,
+            2026: 7059.76    
         };
 
         // Daily value limits by period
@@ -3099,7 +3100,8 @@ const cacheSystem = new MiluimCalculatorCache();
             { start: new Date('2023-01-01'), end: new Date('2023-10-06'), min: 215.17, max: 1582.17 },
             { start: new Date('2023-10-07'), end: new Date('2023-12-31'), min: 300.61, max: 1582.17 },
             { start: new Date('2024-01-01'), end: new Date('2024-12-31'), min: 310.52, max: 1634.33 },
-            { start: new Date('2025-01-01'), end: new Date('2025-12-31'), min: 321.07, max: 1689.83 }
+            { start: new Date('2025-01-01'), end: new Date('2025-12-31'), min: 321.07, max: 1689.83 },
+            { start: new Date('2026-01-01'), end: new Date('2026-12-31'), min: 328.76, max: 1730.33 }
         ];
 
         // 🔥 תיקון קריטי: פונקציית parseExcelDate מתוקנת
