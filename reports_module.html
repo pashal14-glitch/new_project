@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -349,6 +350,9 @@
 </button>
             <button class="btn btn-info" onclick="showBrutoWithoutMiluimReport()">
     💰 ברוטו ללא מילואים
+</button>
+<button class="btn btn-success" onclick="generateSalaryIncreaseReport()">
+    📈 זכאות 20%
 </button>
             <button class="btn btn-secondary" onclick="exportToExcel()">
                 📥 ייצוא לאקסל
@@ -1173,6 +1177,222 @@ function generateGapReportWithCalculation() {
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromDB();
         });
+        // ========== דוח זכאות לתוספת 20% ==========
+
+// פונקציה 1: חישוב ברוטו נקי (ללא מילואים) לחודש בודד
+function getCleanBrutoForMonth(employeeId, year, month) {
+    // מציאת ברוטו מקורי
+    const salaryRecord = salaryData.find(s => {
+        const salaryDate = parseExcelDate(s.monthYear);
+        return s.employeeId == employeeId && 
+               salaryDate.getFullYear() === year &&
+               (salaryDate.getMonth() + 1) === month;
+    });
+    
+    if (!salaryRecord || !salaryRecord.bruto) {
+        return null; // אין נתוני שכר
+    }
+    
+    const bruto = salaryRecord.bruto;
+    
+    // מציאת מילואים באותו חודש (עם פיצול)
+    const splitData = splitCrossMonthRecords(allData.filter(r => r.employeeId == employeeId));
+    
+    let miluimDays = 0;
+    let paidAmount = 0;
+    
+    splitData.forEach(record => {
+        const recordDate = new Date(record.startDate);
+        if (recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month) {
+            miluimDays += record.miluimDays || 0;
+            paidAmount += record.paidAmount || 0;
+        }
+    });
+    
+    // חישוב ברוטו נקי
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const workingDays = daysInMonth - miluimDays;
+    
+    if (workingDays <= 0) {
+        return null; // כל החודש מילואים
+    }
+    
+    const cleanBruto = ((bruto - paidAmount) / workingDays) * daysInMonth;
+    
+    return {
+        year: year,
+        month: month,
+        originalBruto: bruto,
+        miluimDays: miluimDays,
+        paidAmount: paidAmount,
+        cleanBruto: Math.round(cleanBruto)
+    };
+}
+
+// פונקציה 2: חישוב ממוצע ברוטו נקי ל-3 חודשים אחורה
+function getAverageCleanBruto(employeeId, beforeDate, monthsCount = 3) {
+    const results = [];
+    let currentDate = new Date(beforeDate);
+    
+    // חזרה אחורה בחודשים
+    for (let i = 0; i < monthsCount; i++) {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        
+        const monthData = getCleanBrutoForMonth(employeeId, year, month);
+        if (monthData) {
+            results.push(monthData);
+        }
+    }
+    
+    if (results.length === 0) {
+        return null;
+    }
+    
+    const totalCleanBruto = results.reduce((sum, r) => sum + r.cleanBruto, 0);
+    const average = totalCleanBruto / results.length;
+    
+    return {
+        months: results,
+        monthsFound: results.length,
+        totalCleanBruto: totalCleanBruto,
+        average: Math.round(average)
+    };
+}
+
+// פונקציה 3: בדיקת זכאות לתוספת 20%
+function checkSalaryIncrease(record) {
+    const serviceDate = new Date(record.startDate);
+    const cutoffDate = new Date(2025, 4, 1); // 1.5.2025
+    
+    // רק שירותים מ-1.5.2025
+    if (serviceDate < cutoffDate) {
+        return null;
+    }
+    
+    const employeeId = record.employeeId;
+    const clusterStart = record.emergencyClusterStart ? new Date(record.emergencyClusterStart) : serviceDate;
+    
+    // ממוצע בסיס: 3 חודשים לפני תחילת אשכול
+    const baseAverage = getAverageCleanBruto(employeeId, clusterStart, 3);
+    
+    // ממוצע נוכחי: 3 חודשים לפני השירות הנוכחי
+    const currentAverage = getAverageCleanBruto(employeeId, serviceDate, 3);
+    
+    if (!baseAverage || !currentAverage) {
+        return {
+            employeeId: employeeId,
+            serviceDate: serviceDate,
+            clusterStart: clusterStart,
+            status: 'חסרים נתונים',
+            eligible: false,
+            baseAverage: baseAverage ? baseAverage.average : null,
+            currentAverage: currentAverage ? currentAverage.average : null,
+            increasePercent: null
+        };
+    }
+    
+    // חישוב אחוז עלייה
+    const increasePercent = ((currentAverage.average - baseAverage.average) / baseAverage.average) * 100;
+    const eligible = increasePercent >= 20;
+    
+    return {
+        employeeId: employeeId,
+        serviceDate: serviceDate,
+        clusterStart: clusterStart,
+        baseMonths: baseAverage.months,
+        currentMonths: currentAverage.months,
+        baseAverage: baseAverage.average,
+        currentAverage: currentAverage.average,
+        increasePercent: Math.round(increasePercent * 10) / 10,
+        eligible: eligible,
+        status: eligible ? 'זכאי ✅' : 'לא זכאי'
+    };
+}
+
+// פונקציה 4: הצגת דוח זכאות לתוספת 20%
+function generateSalaryIncreaseReport() {
+    if (allData.length === 0) {
+        alert('לא נמצאו נתונים. וודאי שהרצת חישוב במחשבון.');
+        return;
+    }
+    
+    const results = [];
+    const cutoffDate = new Date(2025, 4, 1);
+    
+    // בדיקה לכל שירות מ-1.5.2025
+    allData.forEach(record => {
+        const serviceDate = new Date(record.startDate);
+        if (serviceDate >= cutoffDate) {
+            const check = checkSalaryIncrease(record);
+            if (check) {
+                results.push(check);
+            }
+        }
+    });
+    
+    // עדכון כותרות הטבלה
+    const table = document.getElementById('detailsTable');
+    table.querySelector('thead').innerHTML = `
+        <tr>
+            <th>מספר עובד</th>
+            <th>תאריך שירות</th>
+            <th>תחילת אשכול</th>
+            <th>ממוצע בסיס</th>
+            <th>ממוצע נוכחי</th>
+            <th>אחוז עלייה</th>
+            <th>זכאות</th>
+        </tr>
+    `;
+    
+    const tbody = document.getElementById('detailsTableBody');
+    tbody.innerHTML = '';
+    
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">לא נמצאו שירותים מ-1.5.2025</td></tr>';
+        showTab('details');
+        return;
+    }
+    
+    // סיכומים
+    const eligible = results.filter(r => r.eligible).length;
+    const notEligible = results.filter(r => !r.eligible && r.status !== 'חסרים נתונים').length;
+    const missingData = results.filter(r => r.status === 'חסרים נתונים').length;
+    
+    results.forEach(r => {
+        const row = document.createElement('tr');
+        const rowColor = r.eligible ? '#d4edda' : (r.status === 'חסרים נתונים' ? '#fff3cd' : '');
+        row.style.background = rowColor;
+        
+        row.innerHTML = `
+            <td>${r.employeeId}</td>
+            <td>${formatDate(r.serviceDate)}</td>
+            <td>${formatDate(r.clusterStart)}</td>
+            <td>${r.baseAverage ? '₪ ' + r.baseAverage.toLocaleString('he-IL') : '-'}</td>
+            <td>${r.currentAverage ? '₪ ' + r.currentAverage.toLocaleString('he-IL') : '-'}</td>
+            <td style="font-weight: bold; color: ${r.increasePercent >= 20 ? '#28a745' : '#dc3545'};">
+                ${r.increasePercent !== null ? r.increasePercent + '%' : '-'}
+            </td>
+            <td>${r.status}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // שורת סיכום
+    const summaryRow = document.createElement('tr');
+    summaryRow.style.background = '#e9ecef';
+    summaryRow.style.fontWeight = 'bold';
+    summaryRow.innerHTML = `
+        <td colspan="3">סה"כ: ${results.length} שירותים</td>
+        <td colspan="2" style="color: #28a745;">זכאים: ${eligible}</td>
+        <td colspan="2" style="color: #dc3545;">לא זכאים: ${notEligible} | חסר מידע: ${missingData}</td>
+    `;
+    tbody.appendChild(summaryRow);
+    
+    showTab('details');
+    console.log('📊 דוח זכאות 20%:', results.length, 'רשומות,', eligible, 'זכאים');
+}
     </script>
 </body>
 </html>
