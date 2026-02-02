@@ -955,19 +955,20 @@ function splitCrossMonthRecords(records) {
     
     return result;
 }
-// חישוב ברוטו ללא מילואים
+// חישוב ברוטו ללא מילואים - גרסה מאופטמת
 function calculateBrutoWithoutMiluim() {
-   const results = [];
+    const results = [];
+    
+    // שימוש ב-cache של הפיצול (או יצירה חדשה)
+    if (!splitDataCache) {
+        splitDataCache = splitCrossMonthRecords(allData);
+    }
     
     // קיבוץ לפי עובד + חודש
     const monthlyData = {};
     
-    // פיצול רשומות חוצות-חודש לפני העיבוד
-    const splitData = splitCrossMonthRecords(allData);
-    console.log('📊 רשומות אחרי פיצול:', splitData.length, '(מקור:', allData.length, ')');
-    
-    // עיבוד נתוני מילואים
-    splitData.forEach(record => {
+    // עיבוד נתוני מילואים מהפיצול
+    splitDataCache.forEach(record => {
         const date = new Date(record.startDate);
         const monthKey = `${record.employeeId}_${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, '0')}`;
         
@@ -985,22 +986,25 @@ function calculateBrutoWithoutMiluim() {
         monthlyData[monthKey].paidAmount += record.paidAmount || 0;
     });
     
+    // בניית מילון שכר מהיר
+    const salaryDict = {};
+    salaryData.forEach(s => {
+        const salaryDate = parseExcelDate(s.monthYear);
+        if (salaryDate) {
+            const key = `${s.employeeId}_${salaryDate.getFullYear()}_${salaryDate.getMonth() + 1}`;
+            salaryDict[key] = s.bruto;
+        }
+    });
+    
     // חיבור עם נתוני שכר
     Object.values(monthlyData).forEach(data => {
-        // מציאת ברוטו מקורי לאותו חודש
-       const salaryRecord = salaryData.find(s => {
-    const salaryDate = parseExcelDate(s.monthYear);
-            return s.employeeId == data.employeeId && 
-                   salaryDate.getFullYear() === data.year &&
-                   (salaryDate.getMonth() + 1) === data.month;
-        });
+        const salaryKey = `${data.employeeId}_${data.year}_${data.month}`;
+        const bruto = salaryDict[salaryKey];
         
-        if (salaryRecord && salaryRecord.bruto > 0) {
-            const bruto = salaryRecord.bruto;
+        if (bruto && bruto > 0) {
             const daysInMonth = new Date(data.year, data.month, 0).getDate();
             const workingDays = daysInMonth - data.miluimDays;
             
-            // הנוסחה שלך: (ברוטו - סכום_מילואים) / ימים_נותרים * ימי_חודש
             const brutoWithoutMiluim = workingDays > 0 
                 ? ((bruto - data.paidAmount) / workingDays) * daysInMonth 
                 : 0;
@@ -1028,19 +1032,16 @@ function calculateBrutoWithoutMiluim() {
     
     return results;
 }
-// הצגת דוח ברוטו ללא מילואים
-function showBrutoWithoutMiluimReport() {
-    const results = calculateBrutoWithoutMiluim();
+
+// הצגת דוח ברוטו ללא מילואים - עם batches
+async function showBrutoWithoutMiluimReport() {
+    // איפוס cache
+    splitDataCache = null;
     
-    if (results.length === 0) {
-        alert('לא נמצאו נתונים לחישוב. וודאי שנטענו נתוני שכר.');
-        return;
-    }
-    
+    // הצגת הודעת טעינה
     const tbody = document.getElementById('detailsTableBody');
     const table = document.getElementById('detailsTable');
     
-    // עדכון כותרות הטבלה
     table.querySelector('thead').innerHTML = `
         <tr>
             <th>מספר עובד</th>
@@ -1054,22 +1055,51 @@ function showBrutoWithoutMiluimReport() {
         </tr>
     `;
     
-    tbody.innerHTML = '';
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">⏳ מעבד נתונים...</td></tr>`;
+    showTab('details');
     
-    results.forEach(r => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${r.employeeId}</td>
-            <td>${r.year}</td>
-            <td>${r.month}</td>
-            <td>₪ ${r.originalBruto.toLocaleString('he-IL')}</td>
-            <td>₪ ${r.paidMiluim.toLocaleString('he-IL')}</td>
-            <td>${r.miluimDays}</td>
-            <td>${r.daysInMonth}</td>
-            <td style="font-weight: bold; color: #28a745;">₪ ${r.brutoWithoutMiluim.toLocaleString('he-IL')}</td>
-        `;
-        tbody.appendChild(row);
-    });
+    // מתן זמן לדפדפן להציג
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    console.log('🔄 מכין פיצול נתונים...');
+    splitDataCache = splitCrossMonthRecords(allData);
+    console.log('✅ פיצול הושלם:', splitDataCache.length, 'רשומות');
+    
+    // חישוב
+    const results = calculateBrutoWithoutMiluim();
+    
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">לא נמצאו נתונים לחישוב. וודאי שנטענו נתוני שכר.</td></tr>';
+        return;
+    }
+    
+    // הצגה ב-batches
+    tbody.innerHTML = '';
+    const batchSize = 200;
+    
+    for (let i = 0; i < results.length; i += batchSize) {
+        const batch = results.slice(i, i + batchSize);
+        
+        batch.forEach(r => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${r.employeeId}</td>
+                <td>${r.year}</td>
+                <td>${r.month}</td>
+                <td>₪ ${r.originalBruto.toLocaleString('he-IL')}</td>
+                <td>₪ ${r.paidMiluim.toLocaleString('he-IL')}</td>
+                <td>${r.miluimDays}</td>
+                <td>${r.daysInMonth}</td>
+                <td style="font-weight: bold; color: #28a745;">₪ ${r.brutoWithoutMiluim.toLocaleString('he-IL')}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // מתן זמן לדפדפן
+        if (i + batchSize < results.length) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+    }
     
     // סיכום
     const totalOriginal = results.reduce((sum, r) => sum + r.originalBruto, 0);
@@ -1079,14 +1109,12 @@ function showBrutoWithoutMiluimReport() {
     summaryRow.style.background = '#e9ecef';
     summaryRow.style.fontWeight = 'bold';
     summaryRow.innerHTML = `
-        <td colspan="3">סה"כ</td>
+        <td colspan="3">סה"כ ${results.length} רשומות</td>
         <td>₪ ${totalOriginal.toLocaleString('he-IL')}</td>
         <td colspan="3"></td>
         <td style="color: #28a745;">₪ ${totalWithout.toLocaleString('he-IL')}</td>
     `;
     tbody.appendChild(summaryRow);
-    
-    showTab('details');
     
     console.log('📊 דוח ברוטו ללא מילואים:', results.length, 'רשומות');
 }
@@ -1177,10 +1205,21 @@ function generateGapReportWithCalculation() {
         window.addEventListener('DOMContentLoaded', () => {
             loadDataFromDB();
         });
-        // ========== דוח זכאות לתוספת 20% ==========
+   // ========== דוח זכאות לתוספת 20% - גרסה מאופטמת ==========
 
-// פונקציה 1: חישוב ברוטו נקי (ללא מילואים) לחודש בודד
+// Cache גלובלי למניעת חישובים כפולים
+let cleanBrutoCache = {};
+let splitDataCache = null;
+
+// פונקציה 1: חישוב ברוטו נקי (ללא מילואים) לחודש בודד - עם cache
 function getCleanBrutoForMonth(employeeId, year, month) {
+    const cacheKey = `${employeeId}_${year}_${month}`;
+    
+    // בדיקה ב-cache
+    if (cleanBrutoCache[cacheKey] !== undefined) {
+        return cleanBrutoCache[cacheKey];
+    }
+    
     // מציאת ברוטו מקורי
     const salaryRecord = salaryData.find(s => {
         const salaryDate = parseExcelDate(s.monthYear);
@@ -1190,22 +1229,28 @@ function getCleanBrutoForMonth(employeeId, year, month) {
     });
     
     if (!salaryRecord || !salaryRecord.bruto) {
-        return null; // אין נתוני שכר
+        cleanBrutoCache[cacheKey] = null;
+        return null;
     }
     
     const bruto = salaryRecord.bruto;
     
-    // מציאת מילואים באותו חודש (עם פיצול)
-    const splitData = splitCrossMonthRecords(allData.filter(r => r.employeeId == employeeId));
+    // שימוש ב-cache של הפיצול
+    if (!splitDataCache) {
+        splitDataCache = splitCrossMonthRecords(allData);
+    }
     
+    // סינון רק לעובד הנוכחי והחודש
     let miluimDays = 0;
     let paidAmount = 0;
     
-    splitData.forEach(record => {
-        const recordDate = new Date(record.startDate);
-        if (recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month) {
-            miluimDays += record.miluimDays || 0;
-            paidAmount += record.paidAmount || 0;
+    splitDataCache.forEach(record => {
+        if (record.employeeId == employeeId) {
+            const recordDate = new Date(record.startDate);
+            if (recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month) {
+                miluimDays += record.miluimDays || 0;
+                paidAmount += record.paidAmount || 0;
+            }
         }
     });
     
@@ -1214,12 +1259,13 @@ function getCleanBrutoForMonth(employeeId, year, month) {
     const workingDays = daysInMonth - miluimDays;
     
     if (workingDays <= 0) {
-        return null; // כל החודש מילואים
+        cleanBrutoCache[cacheKey] = null;
+        return null;
     }
     
     const cleanBruto = ((bruto - paidAmount) / workingDays) * daysInMonth;
     
-    return {
+    const result = {
         year: year,
         month: month,
         originalBruto: bruto,
@@ -1227,20 +1273,26 @@ function getCleanBrutoForMonth(employeeId, year, month) {
         paidAmount: paidAmount,
         cleanBruto: Math.round(cleanBruto)
     };
+    
+    cleanBrutoCache[cacheKey] = result;
+    return result;
 }
 
 // פונקציה 2: חישוב ממוצע ברוטו נקי ל-3 חודשים אחורה
 function getAverageCleanBruto(employeeId, beforeDate, monthsCount = 3) {
     const results = [];
-    let currentDate = new Date(beforeDate);
+    let year = beforeDate.getFullYear();
+    let month = beforeDate.getMonth(); // 0-based
     
     // חזרה אחורה בחודשים
     for (let i = 0; i < monthsCount; i++) {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
+        month--;
+        if (month < 0) {
+            month = 11;
+            year--;
+        }
         
-        const monthData = getCleanBrutoForMonth(employeeId, year, month);
+        const monthData = getCleanBrutoForMonth(employeeId, year, month + 1);
         if (monthData) {
             results.push(monthData);
         }
@@ -1311,29 +1363,34 @@ function checkSalaryIncrease(record) {
     };
 }
 
-// פונקציה 4: הצגת דוח זכאות לתוספת 20%
-function generateSalaryIncreaseReport() {
+// פונקציה 4: הצגת דוח זכאות לתוספת 20% - עם batches
+async function generateSalaryIncreaseReport() {
     if (allData.length === 0) {
         alert('לא נמצאו נתונים. וודאי שהרצת חישוב במחשבון.');
         return;
     }
     
-    const results = [];
+    // איפוס cache
+    cleanBrutoCache = {};
+    splitDataCache = null;
+    
+    // הכנת הפיצול פעם אחת
+    console.log('🔄 מכין נתונים...');
+    splitDataCache = splitCrossMonthRecords(allData);
+    console.log('✅ פיצול הושלם:', splitDataCache.length, 'רשומות');
+    
     const cutoffDate = new Date(2025, 4, 1);
+    const relevantRecords = allData.filter(r => new Date(r.startDate) >= cutoffDate);
     
-    // בדיקה לכל שירות מ-1.5.2025
-    allData.forEach(record => {
-        const serviceDate = new Date(record.startDate);
-        if (serviceDate >= cutoffDate) {
-            const check = checkSalaryIncrease(record);
-            if (check) {
-                results.push(check);
-            }
-        }
-    });
+    if (relevantRecords.length === 0) {
+        alert('לא נמצאו שירותים מ-1.5.2025');
+        return;
+    }
     
-    // עדכון כותרות הטבלה
+    // הצגת הודעת טעינה
+    const tbody = document.getElementById('detailsTableBody');
     const table = document.getElementById('detailsTable');
+    
     table.querySelector('thead').innerHTML = `
         <tr>
             <th>מספר עובד</th>
@@ -1346,12 +1403,36 @@ function generateSalaryIncreaseReport() {
         </tr>
     `;
     
-    const tbody = document.getElementById('detailsTableBody');
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">⏳ מעבד ${relevantRecords.length} רשומות...</td></tr>`;
+    showTab('details');
+    
+    // עיבוד ב-batches
+    const results = [];
+    const batchSize = 100;
+    
+    for (let i = 0; i < relevantRecords.length; i += batchSize) {
+        const batch = relevantRecords.slice(i, i + batchSize);
+        
+        batch.forEach(record => {
+            const check = checkSalaryIncrease(record);
+            if (check) {
+                results.push(check);
+            }
+        });
+        
+        // עדכון התקדמות
+        const progress = Math.min(i + batchSize, relevantRecords.length);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">⏳ מעבד ${progress} / ${relevantRecords.length} רשומות...</td></tr>`;
+        
+        // מתן זמן לדפדפן לנשום
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    
+    // הצגת תוצאות
     tbody.innerHTML = '';
     
     if (results.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">לא נמצאו שירותים מ-1.5.2025</td></tr>';
-        showTab('details');
         return;
     }
     
@@ -1390,9 +1471,9 @@ function generateSalaryIncreaseReport() {
     `;
     tbody.appendChild(summaryRow);
     
-    showTab('details');
     console.log('📊 דוח זכאות 20%:', results.length, 'רשומות,', eligible, 'זכאים');
 }
+
     </script>
 </body>
 </html>
