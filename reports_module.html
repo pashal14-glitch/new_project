@@ -345,21 +345,22 @@
 
         <div class="controls">
                        </button>
-           <button class="btn btn-warning" onclick="generateGapReportWithCalculation()">
-    ⚠️ דוח פערים
-</button>
-            <button class="btn btn-info" onclick="showBrutoWithoutMiluimReport()">
+          <button class="btn btn-info" onclick="showBrutoWithoutMiluimReport()">
+    <button class="btn btn-info" onclick="showBrutoWithoutMiluimReport()">
     💰 ברוטו ללא מילואים
+</button>
+<button class="btn btn-warning" onclick="generateGapReportWithCalculation()">
+    ⚠️ דוח פערים
 </button>
 <button class="btn btn-success" onclick="generateSalaryIncreaseReport()">
     📈 זכאות 20%
 </button>
-            <button class="btn btn-secondary" onclick="exportToExcel()">
-                📥 ייצוא לאקסל
-            </button>
-            <button class="btn btn-secondary" onclick="printReport()">
-                🖨️ הדפסה
-            </button>
+<button class="btn btn-secondary" onclick="exportCurrentReport()">
+    📥 ייצוא לאקסל
+</button>
+<button class="btn btn-secondary" onclick="printReport()">
+    🖨️ הדפסה
+</button>
         </div>
 
         <div class="filters">
@@ -471,6 +472,7 @@
         let employeeNames = {};
         let salaryData = [];      
         let miluimData = [];  
+        let currentReport = null;  // מעקב אחרי הדוח הנוכחי
         
         // קבועים
         const DB_NAME = 'MiluimCalculatorDB';
@@ -852,29 +854,102 @@
             updateStatusBar();
             generateSummaryReport();
         }
+// ייצוא כללי לאקסל
+function exportToExcel(data, headers, filename) {
+    if (!data || data.length === 0) {
+        alert('אין נתונים לייצוא');
+        return;
+    }
+    
+    let csvContent = '\ufeff'; // BOM for Hebrew
+    
+    // כותרות
+    csvContent += headers.join(',') + '\n';
+    
+    // נתונים
+    data.forEach(row => {
+        const values = headers.map(header => {
+            const value = row[header.key] !== undefined ? row[header.key] : '';
+            // טיפול בערכים עם פסיקים
+            if (typeof value === 'string' && value.includes(',')) {
+                return `"${value}"`;
+            }
+            return value;
+        });
+        csvContent += values.join(',') + '\n';
+    });
+    
+    // הורדת הקובץ
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${new Date().toLocaleDateString('he-IL')}.csv`;
+    link.click();
+}
 
-        function exportToExcel() {
-            // יצירת נתונים לייצוא
-            let csvContent = '\ufeff'; // BOM for Hebrew
-            csvContent += 'מספר עובד,שם,תאריך התחלה,תאריך סיום,ימים,ערך יומי,סה"כ תשלום,סטטוס\n';
-            
-            filteredData.forEach(record => {
-                const totalPayment = (record.continuousValue || 0) * (record.miluimDays || 0);
-                csvContent += `${record.employeeId},${record.employeeName || ''},${formatDate(record.startDate)},${formatDate(record.endDate)},${record.miluimDays || 0},${record.continuousValue || 0},${totalPayment},${record.employeeStatus || ''}\n`;
+// ייצוא הדוח הנוכחי לאקסל
+function exportCurrentReport() {
+    if (!currentReport) {
+        alert('יש להציג דוח לפני הייצוא');
+        return;
+    }
+    
+    let csvContent = '\ufeff'; // BOM for Hebrew
+    let filename = '';
+    
+    switch (currentReport) {
+        case 'bruto':
+            const brutoResults = calculateBrutoWithoutMiluim();
+            csvContent += 'מספר עובד,שנה,חודש,ברוטו מקורי,שולם מילואים,ימי מילואים,ימים בחודש,ברוטו ללא מילואים\n';
+            brutoResults.forEach(r => {
+                csvContent += `${r.employeeId},${r.year},${r.month},${r.originalBruto},${r.paidMiluim},${r.miluimDays},${r.daysInMonth},${r.brutoWithoutMiluim}\n`;
             });
+            filename = 'ברוטו_ללא_מילואים';
+            break;
             
-            // הורדת הקובץ
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `דוח_מילואים_${new Date().toLocaleDateString('he-IL')}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
+        case 'gaps':
+            csvContent += 'מספר עובד,תאריך התחלה,תאריך סיום,ימי מילואים,ערך יומי,צפוי,שולם,פער\n';
+            allData.forEach(r => {
+                const expected = (r.continuousValue || 0) * (r.miluimDays || 0);
+                const paid = r.paidAmount || 0;
+                const gap = expected - paid;
+                if (Math.abs(gap) > 1) {
+                    csvContent += `${r.employeeId},${formatDate(r.startDate)},${formatDate(r.endDate)},${r.miluimDays || 0},${Math.round(r.continuousValue || 0)},${Math.round(expected)},${Math.round(paid)},${Math.round(gap)}\n`;
+                }
+            });
+            filename = 'דוח_פערים';
+            break;
+            
+        case 'salary20':
+            if (!splitDataCache) {
+                splitDataCache = splitCrossMonthRecords(allData);
+            }
+            csvContent += 'מספר עובד,תאריך שירות,תחילת אשכול,ממוצע בסיס,ממוצע נוכחי,אחוז עלייה,זכאות\n';
+            const cutoffDate = new Date(2025, 4, 1);
+            allData.forEach(record => {
+                if (new Date(record.startDate) >= cutoffDate) {
+                    const check = checkSalaryIncrease(record);
+                    if (check) {
+                        csvContent += `${check.employeeId},${formatDate(check.serviceDate)},${formatDate(check.clusterStart)},${check.baseAverage || ''},${check.currentAverage || ''},${check.increasePercent !== null ? check.increasePercent : ''},${check.status}\n`;
+                    }
+                }
+            });
+            filename = 'זכאות_20_אחוז';
+            break;
+            
+        default:
+            alert('לא ניתן לייצא דוח זה');
+            return;
+    }
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${new Date().toLocaleDateString('he-IL')}.csv`;
+    link.click();
+    
+    console.log('📥 יוצא:', filename);
+}
         function printReport() {
             window.print();
         }
@@ -1035,6 +1110,7 @@ function calculateBrutoWithoutMiluim() {
 
 // הצגת דוח ברוטו ללא מילואים - עם batches
 async function showBrutoWithoutMiluimReport() {
+        currentReport = 'bruto';  // ← הוסיפי שורה זו
     // איפוס cache
     splitDataCache = null;
     
@@ -1120,6 +1196,7 @@ async function showBrutoWithoutMiluimReport() {
 }
 // חישוב והצגת דוח פערים
 function generateGapReportWithCalculation() {
+      currentReport = 'gaps';  // ← הוסיפי שורה זו
     if (allData.length === 0) {
         alert('לא נמצאו נתונים. וודאי שהרצת חישוב במחשבון.');
         return;
@@ -1365,6 +1442,7 @@ function checkSalaryIncrease(record) {
 
 // פונקציה 4: הצגת דוח זכאות לתוספת 20% - עם batches
 async function generateSalaryIncreaseReport() {
+        currentReport = 'salary20';  // ← הוסיפי שורה זו
     if (allData.length === 0) {
         alert('לא נמצאו נתונים. וודאי שהרצת חישוב במחשבון.');
         return;
