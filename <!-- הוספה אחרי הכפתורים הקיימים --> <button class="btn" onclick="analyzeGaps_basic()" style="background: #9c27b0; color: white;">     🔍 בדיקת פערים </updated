@@ -866,6 +866,10 @@ td[onclick*="showGapDetails"]:hover {
         style="background: linear-gradient(45deg, #FF6B6B, #FF5722);">
     🧮 חישוב תוספת 40%
 </button>
+<button class="export-btn" onclick="window.open('reports_module.html', '_blank')" 
+style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    📊 מודול דוחות
+</button>
 <div id="miluimTable" style="margin-top: 20px;"></div>
  <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
     👤 חישוב לעובד בודד
