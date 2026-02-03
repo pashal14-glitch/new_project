@@ -1,0 +1,38 @@
+{
+  "name": "miluim-calculator",
+  "version": "1.0.0",
+  "description": "מחשבון מילואים",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.company.miluim",
+    "productName": "Miluim Calculator",
+    "win": {
+        "icon": "icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Miluim Calculator"
+    },
+    "asar": true,
+    "files": [
+      "**/*"
+    ]
+  }
+}
