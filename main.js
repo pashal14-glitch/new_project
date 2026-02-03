@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, globalShortcut } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -6,8 +6,9 @@ function createWindow() {
         width: 1400,
         height: 900,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: false,
+            devTools: true
         }
     });
     
@@ -16,6 +17,13 @@ function createWindow() {
     
     // מסתיר את התפריט העליון
     win.setMenuBarVisibility(false);
+    
+    // פתיחת DevTools עם Ctrl+Shift+I
+    win.webContents.on('before-input-event', (event, input) => {
+        if (input.control && input.shift && input.key === 'I') {
+            win.webContents.toggleDevTools();
+        }
+    });
 }
 
 app.whenReady().then(createWindow);
