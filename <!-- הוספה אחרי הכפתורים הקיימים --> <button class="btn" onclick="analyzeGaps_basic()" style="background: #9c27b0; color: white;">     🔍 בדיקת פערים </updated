@@ -1,4 +1,6 @@
+
         
+
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -128,33 +130,15 @@ td[onclick*="showGapDetails"]:hover {
     flex-wrap: wrap;
     align-items: center;
 }
-        }
+            .btn {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); /* ירוק */
+}
 
-        .btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
-        }
-
-        .btn:hover {
-            background: #c0392b;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
-        }
-
-        .btn:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
+.btn:disabled {
+    background: linear-gradient(135deg, #a0a0a0 0%, #808080 100%); /* אפור */
+    cursor: not-allowed;
+    opacity: 0.7;
+}
 
         .filters {
             padding: 30px 40px;
@@ -817,8 +801,8 @@ td[onclick*="showGapDetails"]:hover {
         <div class="upload-section">
             <div class="upload-grid">
                 <div class="upload-card" onclick="document.getElementById('excelFile').click()" style="grid-column: 1 / -1;">
-                    <h3>📊 קובץ אקסל עם 3 גליונות</h3>
-                 <p>קובץ ראשי עם 3 גליונות + קבצים נוספים לעיבוד</p>
+                   
+                
                     <button class="upload-btn" id="excelBtn">טען קבצים</button>
                     <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls,.xla" multiple>
                     <div id="sheetsStatus" style="margin-top: 15px; display: none;">
@@ -840,7 +824,7 @@ td[onclick*="showGapDetails"]:hover {
 
 
         
-        <!-- 🆕 כפתור חדש: נקה הכל -->
+    
         <button onclick="clearAllDataConfirm()" 
                 style="padding: 12px 30px; background: #f44336; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
             🗑️ נקה נתונים קיימים
@@ -851,29 +835,79 @@ td[onclick*="showGapDetails"]:hover {
         💡 רוצה להתחיל מאפס? לחצי "נקה נתונים" לפני טעינת קובץ חדש
     </p>
 </div>
-            <div class="controls">
-                <button class="btn" id="calculateBtn" disabled>🧮 חשב מילואים</button>
-                <button class="btn" id="clearBtn">🗑️ נקה הכל</button>
-<!-- הוספה אחרי הכפתורים הקיימים -->
-<button class="btn" onclick="analyzeGaps_basic()" style="background: #9c27b0; color: white;">
-    🔍 בדיקת פערים
+                 <div class="controls">
+     <button class="btn" id="calculateBtn" disabled style="
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+">
+    🧮 חשב מילואים
 </button>
-<button class="btn" onclick="appendRecords()" 
-        style="background: linear-gradient(45deg, #16a085, #1abc9c);">
-    ➕ הוספת רשומות
-</button>
-<button class="btn" onclick="openSupplementCalculatorWindow()" 
-        style="background: linear-gradient(45deg, #FF6B6B, #FF5722);">
-    🧮 חישוב תוספת 40%
-</button>
-<button class="export-btn" onclick="window.open('reports_module.html', '_blank')" 
-style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-    📊 מודול דוחות
 </button>
 <div id="miluimTable" style="margin-top: 20px;"></div>
- <button class="btn" id="singleEmployeeBtn" style="background: linear-gradient(45deg, #8e44ad, #9b59b6); display: none;" onclick="showEmployeeSelector()">
+ <button class="btn" id="singleEmployeeBtn"  style="
+   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+">
     👤 חישוב לעובד בודד
 </button>
+<!-- הוספה אחרי הכפתורים הקיימים -->
+<button class="btn" onclick="analyzeGaps_basic()" 
+ style="
+   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+">
+ 🔍 בדיקת פערים
+</button>
+
+<button class="btn" onclick="openSupplementCalculatorWindow()" 
+        style="
+     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+">
+    🧮 חישוב תוספת 40%
+</button>
+<button id="openReportsModule" onclick="openReportsModule()"
+ style="
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+">
+    📊 מודול דוחות
+</button>
+
 <!-- הקלדת מספר עובד -->
 <div id="employeeSelectorDiv" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
     <label for="employeeInput" style="margin-left: 10px; font-weight: bold;">הקלד מספר עובד:</label>
@@ -881,7 +915,17 @@ style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
            id="employeeInput" 
            placeholder="לדוגמה: 12345" 
            style="padding: 8px; margin-left: 10px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
-  <button class="btn" id="calculateSingleBtn" style="background: #27ae60;" onclick="const emp = document.getElementById('employeeInput').value.trim(); if(emp) calculateMiluim({employeeIds: [emp], addEmployeeHeader: true, batchSize: 0}); else alert('éù ìäæéï îñôø òåáã');" disabled>
+  <button class="btn" id="calculateSingleBtn"  style="
+    background:linear-gradient(135deg, #2c7839 0%, #131314 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+"> onclick="const emp = document.getElementById('employeeInput').value.trim(); if(emp) calculateMiluim({employeeIds: [emp], addEmployeeHeader: true, batchSize: 0}); else alert('éù ìäæéï îñôø òåáã');" disabled>
   🎯 חשב
     <span id="employeeValidation" style="margin-right: 10px; color: #e74c3c;"></span>
 </div>
@@ -903,6 +947,24 @@ style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <option value="2023">2023</option>
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="monthFilter">חודש:</label>
+                    <select id="monthFilter">
+                        <option value="">כל החודשים</option>
+                        <option value="01">ינואר</option>
+                        <option value="02">פברואר</option>
+                        <option value="03">מרץ</option>
+                        <option value="04">אפריל</option>
+                        <option value="05">מאי</option>
+                        <option value="06">יוני</option>
+                        <option value="07">יולי</option>
+                        <option value="08">אוגוסט</option>
+                        <option value="09">ספטמבר</option>
+                        <option value="10">אוקטובר</option>
+                        <option value="11">נובמבר</option>
+                        <option value="12">דצמבר</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -3028,6 +3090,7 @@ const recommendedValue = calculateRecommendedValue(
         employeeStatus: originalMiluim ? originalMiluim.employeeStatus : null,
         paidAmount91220: originalMiluim ? originalMiluim.paidAmount91220 : 0,
         totalpaidAmount: originalMiluim ? originalMiluim.totalpaidAmount : 0,
+        paidAmount40percent: originalMiluim ? originalMiluim.paidAmount40percent : 0,
      
     };
 }
@@ -3093,8 +3156,7 @@ const cacheSystem = new MiluimCalculatorCache();
             2022: 6131,
             2023: 6455,
             2024: 6668,
-            2025: 6895,
-            2026: 7059.76    
+            2025: 6895
         };
 
         // Daily value limits by period
@@ -3104,8 +3166,7 @@ const cacheSystem = new MiluimCalculatorCache();
             { start: new Date('2023-01-01'), end: new Date('2023-10-06'), min: 215.17, max: 1582.17 },
             { start: new Date('2023-10-07'), end: new Date('2023-12-31'), min: 300.61, max: 1582.17 },
             { start: new Date('2024-01-01'), end: new Date('2024-12-31'), min: 310.52, max: 1634.33 },
-            { start: new Date('2025-01-01'), end: new Date('2025-12-31'), min: 321.07, max: 1689.83 },
-            { start: new Date('2026-01-01'), end: new Date('2026-12-31'), min: 328.76, max: 1730.33 }
+            { start: new Date('2025-01-01'), end: new Date('2025-12-31'), min: 321.07, max: 1689.83 }
         ];
 
         // 🔥 תיקון קריטי: פונקציית parseExcelDate מתוקנת
@@ -4113,10 +4174,31 @@ function loadExcelFile(files) {
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+        let workbook = XLSX.read(data, {type: 'array'});
+                
+                // בדיקה אם זה קובץ מאוחד
+                console.log('🔎 בודק אם קובץ מאוחד...');
+                console.log('📋 גיליונות לפני:', workbook.SheetNames);
+                
+                if (isUnifiedFile(workbook)) {
+                    console.log('🔍 זוהה קובץ מאוחד! מפצל אוטומטית...');
+                    workbook = splitUnifiedFile(workbook);
+                    console.log('✅ פיצול הושלם - ממשיך לעיבוד רגיל');
+                    console.log('📋 גיליונות אחרי פיצול:', workbook.SheetNames);
+                } else {
+                    console.log('ℹ️ זה לא קובץ מאוחד');
+                }
                 
                 // זיהוי סוג הקובץ
+                console.log('🔎 בודק isMainFile...');
+                console.log('📝 שם קובץ:', file.name);
+                console.log('📊 מספר גיליונות:', workbook.SheetNames.length);
                 const isMainFile = file.name.toLowerCase().includes('main') || workbook.SheetNames.length >= 3;
+                console.log('✅ isMainFile:', isMainFile);
+                
+                      
+                 workbook.SheetNames.length >= 3 || 
+                   isUnifiedFile(workbook);
                 
                 if (isMainFile) {
                     // עיבוד הקובץ הראשי (3 גליונות)
@@ -4148,7 +4230,218 @@ function loadExcelFile(files) {
         reader.readAsArrayBuffer(file);
     }
 }
+function isUnifiedFile(workbook) {
+    try {
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true });
+        
+        // בודק אם יש עמודת SHEET_TYPE (לפני אחרונה)
+        if (data.length > 0 && data[0].length > 1) {
+            const sheetTypeIndex = data[0].length - 2; // לפני אחרון
+            const sheetTypeHeader = data[0][sheetTypeIndex];
+            console.log('🔍 עמודה לפני אחרונה:', sheetTypeHeader);
+            return sheetTypeHeader === 'SHEET_TYPE';
+        }
+        return false;
+    } catch (error) {
+        console.error('שגיאה בזיהוי קובץ מאוחד:', error);
+        return false;
+    }
+}
+// פיצול קובץ מאוחד ל-5 גיליונות
+function splitUnifiedFile(workbook) {
+    console.log('🔄 מזהה קובץ מאוחד - מפצל לגיליונות...');
+    
+    try {
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const allData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true });
+        
+        // מציאת אינדקס עמודת SHEET_TYPE
+        const headers = allData[0];
+        const sheetTypeIndex = 23; // עמודה 24 (SHEET_TYPE)
+        
+        console.log(`📊 סה"כ ${allData.length - 2} שורות בקובץ המאוחד`);
+        
+        // הפרדת נתונים לפי SHEET_TYPE
+       const rawData = [headers];
+        const data166 = [['Employee ID', 'Month/Year', 'Work Days']];
+        const data1857 = [['Employee ID', 'Date From', 'Quantity']];
+        
+        for (let i = 1; i < allData.length; i++) {
+            const row = allData[i];
+            const sheetType = row[sheetTypeIndex];
+            
+           if (sheetType === 'RAW') {
+                rawData.push(row);
+        } else if (sheetType === 166 || sheetType === '166') {
+                // חלץ רק 3 עמודות: ID, תאריך, ימי עבודה
+                data166.push([row[0], row[1], row[17]]);  // row[2] = DATE_TO (עמודה C)
+            } else if (sheetType === 1857 || sheetType === '1857') {
+                // חלץ רק 3 עמודות: ID, תאריך, כמות
+                data1857.push([row[0], row[1], row[17]]);  // row[1] = DATE_FROM (עמודה B)
+            }
+        }
+        
+        console.log(`✅ RAW: ${rawData.length - 1} שורות`);
+        console.log(`✅ 166: ${data166.length - 1} שורות`);
+        console.log(`✅ 1857: ${data1857.length - 1} שורות`);
+        
+        // יצירת workbook חדש עם 5 גיליונות
+        const newWorkbook = XLSX.utils.book_new();
+        
+        // גיליונות 1-3: מעיבוד RAW
+        const processedSheets = processRawData(rawData);
+        
+        XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet90291, '90291');
+        XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet94010, '94010');
+        
+        // גיליון 3: 1857 (לא 1930!)
+        const ws1857 = XLSX.utils.aoa_to_sheet(data1857);
+        XLSX.utils.book_append_sheet(newWorkbook, ws1857, '1857');
+        
+        // גיליון 4: 166
+        const ws166 = XLSX.utils.aoa_to_sheet(data166);
+        XLSX.utils.book_append_sheet(newWorkbook, ws166, '166');
+        
+        // גיליון 5: 1930
+        XLSX.utils.book_append_sheet(newWorkbook, processedSheets.sheet1930, '1930');
+        
+        console.log('✅ קובץ מאוחד פוצל בהצלחה ל-5 גיליונות!');
+        
+        return newWorkbook;
+        
+    } catch (error) {
+        console.error('❌ שגיאה בפיצול קובץ מאוחד:', error);
+        throw error;
+    }
+}
+// עיבוד נתוני RAW ל-3 גיליונות (תרגום המאקרו VBA)
+function processRawData(rawData) {
+    console.log('🔧 מעבד נתוני RAW - מפצל ל-3 גיליונות...');
+    
+    const headers = rawData[0];
+    
+    // גיליון 1: 90291 - מילואים
+    const sheet90291Data = [
+        ['Employee ID', 'Start Date', 'End Date', 'Miluim Days', '', '', '', '', '', '', '', 
+         'Amount Paid', 'Compulsion', 'Cross Month', 'Emergency Comp 4405', 'Emergency 40%', 
+         'Passport Number', 'Maamad', '91220', 'total_paid']
+    ];
+    
+    // גיליון 2: 94010 - שכר (עם dictionary למניעת כפילויות)
+    const salaryDict = {};
+    const sheet94010Data = [['Employee ID', 'Month/Year', 'Monthly Bruto']];
+    
+    // גיליון 3: 1930 - נוכחות (עם dictionary למניעת כפילויות)
+    const attendanceDict = {};
+    const sheet1930Data = [['Employee ID', 'Month/Year', 'Work Days']];
+    
+    // עיבוד כל שורת RAW
+    for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        
+        // דילוג על שורות ריקות
+        if (!row[2] || !row[3]) continue; // ID_NUM ו-DATE_FROM
+        
+        const employeeId = row[0]; // ID_NUM (עמודה 1)
+        const startDate = row[1];  // DATE_FROM (עמודה 2)
+        const endDate = row[2];    // DATE_TO (עמודה 3)
+        
+        // === גיליון 90291 - מילואים ===
+        const startDateObj = excelDateToJSDate(startDate);
+        const endDateObj = excelDateToJSDate(endDate);
+        const days = Math.floor((endDateObj - startDateObj) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // בדיקת cross month
+        const crossMonth = (startDateObj.getMonth() !== endDateObj.getMonth() || 
+                           startDateObj.getFullYear() !== endDateObj.getFullYear()) ? '1' : '0';
+        
+        // Maamad logic: אם עמודה 21 לא ריקה → 4410, אחרת → 1309
+        const maamad = (row[20] && row[20] !== '') ? '4410' : '1309';
+        
+        sheet90291Data.push([
+            employeeId,           // A (1) - Employee ID
+            startDate,            // B (2) - Start Date
+            endDate,              // C (3) - End Date
+            days,                 // D (4) - Miluim Days
+            '', '', '', '', '', '', '', // E-K (5-11) ריקים
+            row[15] || 0,         // L (12) - Amount Paid (TARRIF_SACHAR)
+            row[16] || 0,         // M (13) - Compulsion (IPT_90291)
+            crossMonth,           // N (14) - Cross Month
+            row[17] || 0,         // O (15) - Emergency Comp 4405 (IPT_4401)
+            row[18] || '',        // P (16) - Emergency 40% (40%)
+            row[19] || '',        // Q (17) - Passport Number (iden_num)
+            maamad,               // R (18) - Maamad
+            row[21] || '',        // S (19) - 91220 (D)
+            row[22] || 0          // T (20) - total_paid (total_payments)
+        ]);
+        
+        // === גיליון 94010 - שכר (6 חודשים לאחור) ===
+        for (let j = 0; j < 6; j++) {
+            const monthDate = addMonths(startDateObj, -(6 - j));
+            const monthKey = formatMonthKey(monthDate);
+            const dictKey = `${employeeId}_${monthKey}`;
+            const brutoValue = row[j + 3] || 0; // עמודות 4-9 (E-J)
+            
+            
+            if (brutoValue > 0 && !salaryDict[dictKey]) {
+                salaryDict[dictKey] = true;
+                sheet94010Data.push([
+                    employeeId,
+                    monthDate,
+                    brutoValue
+                ]);
+            }
+        }
+        
+        // === גיליון 1930 - נוכחות (6 חודשים לאחור) ===
+        for (let j = 0; j < 6; j++) {
+            const monthDate = addMonths(startDateObj, -(6 - j));
+            const monthKey = formatMonthKey(monthDate);
+            const dictKey = `${employeeId}_${monthKey}`;
+            
+          const workDays = row[j + 9] || 0; // עמודות 10-15 (K-P)
+            
+            if (workDays > 0 && !attendanceDict[dictKey]) {
+                attendanceDict[dictKey] = true;
+                sheet1930Data.push([
+                    employeeId,
+                    monthDate,
+                    workDays
+                ]);
+            }
+        }
+    }
+    
+    console.log(`✅ 90291: ${sheet90291Data.length - 1} שורות`);
+    console.log(`✅ 94010: ${sheet94010Data.length - 1} שורות`);
+    console.log(`✅ 1930: ${sheet1930Data.length - 1} שורות`);
+    
+    return {
+        sheet90291: XLSX.utils.aoa_to_sheet(sheet90291Data),
+        sheet94010: XLSX.utils.aoa_to_sheet(sheet94010Data),
+        sheet1930: XLSX.utils.aoa_to_sheet(sheet1930Data)
+    };
+}
 
+// פונקציות עזר
+function excelDateToJSDate(excelDate) {
+    if (excelDate instanceof Date) return excelDate;
+    return new Date((excelDate - 25569) * 86400 * 1000);
+}
+
+function addMonths(date, months) {
+    const result = new Date(date);
+    result.setDate(1); // קודם קבע יום 1!
+    result.setMonth(result.getMonth() + months); // אחר כך הוסף חודשים
+    return result;
+}
+
+function formatMonthKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+}
 // עיבוד הקובץ הראשי (3 גליונות)
 function processMainFile(workbook) {
     let sheetsLoaded = 0;
@@ -4367,6 +4660,7 @@ function dateToExcelNumber(date) {
             container.appendChild(msgDiv);
         }
 
+        
         function parseData(jsonData, type) {
             // Skip header row
             const dataRows = jsonData.slice(1);
@@ -4389,8 +4683,7 @@ function dateToExcelNumber(date) {
                         totalpaidAmount:parseFloat(row[19])
 
                     })).filter(item => item.employeeId);
-                    break;
-                    
+                    break;     
                 case 'salary':
                     salaryData = dataRows.map(row => ({
                         employeeId: row[0],
@@ -4399,7 +4692,7 @@ function dateToExcelNumber(date) {
                     })).filter(item => item.employeeId);
                     break;
                     
-              case 'attendance1857':
+             case 'attendance1857':
     const data1857 = dataRows.map(row => ({
         employeeId: row[0],
         monthYear: row[1],
@@ -4873,8 +5166,7 @@ function displayResults(data = calculationResults, options = {}) {
                         <th>מעמד</th>
                         <th>ערך91220</th>
                         <th>סהכ שולם בשכר</th>
-
-
+                        <th>40% שולם בשכר</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -4939,6 +5231,7 @@ function displayResults(data = calculationResults, options = {}) {
                 <td><strong>${result.employeeStatus}</strong></td>
                <td>${result.paidAmount91220 || 0}</td>
                <td>${result.totalpaidAmount || 0}</td>
+              <td><strong>${formatCurrency(result.totalpaidAmount - (result.paidAmount * (result.miluimDays || 0)))}</strong></td>
 
             </tr>
         `;
@@ -5183,6 +5476,7 @@ function exportToExcel() {
     // החל אותן סינונים שקיימים במממשק
     const employeeFilter = document.getElementById('employeeFilter').value.trim();
     const yearFilter = document.getElementById('yearFilter').value;
+    const monthFilter = document.getElementById('monthFilter').value;
     const miluimTypeFilter = document.getElementById('miluimTypeFilter').value;
    
     
@@ -5199,6 +5493,18 @@ function exportToExcel() {
         );
     }
     
+    // סינון לפי שנה וחודש
+    if (yearFilter || monthFilter) {
+        dataToExport = dataToExport.filter(result => {
+            const resultYear = result.startDate.getFullYear().toString();
+            const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+            
+            if (yearFilter && resultYear !== yearFilter) return false;
+            if (monthFilter && resultMonth !== monthFilter) return false;
+            
+            return true;
+        });
+    }
     if (miluimTypeFilter) {
         dataToExport = dataToExport.filter(result => {
             switch (miluimTypeFilter) {
@@ -5329,8 +5635,7 @@ function exportToExcel() {
     const fileName = `תוצאות_מילואים_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
 }
-
-        // Event listeners
+ // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             setupFileUpload();
             
@@ -5342,114 +5647,169 @@ function exportToExcel() {
             console.log('✅ תוקן: GetBrutoForMonth מחיל ברוטו מינימלי');
             console.log('✅ תוקן: calculateBasicDailyValue משתמש בגבולות סופיים');
             
-            document.getElementById('calculateBtn').addEventListener('click', function() {
-    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
-    
-    console.log(`מספר עובדים לחישוב: ${uniqueEmployees.length}`);
-    
-    // אם יש יותר מ-100 עובדים, השתמש בגרסה המקוטעת
-    if (uniqueEmployees.length > 100) {
-        console.log('משתמש בחישוב מקוטע (Batched)');
-        calculateMiluim({
-            batchSize: 20,
-            showProgress: true,
-            enableCancel: true
-        });
-    } else {
-        console.log('îùúîù áçéùåá øâéì');
-        calculateMiluim({
-            batchSize: 0,
-            showProgress: false
-        });
-    }
-});
+            // Calculate Button - עם בדיקה
+            if (document.getElementById('calculateBtn')) {
+                document.getElementById('calculateBtn').addEventListener('click', function() {
+                    const uniqueEmployees = [...new Set(miluimData.map(m => m.employeeId))];
+                    
+                    console.log(`מספר עובדים לחישוב: ${uniqueEmployees.length}`);
+                    
+                    // אם יש יותר מ-100 עובדים, השתמש בגרסה המקוטעת
+                    if (uniqueEmployees.length > 100) {
+                        console.log('משתמש בחישוב מקוטע (Batched)');
+                        calculateMiluim({
+                            batchSize: 20,
+                            showProgress: true,
+                            enableCancel: true
+                        });
+                    } else {
+                        console.log('משתמש בחישוב רגיל');
+                        calculateMiluim({
+                            batchSize: 0,
+                            showProgress: false
+                        });
+                    }
+                });
+            }
 
-            // Event listeners לעובד בודד
-if (document.getElementById('employeeInput')) {
-    document.getElementById('employeeInput').addEventListener('input', validateEmployee);
-    document.getElementById('employeeInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !document.getElementById('calculateSingleBtn').disabled) {
-           const selectedEmployee = document.getElementById('employeeInput').value.trim();
-    calculateMiluim({
-        employeeIds: [selectedEmployee],
-        addEmployeeHeader: true,
-        batchSize: 0
-    });
-        }
-    });
-}
+            // Event listeners לעובד בודד - עם בדיקה
+            if (document.getElementById('employeeInput')) {
+                document.getElementById('employeeInput').addEventListener('input', validateEmployee);
+                document.getElementById('employeeInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const calculateSingleBtn = document.getElementById('calculateSingleBtn');
+                        if (calculateSingleBtn && !calculateSingleBtn.disabled) {
+                            const selectedEmployee = document.getElementById('employeeInput').value.trim();
+                            calculateMiluim({
+                                employeeIds: [selectedEmployee],
+                                addEmployeeHeader: true,
+                                batchSize: 0
+                            });
+                        }
+                    }
+                });
+            }
             
-            document.getElementById('clearBtn').addEventListener('click', function() {
-                miluimData = [];
-                salaryData = [];
-                attendanceData = [];
-                calculationResults = [];
-           // 🆕 איפוס סטטוסי פערים
-            gapStatuses = {};
-            saveGapStatusesToIndexedDB();
-                
-                // Reset upload status
-                document.querySelector('.upload-card').classList.remove('uploaded');
-                updateUploadStatus(false);
-                
-                // Reset sheet status
-                updateSheetStatus('sheet1Status', false, '📊 גליון מילואים: ❌');
-                updateSheetStatus('sheet2Status', false, '💰 גליון שכר: ❌');
-                updateSheetStatus('sheet3Status', false, '📅 גליון נוכחות: ❌');
-                document.getElementById('sheetsStatus').style.display = 'none';
-                
-                // Clear file input
-                document.getElementById('excelFile').value = '';
-                
-                // Remove messages
-                document.querySelectorAll('.success, .error').forEach(msg => msg.remove());
-                
-                // Reset UI
-                document.getElementById('calculateBtn').disabled = true;
-                document.getElementById('resultsContainer').innerHTML = '';
-                document.getElementById('summaryStats').style.display = 'none';
-                document.getElementById('exportSection').style.display = 'none';
-            });
+            // Clear Button - עם בדיקה
+            if (document.getElementById('clearBtn')) {
+                document.getElementById('clearBtn').addEventListener('click', function() {
+                    miluimData = [];
+                    salaryData = [];
+                    attendanceData = [];
+                    calculationResults = [];
+                    gapStatuses = {};
+                    saveGapStatusesToIndexedDB();
+                    
+                    // Reset upload status
+                    const uploadCard = document.querySelector('.upload-card');
+                    if (uploadCard) {
+                        uploadCard.classList.remove('uploaded');
+                    }
+                    updateUploadStatus(false);
+                    
+                    // Reset sheet status
+                    updateSheetStatus('sheet1Status', false, '📊 גליון מילואים: ❌');
+                    updateSheetStatus('sheet2Status', false, '💰 גליון שכר: ❌');
+                    updateSheetStatus('sheet3Status', false, '📅 גליון נוכחות: ❌');
+                    
+                    const sheetsStatus = document.getElementById('sheetsStatus');
+                    if (sheetsStatus) {
+                        sheetsStatus.style.display = 'none';
+                    }
+                    
+                    // Clear file input
+                    const excelFile = document.getElementById('excelFile');
+                    if (excelFile) {
+                        excelFile.value = '';
+                    }
+                    
+                    // Remove messages
+                    document.querySelectorAll('.success, .error').forEach(msg => msg.remove());
+                    
+                    // Reset UI
+                    const calculateBtn = document.getElementById('calculateBtn');
+                    if (calculateBtn) {
+                        calculateBtn.disabled = true;
+                    }
+                    
+                    const resultsContainer = document.getElementById('resultsContainer');
+                    if (resultsContainer) {
+                        resultsContainer.innerHTML = '';
+                    }
+                    
+                    const summaryStats = document.getElementById('summaryStats');
+                    if (summaryStats) {
+                        summaryStats.style.display = 'none';
+                    }
+                    
+                    const exportSection = document.getElementById('exportSection');
+                    if (exportSection) {
+                        exportSection.style.display = 'none';
+                    }
+                });
+            }
             
-            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            // Export Button - עם בדיקה
+            if (document.getElementById('exportBtn')) {
+                document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            }
             
-            // Modal close
-            document.querySelector('.close').addEventListener('click', function() {
-                document.getElementById('detailsModal').style.display = 'none';
-            });
+            // Modal close button - עם בדיקה
+            const closeButton = document.querySelector('.close');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    const detailsModal = document.getElementById('detailsModal');
+                    if (detailsModal) {
+                        detailsModal.style.display = 'none';
+                    }
+                });
+            }
             
+            // Modal click outside - עם בדיקה
             window.addEventListener('click', function(event) {
                 const modal = document.getElementById('detailsModal');
-                if (event.target === modal) {
+                if (modal && event.target === modal) {
                     modal.style.display = 'none';
                 }
             });
             
-            // Filters - עם פונקציה גלובלית
-            document.getElementById('employeeFilter').addEventListener('input', applyFilters);
-document.getElementById('yearFilter').addEventListener('change', applyFilters);
-document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+            // Filters - עם בדיקות
+            if (document.getElementById('employeeFilter')) {
+                document.getElementById('employeeFilter').addEventListener('input', applyFilters);
+            }
 
-// 🆕 הוסף את 2 האלה:
-if (document.getElementById('statusFilter')) {
-    document.getElementById('statusFilter').addEventListener('change', applyFilters);
-}
-if (document.getElementById('orModeFilter')) {
-    document.getElementById('orModeFilter').addEventListener('change', function() {
-        const indicator = document.getElementById('orModeIndicator');
-        if (indicator) {
-            indicator.style.display = this.checked ? 'block' : 'none';
-        }
-        applyFilters();
-    });
-}
-           
+            if (document.getElementById('yearFilter')) {
+                document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('monthFilter')) {
+                document.getElementById('monthFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('miluimTypeFilter')) {
+                document.getElementById('miluimTypeFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('statusFilter')) {
+                document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('orModeFilter')) {
+                document.getElementById('orModeFilter').addEventListener('change', function() {
+                    const indicator = document.getElementById('orModeIndicator');
+                    if (indicator) {
+                        indicator.style.display = this.checked ? 'block' : 'none';
+                    }
+                    applyFilters();
+                });
+            }
+
             // הוספת פונקציה גלובלית
             window.clearFilters = clearFilters;
         });
+
 // משתנה גלובלי
 let filterWorker = null;
-
 function createInlineWorker() {
      const workerCode = `
         function simpleExcelToDate(serialNumber) {
@@ -5462,22 +5822,29 @@ function createInlineWorker() {
         self.onmessage = function(e) {
             const { results, filters, miluimData, orMode } = e.data;
            
-            
             // 🆕 תמיכה במצב OR
             if (orMode) {
-                // מצב OR - מספיק תנאי אחד
+                // מצב OR - מספיק תנאי אחד יתקיים
                 const filteredResults = results.filter(result => {
-                    // בדיקת עובד
+                    // בדיקה 1: עובד
                     if (filters.employee && result.employeeId.toString().includes(filters.employee)) {
                         return true;
                     }
                     
-                    // בדיקת שנה
+                    // בדיקה 2: שנה
                     if (filters.year && result.startDate.getFullYear().toString() === filters.year) {
                         return true;
                     }
                     
-                    // בדיקת סוג מילואים
+                    // בדיקה 3: חודש
+                    if (filters.month) {
+                        const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+                        if (resultMonth === filters.month) {
+                            return true;
+                        }
+                    }
+                    
+                    // בדיקה 4: סוג מילואים
                     if (filters.miluimType) {
                         let matches = false;
                         switch (filters.miluimType) {
@@ -5503,17 +5870,14 @@ function createInlineWorker() {
                         if (matches) return true;
                     }
                     
-                    // בדיקת מעמד
+                    // בדיקה 5: מעמד עובד
                     if (filters.employeeStatus) {
                         if (filters.employeeStatus === 'status-change') {
-                            const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);  // ✅ שורה חדשה
+                            const employeeRecords = results.filter(r => r.employeeId == result.employeeId);
                             const statuses = [...new Set(employeeRecords.map(m => m.employeeStatus))].filter(s => s);
                             if (statuses.length > 1) return true;
                         } else {
-                            const miluimRecord = miluimData.find(m => 
-                                m.employeeId == result.employeeId && m.startDate === result.startDate
-                            );
-                            if (result.employeeStatus == filters.employeeStatus) {  // ✅ שורה אחת פשוטה
+                            if (result.employeeStatus == filters.employeeStatus) {
                                 return true;
                             }
                         }
@@ -5525,16 +5889,27 @@ function createInlineWorker() {
                 self.postMessage(filteredResults);
                 
             } else {
-                // מצב AND - כל התנאים
+                // מצב AND - כל התנאים חייבים להתקיים
                 let filteredResults = results.filter(result => {
+                    // בדיקה 1: עובד
                     if (filters.employee && !result.employeeId.toString().includes(filters.employee)) {
                         return false;
                     }
                     
+                    // בדיקה 2: שנה
                     if (filters.year && result.startDate.getFullYear().toString() !== filters.year) {
                         return false;
                     }
                     
+                    // בדיקה 3: חודש
+                    if (filters.month) {
+                        const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+                        if (resultMonth !== filters.month) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה 4: סוג מילואים
                     if (filters.miluimType) {
                         switch (filters.miluimType) {
                             case 'new':
@@ -5558,21 +5933,20 @@ function createInlineWorker() {
                         }
                     }
                     
-                 // 🆕 סינון מעמד
-if (filters.employeeStatus) {
-    if (filters.employeeStatus === 'status-change') {
-        const employeeRecords = calculationResults.filter(r => r.employeeId == result.employeeId);  // ✅
-        const statuses = [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s);
-        if (statuses.length <= 1) return false;
-    } else {
-        // ✅ שימוש ישיר ב-result.employeeStatus
-        if (!result.employeeStatus || result.employeeStatus != filters.employeeStatus) {
-            return false;
-        }
-    }
-}
-                   
+                    // בדיקה 5: מעמד עובד
+                    if (filters.employeeStatus) {
+                        if (filters.employeeStatus === 'status-change') {
+                            const employeeRecords = results.filter(r => r.employeeId == result.employeeId);
+                            const statuses = [...new Set(employeeRecords.map(r => r.employeeStatus))].filter(s => s);
+                            if (statuses.length <= 1) return false;
+                        } else {
+                            if (!result.employeeStatus || result.employeeStatus != filters.employeeStatus) {
+                                return false;
+                            }
+                        }
+                    }
                     
+                    // הכל תואם - קבל את התוצאה
                     return true;
                 });
                 
@@ -5611,6 +5985,7 @@ function applyFilters() {
     const filters = {
         employee: document.getElementById('employeeFilter').value.trim(),
         year: document.getElementById('yearFilter').value,
+        month: document.getElementById('monthFilter')?.value || '',
         miluimType: document.getElementById('miluimTypeFilter').value,
         employeeStatus: document.getElementById('statusFilter')?.value || ''  // 🆕
     };
@@ -5655,6 +6030,7 @@ function applyFiltersRegular() {
     const filters = {
         employee: document.getElementById('employeeFilter').value.trim(),
         year: document.getElementById('yearFilter').value,
+         month: document.getElementById('monthFilter')?.value || '',
         miluimType: document.getElementById('miluimTypeFilter').value,
         employeeStatus: document.getElementById('statusFilter')?.value || ''
     };
@@ -5665,10 +6041,11 @@ function applyFiltersRegular() {
     // ספירת פילטרים פעילים
     const hasEmployeeFilter = filters.employee !== '';
     const hasYearFilter = filters.year !== '';
+     const hasMonthFilter = filters.month !== ''; 
     const hasMiluimTypeFilter = filters.miluimType !== '';
     const hasStatusFilter = filters.employeeStatus !== '';
     
-    const activeFiltersCount = [hasEmployeeFilter, hasYearFilter, hasMiluimTypeFilter, hasStatusFilter].filter(Boolean).length;
+    const activeFiltersCount = [hasEmployeeFilter, hasYearFilter, hasMonthFilter , hasMiluimTypeFilter, hasStatusFilter].filter(Boolean).length;
     
     console.log('📊 פילטרים פעילים:', activeFiltersCount);
     
@@ -5698,7 +6075,18 @@ function applyFiltersRegular() {
                 return true;
             }
             
-            // בדיקה 3: סוג מילואים
+             // בדיקה 2: שנה
+            if (hasYearFilter && result.startDate.getFullYear().toString() === filters.year) {
+                return true;
+            }
+         // בדיקה לחודש ב-OR mode
+if (hasMonthFilter) {
+    const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+    if (resultMonth === filters.month) {
+        return true;
+    }
+}
+            // בדיקה 4: סוג מילואים
             if (hasMiluimTypeFilter) {
                 let matches = false;
                 switch (filters.miluimType) {
@@ -5760,13 +6148,21 @@ function applyFiltersRegular() {
                 result.employeeId.toString().includes(filters.employee)
             );
         }
-        
         // סינון לפי שנה
         if (hasYearFilter) {
             filteredResults = filteredResults.filter(result => 
                 result.startDate.getFullYear().toString() === filters.year
             );
         }
+        
+        // סינון לפי חודש ← הוסיפי את זה
+        if (hasMonthFilter) {
+            filteredResults = filteredResults.filter(result => {
+                const resultMonth = (result.startDate.getMonth() + 1).toString().padStart(2, '0');
+                return resultMonth === filters.month;
+            });
+        }
+
         
         // סינון לפי סוג מילואים
         if (hasMiluimTypeFilter) {
@@ -5843,6 +6239,7 @@ function applyFiltersRegular() {
        function clearFilters() {
     document.getElementById('employeeFilter').value = '';
     document.getElementById('yearFilter').value = '';
+    document.getElementById('monthFilter').value = '';
     document.getElementById('miluimTypeFilter').value = '';
     
     // 🆕 הוסף את 3 השורות האלה:
@@ -8641,6 +9038,24 @@ function showGapDetails(employeeId, startDate, endDate) {
     
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+}
+// פונקציה לפתיחת מודול דוחות
+function openReportsModule() {
+    // בדיקה שיש נתונים במערכת
+    if (!calculationResults || calculationResults.length === 0) {
+        alert('⚠️ אין נתונים במערכת. אנא בצע חישוב תחילה.');
+        return;
+    }
+    
+    // פתיחת מודול הדוחות בחלון חדש
+    const reportsWindow = window.open('reports_module.html', 'ReportsModule', 
+        'width=1400,height=800,top=50,left=50');
+    
+    if (reportsWindow) {
+        console.log('📊 מודול דוחות נפתח בהצלחה');
+    } else {
+        alert('⚠️ לא ניתן לפתוח את מודול הדוחות. אנא בדוק חוסם חלונות.');
+    }
 }
 
 </script>
