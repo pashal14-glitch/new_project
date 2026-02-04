@@ -4400,23 +4400,29 @@ function dateToExcelNumber(date) {
                     break;
                     
               case 'attendance1857':
-    // מוסיף לאותו attendanceData
     const data1857 = dataRows.map(row => ({
         employeeId: row[0],
         monthYear: row[1],
-        workDays1857: row[2]  // עמודה C מגיליון 1857
+        workDays1857: row[2]
     })).filter(item => item.employeeId);
     
-    // מיזוג עם הנתונים הקיימים או יצירת רשומות חדשות
+    // בניית Map לחיפוש מהיר
+    const attendanceMap1857 = new Map();
+    attendanceData.forEach(a => {
+        const key = `${a.employeeId}|${a.monthYear}`;
+        attendanceMap1857.set(key, a);
+    });
+    
+    // מיזוג מהיר
     data1857.forEach(newRow => {
-        const existing = attendanceData.find(a => 
-            a.employeeId == newRow.employeeId && 
-            a.monthYear == newRow.monthYear
-        );
+        const key = `${newRow.employeeId}|${newRow.monthYear}`;
+        const existing = attendanceMap1857.get(key);
+        
         if (existing) {
             existing.workDays1857 = newRow.workDays1857;
         } else {
             attendanceData.push(newRow);
+            attendanceMap1857.set(key, attendanceData[attendanceData.length - 1]);
         }
     });
     break;
@@ -4425,38 +4431,53 @@ case 'attendance166':
     const data166 = dataRows.map(row => ({
         employeeId: row[0],
         monthYear: row[1],
-        workDays166: row[2]  // עמודה C מגיליון 166
+        workDays166: row[2]
     })).filter(item => item.employeeId);
     
+    // בניית Map לחיפוש מהיר
+    const attendanceMap166 = new Map();
+    attendanceData.forEach(a => {
+        const key = `${a.employeeId}|${a.monthYear}`;
+        attendanceMap166.set(key, a);
+    });
+    
+    // מיזוג מהיר
     data166.forEach(newRow => {
-        const existing = attendanceData.find(a => 
-            a.employeeId == newRow.employeeId && 
-            a.monthYear == newRow.monthYear
-        );
+        const key = `${newRow.employeeId}|${newRow.monthYear}`;
+        const existing = attendanceMap166.get(key);
+        
         if (existing) {
             existing.workDays166 = newRow.workDays166;
         } else {
             attendanceData.push(newRow);
+            attendanceMap166.set(key, attendanceData[attendanceData.length - 1]);
         }
     });
     break;
-
 case 'attendance1930':
     const data1930 = dataRows.map(row => ({
         employeeId: row[0],
         monthYear: row[1],
-        workDays1930: row[2]  // עמודה C מגיליון 1930
+        workDays1930: row[2]
     })).filter(item => item.employeeId);
     
+    // בניית Map לחיפוש מהיר
+    const attendanceMap1930 = new Map();
+    attendanceData.forEach(a => {
+        const key = `${a.employeeId}|${a.monthYear}`;
+        attendanceMap1930.set(key, a);
+    });
+    
+    // מיזוג מהיר
     data1930.forEach(newRow => {
-        const existing = attendanceData.find(a => 
-            a.employeeId == newRow.employeeId && 
-            a.monthYear == newRow.monthYear
-        );
+        const key = `${newRow.employeeId}|${newRow.monthYear}`;
+        const existing = attendanceMap1930.get(key);
+        
         if (existing) {
             existing.workDays1930 = newRow.workDays1930;
         } else {
             attendanceData.push(newRow);
+            attendanceMap1930.set(key, attendanceData[attendanceData.length - 1]);
         }
     });
     break;
