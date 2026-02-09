@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת SHAARIM - מיפוי 3 מעודכן מהקובץ המקורי</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            text-align: center; 
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #e74c3c, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 30px;
+        }
+        
+        .step { 
+            background: #f8f9fa; 
+            border: 3px solid #e9ecef; 
+            padding: 25px; 
+            margin: 20px 0; 
+            border-radius: 15px; 
+            transition: all 0.3s ease;
+        }
+        .step.active { 
+            border-color: #e74c3c; 
+            background: linear-gradient(135deg, #ffeae8, #fadbd7); 
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.3);
+        }
+        .step.done { 
+            border-color: #2ecc71; 
+            background: linear-gradient(135deg, #d4edda, #c3e6cb); 
+        }
+        
+        .upload { 
+            border: 3px dashed #cbd5e0; 
+            padding: 40px; 
+            text-align: center; 
+            margin: 15px 0; 
+            cursor: pointer; 
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+        .upload:hover { 
+            border-color: #e74c3c; 
+            background: #ffeae8; 
+            transform: translateY(-2px);
+        }
+        
+        .btn { 
+            background: linear-gradient(45deg, #e74c3c, #c0392b); 
+            color: white; 
+            border: none; 
+            padding: 12px 25px; 
+            margin: 8px; 
+            border-radius: 25px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4);
+        }
+        .btn:disabled { 
+            background: #a0aec0; 
+            cursor: not-allowed; 
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-success { 
+            background: linear-gradient(45deg, #2ecc71, #27ae60); 
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+        }
+        .btn-success:hover {
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.4);
+        }
+        
+        .status { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 10px; 
+            font-weight: bold;
+        }
+        .status.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 2px solid #c3e6cb;
+        }
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 2px solid #f5c6cb;
+        }
+        .status.info { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border: 2px solid #bee5eb;
+        }
+        
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 15px; 
+            margin: 20px 0; 
+        }
+        .stat { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            text-align: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            transition: transform 0.3s ease;
+        }
+        .stat:hover {
+            transform: translateY(-5px);
+        }
+        .stat-num { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            color: #e74c3c; 
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        input[type="file"] { display: none; }
+        
+        .downloads { 
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
+            padding: 30px; 
+            margin: 30px 0; 
+            text-align: center; 
+            border-radius: 15px;
+            border-left: 5px solid #e74c3c;
+        }
+        
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9em;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .summary-box {
+            background: #ffeae8;
+            border: 2px solid #e74c3c;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .correction-notice {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+            color: #0c5460;
+        }
+
+        .fix-highlight {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ מערכת SHAARIM - מיפוי 3 מעודכן מהקובץ המקורי</h1>
+        <!-- אחרי ה-<h1> הראשי -->
+<div style="position: fixed; top: 10px; left: 10px; z-index: 1000;">
+    <button class="btn" onclick="document.getElementById('adminPanel').style.display='block'" 
+            style="font-size: 0.8em; padding: 8px 15px;">
+        ⚙️ עדכון מיפויים
+    </button>
+</div>
+
+<!-- פאנל עדכון מוסתר -->
+<div id="adminPanel" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+     background: rgba(0,0,0,0.8); z-index: 2000; padding: 50px;">
+    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; margin: 0 auto;">
+        <h3>🔧 עדכון מיפוי 2 - נתוני נציגויות</h3>
+        
+        <div class="upload" onclick="document.getElementById('mapping2File').click()">
+            <div style="font-size: 2em;">📊</div>
+            <div>העלה קובץ Excel עם נתוני מיפוי 2 מעודכנים</div>
+          <small>עמודות נדרשות: מספר נציגות | שם נציגות | מטבע תשלום | מדד יוקר גולמי | שע"ח מקובע</small>
+        </div>
+        <input type="file" id="mapping2File" accept=".xlsx,.xls" onchange="updateMapping2(this.files[0])">
+        
+        <div id="adminStatus"></div>
+        
+        <div style="margin-top: 20px;">
+            <button class="btn" onclick="exportMapping2Code()">📥 ייצא קוד JavaScript מעודכן</button>
+            <button class="btn" onclick="document.getElementById('adminPanel').style.display='none'">❌ סגור</button>
+        </div>
+    </div>
+</div>
+        <div class="fix-highlight">
+            ✅ UPDATED! מיפוי 3 עודכן מהקובץ המקורי עם 141 נציגויות מדויקות
+        </div>
+        
+        <div class="correction-notice">
+            🎯 פשוט יותר: רק קובץ SHAARIM נדרש - מיפוי 3 מעודכן מדויק 100% מובנה במערכת
+        </div>
+        
+        <div class="summary-box">
+            <h3>🎯 מה עודכן במערכת:</h3>
+            <ul>
+                <li><strong>✅ טבלאות 9701/9702/9074:</strong> נבנות מהנתונים הקיימים</li>
+                <li><strong>🆕 טבלה 6600:</strong> מיפוי 3 מעודכן מהקובץ המקורי - 141 נציגויות</li>
+                <li><strong>🔧 תוקן לחלוטין:</strong> נציגות 335 נוספה בהתאם לקובץ המקורי</li>
+                <li><strong>📊 נתונים מעודכנים:</strong> כל הערכים מהקובץ שלך בדיוק</li>
+                <li><strong>📊 דיוק:</strong> טבלה 6600 עם 4 ספרות אחרי הנקודה</li>
+                <li><strong>📊 מיון:</strong> טבלאות 9701 ו-9702 לפי קוד מטבע ⬆️</li>
+                <li><strong>🚀 פשטות:</strong> רק העלאת קובץ SHAARIM נדרשת</li>
+            </ul>
+        </div>
+        
+        <!-- שלב 1: קובץ SHAARIM -->
+        <div class="step active" id="step1">
+            <h3>📊 שלב 1: העלאת קובץ SHAARIM</h3>
+            <div class="upload" onclick="document.getElementById('file1').click()">
+                <div style="font-size: 2.5em;">📊</div>
+                <div style="font-size: 1.2em; margin: 10px 0;">לחץ להעלאת קובץ SHAARIM CSV</div>
+                <small>קובץ עם נתוני שערי חליפין - מיפוי 3 מעודכן מדויק 100% כבר מובנה במערכת!</small>
+            </div>
+            <input type="file" id="file1" accept=".csv" onchange="loadShaarim(this.files[0])">
+            <div id="status1"></div>
+            <div class="stats" id="stats1"></div>
+        </div>
+        
+        <!-- שלב 2: יצירת טבלאות -->
+        <div class="step" id="step2">
+            <h3>🚀 שלב 2: יצירת כל הטבלאות (מיפוי 3 מעודכן מהקובץ המקורי)</h3>
+            
+            <button class="btn btn-success" id="generateBtn" onclick="generateAllTables()" disabled>
+                🚀 יצור את כל 4 הטבלאות עם מיפוי 3 מעודכן
+            </button>
+            
+            <div id="status2"></div>
+            <div class="stats" id="stats2"></div>
+            
+            <div id="previewSection" style="display: none;">
+                <h4>📊 תצוגה מקדימה (מיפוי 3 מעודכן מהקובץ המקורי):</h4>
+                <div class="table-container" id="previewTable"></div>
+            </div>
+        </div>
+        
+        <!-- הורדות -->
+        <div class="downloads" id="downloads" style="display: none;">
+            <h3>📥 הורדת כל הקבצים</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button class="btn btn-success" onclick="downloadTable('shaarim')">📁 SHAARIM מעודכן</button>
+                <button class="btn btn-success" onclick="downloadTable('9702')">📊 טבלה 9702</button>
+                <button class="btn btn-success" onclick="downloadTable('9701')">📊 טבלה 9701</button>
+                <button class="btn btn-success" onclick="downloadTable('9074')">🎯 טבלה 9074</button>
+                <button class="btn btn-success" onclick="downloadTable('6600')">🏠 טבלה 6600 (מיפוי 3 מעודכן)</button>
+                <button class="btn" onclick="downloadTable('all')">📦 כל הטבלאות</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // מיפוי 1: נציגות → קוד מטבע (לטבלאות 9701/9702 וחיפוש שערים)
+        const CURRENCY_MAPPING = {
+            // נציגויות ישראל - מטבע 1
+            "101": "1", "102": "1", "103": "1", "104": "1", "105": "1", "106": "1", "107": "1", "108": "1", "109": "1",
+            "113": "1", "114": "1", "115": "1", "116": "1", "117": "1", "118": "1", "119": "1",
+            "120": "1", "121": "1", "122": "1", "123": "1", "124": "1", "125": "1", "126": "1", "127": "1", "128": "1",
+            "209": "1", "253": "1",
+            
+            // נציגויות אירופה - מטבע 13
+            "110": "13", "111": "13", "112": "13",
+            
+            // נציגויות אפריקה וערב
+            "201": "43", "202": "401", "204": "402", "206": "206", "208": "423",
+            
+            // נציגויות מיוחדות
+            "252": "47", "254": "404", "256": "32", "257": "32", "258": "32", "259": "908", "260": "406", "261": "45", "262": "46",
+            
+            // נציגויות אירופה ואסיה
+            "301": "104", "302": "88", "303": "64", "304": "96", "305": "81", "306": "58", "307": "307", "308": "28", "309": "94",
+            "310": "28", "311": "408", "312": "96", "313": "94", "314": "42", "316": "28", "317": "28", "318": "28", "319": "28",
+            "320": "410", "321": "28", "322": "28", "323": "10", "324": "9", "325": "11", "326": "3", "327": "28", "328": "28",
+            "329": "28", "330": "28", "332": "28", "333": "28", "334": "5", "336": "5", "337": "28", "338": "28",
+            "340": "28", "341": "101", "342": "101", "343": "28", "344": "28", "345": "28", "346": "88", "347": "96", "348": "94", "349": "94",
+            "350": "28", "351": "28", "352": "28", "353": "28", "354": "28", "355": "28", "356": "28", "357": "28", "358": "28",
+            "360": "5", "361": "28", "362": "70",
+            
+            // נציגויות אמריקה ואסיא
+            "401": "25", "402": "25", "403": "411", "404": "901", "405": "31", "406": "22", "407": "407", "408": "19", "409": "21",
+            "410": "36", "411": "34", "412": "127", "413": "414", "414": "106", "416": "82", "417": "415", "418": "127", "419": "416",
+            "420": "127", "421": "25", "422": "127", "423": "19", "450": "450", 
+            
+            // מטבע 14 - רק 451, 452
+            "451": "14", "452": "14", 
+            
+            "453": "418", "460": "20", "466": "48",  // מטבע 48
+            
+            // נציגויות 500+ - לפי הטבלה המתוקנת
+            "467": "102", "468": "102",  // מטבע 102
+            "507": "420", "508": "420",  // מטבע 420  
+            "520": "520",               // מטבע 520
+            "521": "62",                // מטבע 62
+            "523": "26",                // מטבע 26
+            "525": "70",                // מטבע 70
+            "550": "12",                // מטבע 12
+            "551": "17",                // מטבע 17 - רק 551
+            "558": "33", "560": "33",   // מטבע 33
+            "561": "103",               // מטבע 103
+            "564": "86",                // מטבע 86
+            "565": "421", "566": "421", "567": "421", "568": "421"  // מטבע 421
+        };
+
+        // מיפוי 2 מעודכן מהקובץ Excel המדויק עם שערים מקובעים מדויקים (לטבלאות 9074)
+       const MAPPING_2_DATA = {
+            "101": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 113 },
+            "102": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 121 },
+            "103": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 114.5 },
+            "104": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 112 },
+            "105": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106.8 },
+            "106": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 99.8 },
+            "107": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106.4 },
+            "108": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 118.9 },
+            "109": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 109.7 },
+            "110": { "currencyCode": "13", "fixedRate": 2.431906615, "costIndex": 102.1 },
+            "111": { "currencyCode": "13", "fixedRate": 2.431906615, "costIndex": 103.4 },
+            "112": { "currencyCode": "13", "fixedRate": 2.431906615, "costIndex": 103.8 },
+            "113": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 109 },
+            "114": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 108.6 },
+            "115": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 105.4 },
+            "116": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106 },
+            "117": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 99.8 },
+            "118": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 108.6 },
+            "119": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 103.3 },
+            "120": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 108.6 },
+            "121": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106.8 },
+            "122": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106.8 },
+            "123": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 103.3 },
+            "124": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 105.4 },
+            "125": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 116.4 },
+            "126": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 104.3 },
+            "127": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 106.3 },
+            "128": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 116.2 },
+            "201": { "currencyCode": "43", "fixedRate": 0.179662235, "costIndex": 90.1 },
+            "202": { "currencyCode": "401", "fixedRate": 0.438212095, "costIndex": 89.3 },
+            "204": { "currencyCode": "402", "fixedRate": 0.053390283, "costIndex": 78.6 },
+            "206": { "currencyCode": "206", "fixedRate": 0.006640106, "costIndex": 109.1 },
+            "208": { "currencyCode": "423", "fixedRate": 0.128766418, "costIndex": 84.9 },
+            "209": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 87 },
+            "252": { "currencyCode": "47", "fixedRate": 0.00083682, "costIndex": 81 },
+            "253": { "currencyCode": "1", "fixedRate": 3.353454058, "costIndex": 84.9 },
+            "254": { "currencyCode": "404", "fixedRate": 0.950570342, "costIndex": 90.1 },
+            "256": { "currencyCode": "32", "fixedRate": 0.617283951, "costIndex": 81 },
+            "257": { "currencyCode": "32", "fixedRate": 0.617283951, "costIndex": 80.8 },
+            "258": { "currencyCode": "32", "fixedRate": 0.617283951, "costIndex": 84.7 },
+            "259": { "currencyCode": "908", "fixedRate": 0.000462749, "costIndex": 68.4 },
+            "260": { "currencyCode": "406", "fixedRate": 0.083682008, "costIndex": 105.3 },
+            "261": { "currencyCode": "45", "fixedRate": 0.002485089, "costIndex": 94 },
+            "262": { "currencyCode": "46", "fixedRate": 0.003469813, "costIndex": 75.6 },
+            "301": { "currencyCode": "104", "fixedRate": 0.772797527, "costIndex": 81.8 },
+            "302": { "currencyCode": "88", "fixedRate": 0.919963201, "costIndex": 87.8 },
+            "303": { "currencyCode": "64", "fixedRate": 0.009910803, "costIndex": 86.3 },
+            "304": { "currencyCode": "96", "fixedRate": 0.041631973, "costIndex": 102.7 },
+            "305": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 83.5 },
+            "306": { "currencyCode": "58", "fixedRate": 0.160025604, "costIndex": 93.7 },
+            "307": { "currencyCode": "307", "fixedRate": 0.033512064, "costIndex": 88.8 },
+            "308": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 106.5 },
+            "309": { "currencyCode": "94", "fixedRate": 0.080906149, "costIndex": 72.3 },
+            "310": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 102.9 },
+            "311": { "currencyCode": "408", "fixedRate": 0.991080278, "costIndex": 58.7 },
+            "312": { "currencyCode": "96", "fixedRate": 0.041631973, "costIndex": 92.9 },
+            "314": { "currencyCode": "42", "fixedRate": 0.20242915, "costIndex": 88 },
+            "316": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 89.4 },
+            "317": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 95 },
+            "318": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 106 },
+            "319": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 105.4 },
+            "320": { "currencyCode": "410", "fixedRate": 0.040241449, "costIndex": 103.4 },
+            "321": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 108.6 },
+            "322": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 118.3 },
+            "323": { "currencyCode": "10", "fixedRate": 0.353982301, "costIndex": 109.7 },
+            "324": { "currencyCode": "9", "fixedRate": 0.333222259, "costIndex": 127 },
+            "325": { "currencyCode": "11", "fixedRate": 0.525762355, "costIndex": 126.2 },
+            "326": { "currencyCode": "3", "fixedRate": 4.522840344, "costIndex": 108.4 },
+            "327": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 106.1 },
+            "328": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 109 },
+            "329": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 104 },
+            "330": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 105 },
+            "332": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 99.8 },
+            "333": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 95.2 },
+            "334": { "currencyCode": "5", "fixedRate": 4.180602007, "costIndex": 155.5 },
+            "335": { "currencyCode": "5", "fixedRate": 4.180602007, "costIndex": 158 },
+            "336": { "currencyCode": "5", "fixedRate": 4.180602007, "costIndex": 157.9 },
+            "337": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 101.3 },
+            "338": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 100.2 },
+            "340": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 101.6 },
+            "341": { "currencyCode": "101", "fixedRate": 0.081566069, "costIndex": 84.7 },
+            "342": { "currencyCode": "101", "fixedRate": 0.081566069, "costIndex": 85.7 },
+            "343": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 92.6 },
+            "344": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 97.3 },
+            "345": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 96.8 },
+            "346": { "currencyCode": "88", "fixedRate": 0.919963201, "costIndex": 85.4 },
+            "347": { "currencyCode": "96", "fixedRate": 0.041631973, "costIndex": 84.4 },
+            "350": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 100.7 },
+            "351": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 97 },
+            "352": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 104.7 },
+            "353": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 106.1 },
+            "354": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 109.9 },
+            "355": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 97.8 },
+            "356": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 104.9 },
+            "357": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 105 },
+            "358": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 104.7 },
+            "360": { "currencyCode": "5", "fixedRate": 4.180602007, "costIndex": 155.9 },
+            "361": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 92.6 },
+            "362": { "currencyCode": "70", "fixedRate": 1.244245365, "costIndex": 80.2 },
+            "363": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 104.2 },
+            "364": { "currencyCode": "28", "fixedRate": 3.916960439, "costIndex": 101.4 },
+            "401": { "currencyCode": "25", "fixedRate": 0.038182512, "costIndex": 68 },
+            "402": { "currencyCode": "25", "fixedRate": 0.038182512, "costIndex": 67.5 },
+            "403": { "currencyCode": "411", "fixedRate": 0.023860654, "costIndex": 58 },
+            "404": { "currencyCode": "901", "fixedRate": 0.001597699, "costIndex": 110.1 },
+            "405": { "currencyCode": "31", "fixedRate": 0.103777501, "costIndex": 97.5 },
+            "406": { "currencyCode": "22", "fixedRate": 2.61164795, "costIndex": 128.2 },
+            "407": { "currencyCode": "407", "fixedRate": 0.058823529, "costIndex": 78.5 },
+            "408": { "currencyCode": "19", "fixedRate": 0.022742779, "costIndex": 100.8 },
+            "409": { "currencyCode": "21", "fixedRate": 0.429922614, "costIndex": 138 },
+            "410": { "currencyCode": "36", "fixedRate": 0.109613066, "costIndex": 106.3 },
+            "411": { "currencyCode": "34", "fixedRate": 0.002414876, "costIndex": 100.4 },
+            "412": { "currencyCode": "127", "fixedRate": 0.469483568, "costIndex": 104.2 },
+            "413": { "currencyCode": "414", "fixedRate": 0.000270124, "costIndex": 70.9 },
+            "414": { "currencyCode": "106", "fixedRate": 1.972386588, "costIndex": 96.5 },
+            "416": { "currencyCode": "82", "fixedRate": 1.244245365, "costIndex": 80.2 },
+            "417": { "currencyCode": "415", "fixedRate": 0.957854406, "costIndex": 298.8 },
+            "418": { "currencyCode": "127", "fixedRate": 0.469483568, "costIndex": 102.7 },
+            "419": { "currencyCode": "416", "fixedRate": 0.006242197, "costIndex": 71.2 },
+            "420": { "currencyCode": "127", "fixedRate": 0.469483568, "costIndex": 100.2 },
+            "421": { "currencyCode": "25", "fixedRate": 0.038182512, "costIndex": 65.8 },
+            "422": { "currencyCode": "127", "fixedRate": 0.469483568, "costIndex": 94 },
+            "423": { "currencyCode": "19", "fixedRate": 0.022742779, "costIndex": 93.7 },
+            "450": { "currencyCode": "450", "fixedRate": 0.000127307, "costIndex": 72.7 },
+            "451": { "currencyCode": "14", "fixedRate": 2.187226597, "costIndex": 97 },
+            "452": { "currencyCode": "14", "fixedRate": 2.187226597, "costIndex": 100.6 },
+            "453": { "currencyCode": "418", "fixedRate": 1.97044335, "costIndex": 95.4 },
+            "460": { "currencyCode": "20", "fixedRate": 4.728132388, "costIndex": 99.1 },
+            "466": { "currencyCode": "48", "fixedRate": 8.920606601, "costIndex": 108.5 },
+            "467": { "currencyCode": "102", "fixedRate": 0.913242009, "costIndex": 110.1 },
+            "468": { "currencyCode": "102", "fixedRate": 0.913242009, "costIndex": 110.1 },
+            "501": { "currencyCode": "550", "fixedRate": 0.005970149, "costIndex": 105.2 },
+            "502": { "currencyCode": "550", "fixedRate": 0.005970149, "costIndex": 107.9 },
+            "506": { "currencyCode": "1", "fixedRate": 0.003685957, "costIndex": 98.2 },
+            "507": { "currencyCode": "1", "fixedRate": 0.002192502, "costIndex": 70.1 },
+            "520": { "currencyCode": "520", "fixedRate": 0.291630213, "costIndex": 114.3 },
+            "521": { "currencyCode": "62", "fixedRate": 0.025947068, "costIndex": 81.8 },
+            "523": { "currencyCode": "26", "fixedRate": 0.069060773, "costIndex": 62.9 },
+            "525": { "currencyCode": "70", "fixedRate": 0.023651845, "costIndex": 66.2 },
+            "526": { "currencyCode": "1", "fixedRate": 0.223563604, "costIndex": 108 },
+            "550": { "currencyCode": "12", "fixedRate": 0.190367409, "costIndex": 70.2 },
+            "551": { "currencyCode": "17", "fixedRate": 0.190367409, "costIndex": 69.8 },
+            "558": { "currencyCode": "33", "fixedRate": 0.14202528, "costIndex": 72.5 },
+            "560": { "currencyCode": "33", "fixedRate": 0.005970149, "costIndex": 101.9 },
+            "561": { "currencyCode": "103", "fixedRate": 0.371471025, "costIndex": 87.4 },
+            "564": { "currencyCode": "86", "fixedRate": 0.002314815, "costIndex": 64.6 }
+        };
+         
+
+        // מיפוי 3 מעודכן מהקובץ המקורי - 141 נציגויות מדויקות
+        const MAPPING_3_DATA = {
+            "101": { "housingAllowance": 1544, "housingCurrency": 1 },
+            "102": { "housingAllowance": 2294, "housingCurrency": 1 },
+            "103": { "housingAllowance": 1894, "housingCurrency": 1 },
+            "104": { "housingAllowance": 1444, "housingCurrency": 1 },
+            "105": { "housingAllowance": 1000, "housingCurrency": 1 },
+            "106": { "housingAllowance": 994, "housingCurrency": 1 },
+            "107": { "housingAllowance": 1344, "housingCurrency": 1 },
+            "108": { "housingAllowance": 2544, "housingCurrency": 1 },
+            "109": { "housingAllowance": 1894, "housingCurrency": 1 },
+            "110": { "housingAllowance": 1125, "housingCurrency": 13 },
+            "111": { "housingAllowance": 775, "housingCurrency": 13 },
+            "112": { "housingAllowance": 1625, "housingCurrency": 13 },
+            "113": { "housingAllowance": 1894, "housingCurrency": 1 },
+            "114": { "housingAllowance": 0, "housingCurrency": 1 },
+            "115": { "housingAllowance": 0, "housingCurrency": 1 },
+            "116": { "housingAllowance": 0, "housingCurrency": 1 },
+            "117": { "housingAllowance": 0, "housingCurrency": 1 },
+            "118": { "housingAllowance": 0, "housingCurrency": 1 },
+            "119": { "housingAllowance": 0, "housingCurrency": 1 },
+            "120": { "housingAllowance": 0, "housingCurrency": 1 },
+            "121": { "housingAllowance": 0, "housingCurrency": 1 },
+            "122": { "housingAllowance": 0, "housingCurrency": 1 },
+            "123": { "housingAllowance": 0, "housingCurrency": 1 },
+            "124": { "housingAllowance": 0, "housingCurrency": 1 },
+            "125": { "housingAllowance": 0, "housingCurrency": 1 },
+            "126": { "housingAllowance": 1050, "housingCurrency": 1 },
+            "127": { "housingAllowance": 694, "housingCurrency": 1 },
+            "128": { "housingAllowance": 1750, "housingCurrency": 1 },
+            "201": { "housingAllowance": 44020, "housingCurrency": 43 },
+            "202": { "housingAllowance": 6423, "housingCurrency": 401 },
+            "204": { "housingAllowance": 34606, "housingCurrency": 402 },
+            "206": { "housingAllowance": 350437, "housingCurrency": 206 },
+            "208": { "housingAllowance": 27115, "housingCurrency": 423 },
+            "209": { "housingAllowance": 1444, "housingCurrency": 1 },
+            "252": { "housingAllowance": 2357229, "housingCurrency": 47 },
+            "253": { "housingAllowance": 600, "housingCurrency": 1 },
+            "254": { "housingAllowance": 1770, "housingCurrency": 404 },
+            "256": { "housingAllowance": 0, "housingCurrency": 32 },
+            "257": { "housingAllowance": 5395, "housingCurrency": 32 },
+            "258": { "housingAllowance": 6295, "housingCurrency": 32 },
+            "260": { "housingAllowance": 32726, "housingCurrency": 406 },
+            "261": { "housingAllowance": 1150, "housingCurrency": 1 },
+            "262": { "housingAllowance": 1265241, "housingCurrency": 46 },
+            "301": { "housingAllowance": 477, "housingCurrency": 28 },
+            "302": { "housingAllowance": 2360, "housingCurrency": 88 },
+            "303": { "housingAllowance": 223993, "housingCurrency": 64 },
+            "304": { "housingAllowance": 1644, "housingCurrency": 1 },
+            "305": { "housingAllowance": 214, "housingCurrency": 28 },
+            "306": { "housingAllowance": 11830, "housingCurrency": 58 },
+            "307": { "housingAllowance": 29675, "housingCurrency": 307 },
+            "308": { "housingAllowance": 652, "housingCurrency": 28 },
+            "309": { "housingAllowance": 544, "housingCurrency": 1 },
+            "310": { "housingAllowance": 239, "housingCurrency": 28 },
+            "311": { "housingAllowance": 75, "housingCurrency": 1 },
+            "312": { "housingAllowance": 550, "housingCurrency": 1 },
+            "313": { "housingAllowance": 0, "housingCurrency": 1 },
+            "314": { "housingAllowance": 3956, "housingCurrency": 42 },
+            "316": { "housingAllowance": 227, "housingCurrency": 28 },
+            "317": { "housingAllowance": 227, "housingCurrency": 28 },
+            "318": { "housingAllowance": 1152, "housingCurrency": 28 },
+            "319": { "housingAllowance": 1652, "housingCurrency": 28 },
+            "320": { "housingAllowance": 214, "housingCurrency": 28 },
+            "321": { "housingAllowance": 852, "housingCurrency": 28 },
+            "322": { "housingAllowance": 1040, "housingCurrency": 28 },
+            "323": { "housingAllowance": 17045, "housingCurrency": 10 },
+            "324": { "housingAllowance": 7259, "housingCurrency": 9 },
+            "325": { "housingAllowance": 12285, "housingCurrency": 11 },
+            "326": { "housingAllowance": 2680, "housingCurrency": 3 },
+            "327": { "housingAllowance": 952, "housingCurrency": 28 },
+            "328": { "housingAllowance": 577, "housingCurrency": 28 },
+            "329": { "housingAllowance": 352, "housingCurrency": 28 },
+            "330": { "housingAllowance": 977, "housingCurrency": 28 },
+            "333": { "housingAllowance": 1052, "housingCurrency": 28 },
+            "334": { "housingAllowance": 1234, "housingCurrency": 5 },
+            "335": { "housingAllowance": 1584, "housingCurrency": 5 },
+            "336": { "housingAllowance": 1534, "housingCurrency": 5 },
+            "337": { "housingAllowance": 952, "housingCurrency": 28 },
+            "338": { "housingAllowance": 702, "housingCurrency": 28 },
+            "340": { "housingAllowance": 502, "housingCurrency": 28 },
+            "341": { "housingAllowance": 0, "housingCurrency": 1 },
+            "342": { "housingAllowance": 0, "housingCurrency": 1 },
+            "343": { "housingAllowance": 490, "housingCurrency": 28 },
+            "344": { "housingAllowance": 1027, "housingCurrency": 28 },
+            "345": { "housingAllowance": 252, "housingCurrency": 28 },
+            "346": { "housingAllowance": 1410, "housingCurrency": 88 },
+            "347": { "housingAllowance": 0, "housingCurrency": 96 },
+            "348": { "housingAllowance": 0, "housingCurrency": 94 },
+            "349": { "housingAllowance": 0, "housingCurrency": 94 },
+            "350": { "housingAllowance": 377, "housingCurrency": 28 },
+            "351": { "housingAllowance": 389, "housingCurrency": 28 },
+            "352": { "housingAllowance": 0, "housingCurrency": 1 },
+            "353": { "housingAllowance": 702, "housingCurrency": 28 },
+            "354": { "housingAllowance": 1552, "housingCurrency": 28 },
+            "355": { "housingAllowance": 977, "housingCurrency": 28 },
+            "356": { "housingAllowance": 552, "housingCurrency": 28 },
+            "357": { "housingAllowance": 702, "housingCurrency": 28 },
+            "358": { "housingAllowance": 502, "housingCurrency": 28 },
+            "401": { "housingAllowance": 98585, "housingCurrency": 25 },
+            "402": { "housingAllowance": 253585, "housingCurrency": 25 },
+            "403": { "housingAllowance": 175, "housingCurrency": 1 },
+            "404": { "housingAllowance": 1500, "housingCurrency": 1 },
+            "405": { "housingAllowance": 41413, "housingCurrency": 31 },
+            "406": { "housingAllowance": 2930, "housingCurrency": 22 },
+            "407": { "housingAllowance": 68294, "housingCurrency": 407 },
+            "408": { "housingAllowance": 220366, "housingCurrency": 19 },
+            "409": { "housingAllowance": 14540, "housingCurrency": 21 },
+            "410": { "housingAllowance": 37935, "housingCurrency": 36 },
+            "411": { "housingAllowance": 3215686, "housingCurrency": 34 },
+            "412": { "housingAllowance": 9403, "housingCurrency": 127 },
+            "413": { "housingAllowance": 444, "housingCurrency": 1 },
+            "414": { "housingAllowance": 2250, "housingCurrency": 1 },
+            "416": { "housingAllowance": 1751, "housingCurrency": 82 },
+            "417": { "housingAllowance": 2000, "housingCurrency": 1 },
+            "418": { "housingAllowance": 9403, "housingCurrency": 127 },
+            "419": { "housingAllowance": 175080, "housingCurrency": 416 },
+            "420": { "housingAllowance": 4913, "housingCurrency": 127 },
+            "421": { "housingAllowance": 78585, "housingCurrency": 25 },
+            "422": { "housingAllowance": 5906, "housingCurrency": 127 },
+            "423": { "housingAllowance": 0, "housingCurrency": 19 },
+            "450": { "housingAllowance": 18519231, "housingCurrency": 450 },
+            "451": { "housingAllowance": 1339, "housingCurrency": 14 },
+            "452": { "housingAllowance": 2040, "housingCurrency": 14 },
+            "453": { "housingAllowance": 1832, "housingCurrency": 418 },
+            "460": { "housingAllowance": 0, "housingCurrency": 20 },
+            "466": { "housingAllowance": 0, "housingCurrency": 1 },
+            "467": { "housingAllowance": 0, "housingCurrency": 102 },
+            "468": { "housingAllowance": 0, "housingCurrency": 102 },
+            "501": { "housingAllowance": 1246742, "housingCurrency": 550 },
+            "502": { "housingAllowance": 848089, "housingCurrency": 550 },
+            "506": { "housingAllowance": 3500, "housingCurrency": 1 },
+            "507": { "housingAllowance": 3500, "housingCurrency": 1 },
+            "520": { "housingAllowance": 1500, "housingCurrency": 1 },
+            "521": { "housingAllowance": 91226, "housingCurrency": 62 },
+            "523": { "housingAllowance": 0, "housingCurrency": 26 },
+            "525": { "housingAllowance": 192715, "housingCurrency": 70 },
+            "526": { "housingAllowance": 686, "housingCurrency": 1 },
+            "550": { "housingAllowance": 7848, "housingCurrency": 12 },
+            "551": { "housingAllowance": 6800, "housingCurrency": 17 },
+            "560": { "housingAllowance": 1060441, "housingCurrency": 33 },
+            "561": { "housingAllowance": 0, "housingCurrency": 103 },
+            "564": { "housingAllowance": 736600, "housingCurrency": 86 }
+        };
+
+        // משתנים גלובליים
+        let shaarimData = null;
+        let generatedTables = {
+            shaarim: null,
+            table9702: null,
+            table9701: null,
+            table9074: null,
+            table6600: null
+        };
+
+        // ===== פונקציות עיקריות =====
+
+        function loadShaarim(file) {
+            if (!file) return;
+            
+            showStatus('1', 'info', '⏳ טוען קובץ SHAARIM...');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csvText = e.target.result;
+                    processShaarimData(csvText);
+                    showStatus('1', 'success', `✅ קובץ SHAARIM "${file.name}" נטען בהצלחה! מיפוי 3 מעודכן מדויק עם ${Object.keys(MAPPING_3_DATA).length} נציגויות מובנה`);
+                    updateStep(1);
+                } catch (error) {
+                    showStatus('1', 'error', `❌ שגיאה בקריאת קובץ SHAARIM: ${error.message}`);
+                }
+            };
+            reader.readAsText(file, 'windows-1255');
+        }
+function updateMapping2(file) {
+    if (!file) return;
+    
+    document.getElementById('adminStatus').innerHTML = '<div class="status info">⏳ קורא קובץ...</div>';
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+            
+            const newMapping = {};
+            let updatedCount = 0;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const representation = rows[i][0]?.toString(); // עמודה A
+                const currencyCode = rows[i][2]?.toString();   // עמודה C
+                const costIndex = parseFloat(rows[i][3]);      // עמודה D
+                const fixedRate = parseFloat(rows[i][4]);      // עמודה E
+                
+                if (representation && currencyCode && !isNaN(costIndex) && !isNaN(fixedRate)) {
+                    newMapping[representation] = {
+                        currencyCode: currencyCode,
+                        fixedRate: fixedRate,
+                        costIndex: costIndex
+                    };
+                    updatedCount++;
+                }
+            }
+            
+            // עדכון המשתנה הגלובלי
+            window.MAPPING_2_DATA = newMapping;
+            
+            document.getElementById('adminStatus').innerHTML = `
+                <div class="status success">
+                    ✅ מיפוי 2 עודכן בהצלחה!<br>
+                    📊 ${updatedCount} נציגויות נטענו<br>
+                    ⚠️ לשמירה קבועה - לחץ על "ייצא קוד JavaScript"
+                </div>
+            `;
+            
+        } catch (error) {
+            document.getElementById('adminStatus').innerHTML = 
+                `<div class="status error">❌ שגיאה: ${error.message}</div>`;
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+function exportMapping2Code() {
+    const currentMapping = window.MAPPING_2_DATA || MAPPING_2_DATA;
+    
+    if (!currentMapping || Object.keys(currentMapping).length === 0) {
+        alert('❌ אין נתוני מיפוי לייצא. יש להעלות קובץ Excel תחילה.');
+        return;
+    }
+    
+    // יצירת קוד JavaScript מעוצב
+    let jsCode = '        const MAPPING_2_DATA = {\n';
+    
+    const entries = Object.entries(currentMapping);
+    entries.forEach(([rep, data], index) => {
+        const isLast = index === entries.length - 1;
+        jsCode += `            "${rep}": { "currencyCode": "${data.currencyCode}", "fixedRate": ${data.fixedRate}, "costIndex": ${data.costIndex} }${isLast ? '' : ','}\n`;
+    });
+    
+    jsCode += '        };\n';
+    
+    // הורדה כקובץ טקסט
+    const blob = new Blob([jsCode], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const today = new Date().toISOString().split('T')[0];
+    link.download = `MAPPING_2_DATA_מעודכן_${today}.txt`;
+    link.click();
+    
+    // הצגת הודעה
+    document.getElementById('adminStatus').innerHTML = `
+        <div class="status success">
+            ✅ הקוד ייוצא בהצלחה!<br><br>
+            <strong>שלבים להחלפה בקוד:</strong><br>
+            1️⃣ פתח את הקובץ שהורד<br>
+            2️⃣ העתק את כל התוכן<br>
+            3️⃣ פתח את קובץ ה-HTML במחברת<br>
+            4️⃣ מצא את <code>const MAPPING_2_DATA = {</code><br>
+            5️⃣ החלף מהשורה הזו עד סוף הסוגריים <code>};</code><br>
+            6️⃣ שמור את הקובץ ✅
+        </div>
+    `;
+}
+
+function closeAdminPanel() {
+    document.getElementById('adminPanel').style.display = 'none';
+}
+        function processShaarimData(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            
+            shaarimData = [];
+            let validRows = 0;
+            const uniqueRepresentations = new Set();
+            let ignoredRepresentations = 0;
+
+            // עיבוד הנתונים
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(',');
+                if (parts.length >= 14) {
+                    const representation = parts[13] ? parts[13].trim().replace(/"/g, '') : '';
+                    
+                    if (representation) {
+                        // בדיקה אם הנציגות קיימת במיפוי 1
+                        if (CURRENCY_MAPPING[representation]) {
+                            uniqueRepresentations.add(representation);
+                            shaarimData.push(parts);
+                            validRows++;
+                        } else {
+                            ignoredRepresentations++;
+                            console.log(`🚫 מתעלם מנציגות ${representation} - לא קיימת במיפוי 1`);
+                        }
+                    }
+                }
+            }
+
+            // עדכון סטטיסטיקות
+            document.getElementById('stats1').innerHTML = `
+                <div class="stat">
+                    <div class="stat-num">${validRows}</div>
+                    <div class="stat-label">שורות תקינות</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">${uniqueRepresentations.size}</div>
+                    <div class="stat-label">נציגויות במיפוי 1</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">${Object.keys(MAPPING_2_DATA).length}</div>
+                    <div class="stat-label">נציגויות במיפוי 2</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">${Object.keys(MAPPING_3_DATA).length}</div>
+                    <div class="stat-label">נציגויות במיפוי 3 (מעודכן מקובץ)</div>
+                </div>
+            `;
+
+            // הפעלת כפתור יצירת הטבלאות
+            document.getElementById('generateBtn').disabled = false;
+        }
+
+        function generateAllTables() {
+            if (!shaarimData) {
+                showStatus('2', 'error', '❌ יש לטעון קודם קובץ SHAARIM');
+                return;
+            }
+
+            showStatus('2', 'info', '⏳ יוצר את כל הטבלאות עם מיפוי 3 מעודכן מהקובץ המקורי...');
+
+            try {
+                // יצירת כל הטבלאות - בסדר הנכון!
+                generatedTables.shaarim = createUpdatedShaarim();
+                generatedTables.table9702 = createTable9702();
+                generatedTables.table9701 = createTable9701();
+                generatedTables.table9074 = createTable9074();
+                // טבלה 6600 משתמשת במיפוי 3 המעודכן מהקובץ המקורי
+                generatedTables.table6600 = createTable6600WithUpdatedMapping3();
+
+                const mapping3Representations = Object.keys(MAPPING_3_DATA);
+                const processedRepresentations6600 = generatedTables.table6600.length;
+                
+                // עדכון סטטיסטיקות
+                document.getElementById('stats2').innerHTML = `
+                    <div class="stat">
+                        <div class="stat-num">${generatedTables.table9702.length}</div>
+                        <div class="stat-label">טבלה 9702</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">${generatedTables.table9701.length}</div>
+                        <div class="stat-label">טבלה 9701</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">${generatedTables.table9074.length}</div>
+                        <div class="stat-label">טבלה 9074</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">${generatedTables.table6600.length}</div>
+                        <div class="stat-label">טבלה 6600 (מיפוי 3 מעודכן מקובץ)</div>
+                    </div>
+                `;
+
+                // הצגת תצוגה מקדימה
+                displayPreview();
+
+                // עדכון שלבים
+                updateStep(2);
+                document.getElementById('downloads').style.display = 'block';
+                
+                const total = generatedTables.table9702.length + generatedTables.table9701.length + 
+                             generatedTables.table9074.length + generatedTables.table6600.length;
+                
+                showStatus('2', 'success', `✅ כל הטבלאות נוצרו עם מיפוי 3 מעודכן מהקובץ המקורי! סה"כ ${total} רשומות. טבלה 6600: ${processedRepresentations6600}/${mapping3Representations.length} נציגויות`);
+
+            } catch (error) {
+                showStatus('2', 'error', `❌ שגיאה ביצירת הטבלאות: ${error.message}`);
+            }
+        }
+
+        // ===== פונקציות יצירת טבלאות =====
+
+        function createUpdatedShaarim() {
+            const headers = ['תאריך', 'בסיס בדולרים', 'בסיס בשקלים', 'אחוז קשת שרות', 'אחוז קושי יחודי', 
+                           'השלמת בסיס', 'בסיס משכורת', 'מטבע', 'מקדם שקל מ"מ', 'שער שקל מ"מ', 
+                           'שער דולר מ"מ', 'ארץ', 'שם נציגות', 'נציגות', 'קוד מטבע P'];
+            
+            const updatedData = [headers];
+            
+            shaarimData.forEach(row => {
+                const representation = row[13] ? row[13].trim().replace(/"/g, '') : '';
+                const currencyCode = CURRENCY_MAPPING[representation] || '';
+                updatedData.push([...row, currencyCode]);
+            });
+            
+            return updatedData;
+        }
+
+        function createTable9702() {
+            const table = [];
+            const currencyRates = new Map();
+            
+            // חילוץ שערי שקל מ"מ - רק מנציגויות שקיימות במיפוי 1
+            shaarimData.forEach(row => {
+                const representation = row[13] ? row[13].trim().replace(/"/g, '') : '';
+                const shearShekel = parseFloat(row[9]); // עמודה J
+                const currencyCode = CURRENCY_MAPPING[representation];
+                
+                if (currencyCode && !isNaN(shearShekel) && shearShekel > 0) {
+                    currencyRates.set(currencyCode, shearShekel);
+                }
+            });
+            
+            // יצירת רשומות טבלה
+            const currentDate = new Date();
+            const fromDate = `15/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+            
+            Array.from(currencyRates.entries()).forEach(([currency, rate]) => {
+                table.push({
+                    tableNumber: 9702,
+                    index: -1,
+                    office: 0,
+                    fromDate: fromDate,
+                    toDate: '31/12/2099',
+                    updateCode: 2,
+                    currency: currency,
+                    value: rate
+                });
+            });
+            
+            // מיון לפי קוד מטבע בסדר עולה
+            table.sort((a, b) => {
+                const currencyA = parseInt(a.currency);
+                const currencyB = parseInt(b.currency);
+                return currencyA - currencyB;
+            });
+            
+            return table;
+        }
+
+        function createTable9701() {
+            const table = [];
+            const currencyRates = new Map();
+            let shekelRateFor101 = null;
+            
+            // חילוץ שערי דולר מ"מ ושער שקל לנציגות 101 - רק מנציגויות שקיימות במיפוי 1
+            shaarimData.forEach(row => {
+                const representation = row[13] ? row[13].trim().replace(/"/g, '') : '';
+                const shearDollar = parseFloat(row[10]); // עמודה K
+                const shearShekel = parseFloat(row[9]); // עמודה J
+                const currencyCode = CURRENCY_MAPPING[representation];
+                
+                // שמירת שער שקל עבור נציגות 101 למטבע 18
+                if (representation === '101' && !isNaN(shearShekel) && shearShekel > 0) {
+                    shekelRateFor101 = shearShekel;
+                }
+                
+                if (currencyCode && !isNaN(shearDollar) && shearDollar > 0) {
+                    currencyRates.set(currencyCode, shearDollar);
+                }
+            });
+            
+            const currentDate = new Date();
+            const firstOfMonth = `01/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+            const lastOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            const endOfMonth = `${lastOfMonth.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+            
+            // שורות רגילות
+            Array.from(currencyRates.entries()).forEach(([currency, rate]) => {
+                table.push({
+                    tableNumber: 9701,
+                    index: -1,
+                    office: 0,
+                    fromDate: firstOfMonth,
+                    toDate: endOfMonth,
+                    updateCode: 1,
+                    currency: currency,
+                    value: rate
+                });
+            });
+            
+            // מטבע 18 מיוחד
+            if (shekelRateFor101) {
+                table.push({
+                    tableNumber: 9701,
+                    index: -1,
+                    office: 0,
+                    fromDate: firstOfMonth,
+                    toDate: endOfMonth,
+                    updateCode: 1,
+                    currency: 18,
+                    value: shekelRateFor101
+                });
+            }
+            
+            // מיון לפי קוד מטבע לפני השכפול
+            table.sort((a, b) => {
+                const currencyA = parseInt(a.currency);
+                const currencyB = parseInt(b.currency);
+                return currencyA - currencyB;
+            });
+            
+            // שכפול לחודש הבא
+            const nextMonth = currentDate.getMonth() + 2;
+            const nextYear = nextMonth > 12 ? currentDate.getFullYear() + 1 : currentDate.getFullYear();
+            const actualNextMonth = nextMonth > 12 ? 1 : nextMonth;
+            const firstOfNextMonth = `01/${actualNextMonth.toString().padStart(2, '0')}/${nextYear}`;
+            
+            const originalRowsCount = table.length;
+            for (let i = 0; i < originalRowsCount; i++) {
+                const originalRow = table[i];
+                table.push({
+                    ...originalRow,
+                    fromDate: firstOfNextMonth,
+                    toDate: '31/12/2099',
+                    updateCode: 1
+                });
+            }
+            
+            return table;
+        }
+
+        function createTable9074() {
+            const table = [];
+            
+            // שימוש בטבלה 9702 שכבר נבנתה - לא יוצרים מפה חדשה!
+            const currencyRatesFrom9702 = new Map();
+            generatedTables.table9702.forEach(row => {
+                currencyRatesFrom9702.set(row.currency, row.value);
+            });
+
+            console.log('🔍 משתמש בשערי חליפין מטבלה 9702:', currencyRatesFrom9702.size, 'קודי מטבע');
+
+            const currentDate = new Date();
+            const fromDate = `01/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+            
+            // עיבוד כל נציגות ממיפוי 2 הצרוב
+            Object.entries(MAPPING_2_DATA).forEach(([representation, data]) => {
+                const mapping2CurrencyCode = data.currencyCode; // קוד מטבע לפי מיפוי 2
+                const fixedRate = data.fixedRate;
+                const baseCostIndex = data.costIndex;
+                
+                // חיפוש השער המעודכן בטבלה 9702 שכבר נבנתה
+                const updatedRate = currencyRatesFrom9702.get(mapping2CurrencyCode);
+                
+                if (updatedRate) {
+                    // חישוב מדד יוקר מעודכן
+                    const updatedCostIndex = baseCostIndex * (updatedRate / fixedRate);
+                    
+                    // חישוב מדד 9074
+                    let table9074Value;
+                    if (updatedCostIndex >= 100) {
+                        table9074Value = Math.round((updatedCostIndex / 100) * 1000) / 1000;
+                    } else {
+                        table9074Value = Math.round(((100 + updatedCostIndex) / 2 / 100) * 1000) / 1000;
+                    }
+                    
+                    table.push({
+                        tableNumber: 9074,
+                        index: -1,
+                        office: 0,
+                        fromDate: fromDate,
+                        toDate: '31/12/2099',
+                        updateCode: 2,
+                        representation: representation,
+                        value: parseFloat(table9074Value.toFixed(3))
+                    });
+                } else {
+                    console.warn(`⚠️ נציגות ${representation}: לא נמצא שער עדכני לקוד מטבע ${mapping2CurrencyCode} בטבלה 9702`);
+                }
+            });
+            
+            console.log(`📊 טבלה 9074: נוצרו ${table.length} רשומות מתוך ${Object.keys(MAPPING_2_DATA).length} נציגויות במיפוי 2`);
+            return table;
+        }
+
+        function createTable6600WithUpdatedMapping3() {
+            const table = [];
+            
+            // שימוש בטבלה 9702 שכבר נבנתה לקבלת שערי החליפין
+            const currencyRatesFrom9702 = new Map();
+            generatedTables.table9702.forEach(row => {
+                currencyRatesFrom9702.set(row.currency, row.value);
+            });
+
+            console.log('🔍 טבלה 6600 משתמשת בשערי חליפין מטבלה 9702:', currencyRatesFrom9702.size, 'קודי מטבע');
+            console.log('🏠 טבלה 6600 משתמשת במיפוי 3 מעודכן מהקובץ המקורי עם:', Object.keys(MAPPING_3_DATA).length, 'נציגויות');
+
+            const currentDate = new Date();
+            const fromDate = `01/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
+            
+            // עיבוד כל נציגות ממיפוי 2 (לחישוב המדד) + מיפוי 3 מעודכן (לנתוני דיור)
+            Object.entries(MAPPING_2_DATA).forEach(([representation, data]) => {
+                const mapping2CurrencyCode = data.currencyCode; // קוד מטבע לפי מיפוי 2
+                const fixedRate = data.fixedRate;
+                const baseCostIndex = data.costIndex;
+                
+                // חיפוש השער המעודכן בטבלה 9702 שכבר נבנתה
+                const updatedRate = currencyRatesFrom9702.get(mapping2CurrencyCode);
+                
+                // קבלת נתוני דיור מהמיפוי 3 המעודכן מהקובץ המקורי
+                const housingData = MAPPING_3_DATA[representation];
+                
+                if (updatedRate && housingData) {
+                    // חישוב הנוסחה המורכבת לטבלה 6600
+                    const X = baseCostIndex * (updatedRate / fixedRate);
+                    const Y = X >= 100 ? X : (100 + X) / 2;
+                    const finalResult = Y > 100 ? Y / 100 : 100 / 100;
+                    
+                    table.push({
+                        tableNumber: 6600,
+                        index: 421,
+                        office: 0,
+                        fromDate: fromDate,
+                        toDate: '31/12/2099',
+                        updateCode: 2,
+                        representation: representation,
+                        costIndexResult: parseFloat(finalResult.toFixed(4)),
+                        housingAllowance: housingData.housingAllowance, // מיפוי 3 מעודכן מהקובץ המקורי
+                        housingCurrency: housingData.housingCurrency // מיפוי 3 מעודכן מהקובץ המקורי
+                    });
+                    
+                    console.log(`✅ נציגות ${representation}: מדד ${finalResult.toFixed(4)}, דיור ${housingData.housingAllowance}, מטבע ${housingData.housingCurrency}`);
+                } else {
+                    if (!updatedRate) {
+                        console.warn(`⚠️ נציגות ${representation}: לא נמצא שער עדכני לקוד מטבע ${mapping2CurrencyCode} בטבלה 9702`);
+                    }
+                    if (!housingData) {
+                        console.warn(`⚠️ נציגות ${representation}: לא נמצא במיפוי 3 המעודכן מהקובץ המקורי`);
+                    }
+                }
+            });
+            
+            console.log(`📊 טבלה 6600: נוצרו ${table.length} רשומות עם מיפוי 3 מעודכן מהקובץ המקורי`);
+            return table;
+        }
+
+        // ===== פונקציות עזר =====
+
+        function displayPreview() {
+            let html = '<h5>📊 תצוגה מקדימה של הטבלאות (מיפוי 3 מעודכן מהקובץ המקורי):</h5>';
+            
+            // טבלה 9702
+            html += '<h6>טבלה 9702 ⬆️ (5 דוגמאות):</h6><table><thead><tr><th>מטבע</th><th>ערך</th><th>קוד עדכון</th></tr></thead><tbody>';
+            generatedTables.table9702.slice(0, 5).forEach(row => {
+                html += `<tr><td style="background-color: #ffeae8; font-weight: bold;">${row.currency}</td><td>${row.value}</td><td>${row.updateCode}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            
+            // טבלה 9074 - מיפוי 2 מדויק
+            html += '<h6>טבלה 9074 - מיפוי 2 🎯 (5 דוגמאות):</h6><table><thead><tr><th>נציגות</th><th>ערך מחושב</th><th>קוד עדכון</th></tr></thead><tbody>';
+            generatedTables.table9074.slice(0, 5).forEach(row => {
+                html += `<tr><td style="background-color: #e8f5e8; font-weight: bold;">${row.representation}</td><td>${row.value.toFixed(3)}</td><td>${row.updateCode}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            
+            // טבלה 6600 - מיפוי 3 מעודכן מהקובץ המקורי
+            html += '<h6>טבלה 6600 - מיפוי 3 מעודכן מהקובץ המקורי 🏠 (5 דוגמאות):</h6><table><thead><tr><th>נציגות</th><th>מדד יוקר</th><th>דיור (מיפוי 3 מעודכן)</th><th>מטבע דיור (מיפוי 3 מעודכן)</th></tr></thead><tbody>';
+            generatedTables.table6600.slice(0, 5).forEach(row => {
+                html += `<tr><td style="background-color: #fff3cd; font-weight: bold;">${row.representation} ✅</td><td>${row.costIndexResult.toFixed(4)}</td><td style="background-color: #fff3e0; font-weight: bold;">${row.housingAllowance}</td><td style="background-color: #fff3e0; font-weight: bold;">${row.housingCurrency}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            
+            document.getElementById('previewTable').innerHTML = html;
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        function updateStep(step) {
+            document.querySelectorAll('.step').forEach((el, index) => {
+                el.classList.remove('active', 'done');
+                if (index < step) {
+                    el.classList.add('done');
+                } else if (index === step) {
+                    el.classList.add('active');
+                }
+            });
+        }
+
+        function showStatus(step, type, message) {
+            const statusEl = document.getElementById(`status${step}`);
+            statusEl.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // ===== פונקציות הורדה =====
+
+        function downloadTable(type) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            try {
+                switch(type) {
+                    case 'shaarim':
+                        if (generatedTables.shaarim) {
+                            const csvContent = generatedTables.shaarim.map(row => row.join(',')).join('\n');
+                            downloadFile(csvContent, `SHAARIM_מעודכן_מיפוי_3_מקובץ_מקורי_${today}.csv`, 'text/csv');
+                        }
+                        break;
+                        
+                    case '9702':
+                        if (generatedTables.table9702) {
+                            const ws = XLSX.utils.json_to_sheet(generatedTables.table9702.map(row => ({
+                                'מספר טבלה': row.tableNumber,
+                                'אינדקס': row.index,
+                                'משרד': row.office,
+                                'תאריך מ': row.fromDate,
+                                'תאריך עד': row.toDate,
+                                'קוד עדכון': row.updateCode,
+                                'מטבע': row.currency,
+                                'ערך': row.value
+                            })));
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'טבלה_9702');
+                            XLSX.writeFile(wb, `טבלה_9702_${today}.xlsx`);
+                        }
+                        break;
+                        
+                    case '9701':
+                        if (generatedTables.table9701) {
+                            const ws = XLSX.utils.json_to_sheet(generatedTables.table9701.map(row => ({
+                                'מספר טבלה': row.tableNumber,
+                                'אינדקס': row.index,
+                                'משרד': row.office,
+                                'תאריך מ': row.fromDate,
+                                'תאריך עד': row.toDate,
+                                'קוד עדכון': row.updateCode,
+                                'מטבע': row.currency,
+                                'ערך': row.value
+                            })));
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'טבלה_9701');
+                            XLSX.writeFile(wb, `טבלה_9701_${today}.xlsx`);
+                        }
+                        break;
+                        
+                    case '9074':
+                        if (generatedTables.table9074) {
+                            const ws = XLSX.utils.json_to_sheet(generatedTables.table9074.map(row => ({
+                                'מספר טבלה': row.tableNumber,
+                                'אינדקס': row.index,
+                                'משרד': row.office,
+                                'תאריך מ': row.fromDate,
+                                'תאריך עד': row.toDate,
+                                'קוד עדכון': row.updateCode,
+                                'קוד נציגות': row.representation,
+                                'לטבלה 9074': row.value.toFixed(3)
+                            })));
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'טבלה_9074');
+                            XLSX.writeFile(wb, `טבלה_9074_${today}.xlsx`);
+                        }
+                        break;
+                        
+                    case '6600':
+                        if (generatedTables.table6600) {
+                            const ws = XLSX.utils.json_to_sheet(generatedTables.table6600.map(row => ({
+                                'טבלה': row.tableNumber,
+                                'אינדקס': row.index,
+                                'משרד': row.office,
+                                'מתאריך': row.fromDate,
+                                'עד תאריך': row.toDate,
+                                'קוד עדכון': row.updateCode,
+                                'מספר נציגות': row.representation,
+                                'מדד יוקר איתן': row.costIndexResult.toFixed(4),
+                                'תקרת השתתפות בדיור': row.housingAllowance,
+                                'מטבע השתתפות בדיור': row.housingCurrency
+                            })));
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'טבלה_6600');
+                            XLSX.writeFile(wb, `טבלה_6600_מיפוי_3_מקובץ_מקורי_${today}.xlsx`);
+                        }
+                        break;
+                        
+                    case 'all':
+                        const wbAll = XLSX.utils.book_new();
+                        
+                        if (generatedTables.table9702) {
+                            const ws9702 = XLSX.utils.json_to_sheet(generatedTables.table9702.map(row => ({
+                                'מספר טבלה': row.tableNumber, 'אינדקס': row.index, 'משרד': row.office,
+                                'תאריך מ': row.fromDate, 'תאריך עד': row.toDate, 'קוד עדכון': row.updateCode,
+                                'מטבע': row.currency, 'ערך': row.value
+                            })));
+                            XLSX.utils.book_append_sheet(wbAll, ws9702, 'טבלה_9702');
+                        }
+                        
+                        if (generatedTables.table9701) {
+                            const ws9701 = XLSX.utils.json_to_sheet(generatedTables.table9701.map(row => ({
+                                'מספר טבלה': row.tableNumber, 'אינדקס': row.index, 'משרד': row.office,
+                                'תאריך מ': row.fromDate, 'תאריך עד': row.toDate, 'קוד עדכון': row.updateCode,
+                                'מטבע': row.currency, 'ערך': row.value
+                            })));
+                            XLSX.utils.book_append_sheet(wbAll, ws9701, 'טבלה_9701');
+                        }
+                        
+                        if (generatedTables.table9074) {
+                            const ws9074 = XLSX.utils.json_to_sheet(generatedTables.table9074.map(row => ({
+                                'מספר טבלה': row.tableNumber, 'אינדקס': row.index, 'משרד': row.office,
+                                'תאריך מ': row.fromDate, 'תאריך עד': row.toDate, 'קוד עדכון': row.updateCode,
+                                'קוד נציגות': row.representation, 'לטבלה 9074': row.value.toFixed(3)
+                            })));
+                            XLSX.utils.book_append_sheet(wbAll, ws9074, 'טבלה_9074');
+                        }
+                        
+                        if (generatedTables.table6600) {
+                            const ws6600 = XLSX.utils.json_to_sheet(generatedTables.table6600.map(row => ({
+                                'טבלה': row.tableNumber, 'אינדקס': row.index, 'משרד': row.office,
+                                'מתאריך': row.fromDate, 'עד תאריך': row.toDate, 'קוד עדכון': row.updateCode,
+                                'מספר נציגות': row.representation,
+                                'מדד יוקר איתן': row.costIndexResult.toFixed(4),
+                                'תקרת השתתפות בדיור': row.housingAllowance,
+                                'מטבע השתתפות בדיור': row.housingCurrency
+                            })));
+                            XLSX.utils.book_append_sheet(wbAll, ws6600, 'טבלה_6600_מיפוי_3_מקובץ_מקורי');
+                        }
+                        
+                        XLSX.writeFile(wbAll, `כל_הטבלאות_SHAARIM_מיפוי_3_מקובץ_מקורי_${today}.xlsx`);
+                        break;
+                }
+                
+                showStatus('2', 'success', `✅ הקובץ הורד בהצלחה עם מיפוי 3 מעודכן מהקובץ המקורי!`);
+            } catch (error) {
+                showStatus('2', 'error', `❌ שגיאה בהורדת הקובץ: ${error.message}`);
+            }
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // ===== בדיקה עצמית בטעינת הדף =====
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ מערכת SHAARIM עם מיפוי 3 מעודכן מהקובץ המקורי נטענה בהצלחה');
+            console.log('🗂️ מיפוי 2:', Object.keys(MAPPING_2_DATA).length, 'נציגויות (לטבלאות 9074)');
+            console.log('📊 מיפוי 1:', Object.keys(CURRENCY_MAPPING).length, 'נציגויות (לטבלאות 9701/9702)');
+            console.log('🏠 מיפוי 3 מעודכן מהקובץ המקורי:', Object.keys(MAPPING_3_DATA).length, 'נציגויות (לטבלה 6600)');
+            console.log('🔧 עודכן: נציגות 335 נוספה, כל הנתונים מדויקים לפי הקובץ המקורי');
+            console.log('📊 טבלה 6600: 4 ספרות אחרי הנקודה בעמודה H');
+            console.log('🎯 פשטות: רק קובץ SHAARIM נדרש - מיפוי 3 מעודכן מובנה');
+            console.log('🔧 המערכת מוכנה לשימוש עם נתונים מעודכנים מדויקים 100%!');
+        });
+        function updateMapping2(file) {
+    if (!file) return;
+    
+    document.getElementById('adminStatus').innerHTML = '<div class="status info">⏳ קורא קובץ...</div>';
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+            
+            const newMapping = {};
+            let updatedCount = 0;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const representation = rows[i][0]?.toString(); // עמודה A
+                const currencyCode = rows[i][2]?.toString();   // עמודה C
+                const costIndex = parseFloat(rows[i][3]);      // עמודה D
+                const fixedRate = parseFloat(rows[i][4]);      // עמודה E
+                
+                if (representation && currencyCode && !isNaN(costIndex) && !isNaN(fixedRate)) {
+                    newMapping[representation] = {
+                        currencyCode: currencyCode,
+                        fixedRate: fixedRate,
+                        costIndex: costIndex
+                    };
+                    updatedCount++;
+                }
+            }
+            
+            // עדכון המשתנה הגלובלי
+            window.MAPPING_2_DATA = newMapping;
+            
+            document.getElementById('adminStatus').innerHTML = `
+                <div class="status success">
+                    ✅ מיפוי 2 עודכן בהצלחה!<br>
+                    📊 ${updatedCount} נציגויות נטענו<br>
+                    ⚠️ לשמירה קבועה - לחץ על "ייצא קוד JavaScript"
+                </div>
+            `;
+            
+        } catch (error) {
+            document.getElementById('adminStatus').innerHTML = 
+                `<div class="status error">❌ שגיאה: ${error.message}</div>`;
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+    </script>
+</body>
+</html>
