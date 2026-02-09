@@ -231,7 +231,7 @@
         ⚙️ עדכון מיפויים
     </button>
 </div>
-
+<div id="mappingInfo" style="text-align: center; color: #7f8c8d; font-size: 0.9em; margin: 10px 0;"></div>
 <!-- פאנל עדכון מוסתר -->
 <div id="adminPanel" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
      background: rgba(0,0,0,0.8); z-index: 2000; padding: 50px;">
@@ -252,6 +252,11 @@
             <button class="btn" onclick="document.getElementById('adminPanel').style.display='none'">❌ סגור</button>
         </div>
     </div>
+</div>
+<div style="margin-top: 20px;">
+    <button class="btn btn-success" onclick="exportMapping2Code()">💾 ייצא גיבוי (אופציונלי)</button>
+    <button class="btn" onclick="resetMapping2()" style="background: #e74c3c;">🔄 איפוס למיפוי מקורי</button>
+    <button class="btn" onclick="closeAdminPanel()">❌ סגור</button>
 </div>
         <div class="fix-highlight">
             ✅ UPDATED! מיפוי 3 עודכן מהקובץ המקורי עם 141 נציגויות מדויקות
@@ -713,10 +718,10 @@ function updateMapping2(file) {
             let updatedCount = 0;
             
             for (let i = 1; i < rows.length; i++) {
-                const representation = rows[i][0]?.toString(); // עמודה A
-                const currencyCode = rows[i][2]?.toString();   // עמודה C
-                const costIndex = parseFloat(rows[i][3]);      // עמודה D
-                const fixedRate = parseFloat(rows[i][4]);      // עמודה E
+                const representation = rows[i][0]?.toString();
+                const currencyCode = rows[i][2]?.toString();
+                const costIndex = parseFloat(rows[i][3]);
+                const fixedRate = parseFloat(rows[i][4]);
                 
                 if (representation && currencyCode && !isNaN(costIndex) && !isNaN(fixedRate)) {
                     newMapping[representation] = {
@@ -728,14 +733,20 @@ function updateMapping2(file) {
                 }
             }
             
+            // 💾 שמירה ב-LocalStorage
+            localStorage.setItem('MAPPING_2_DATA', JSON.stringify(newMapping));
+            const saveDate = new Date().toLocaleString('he-IL');
+            localStorage.setItem('MAPPING_2_UPDATE_DATE', saveDate);
+            
             // עדכון המשתנה הגלובלי
-            window.MAPPING_2_DATA = newMapping;
+            MAPPING_2_DATA = newMapping;
             
             document.getElementById('adminStatus').innerHTML = `
                 <div class="status success">
-                    ✅ מיפוי 2 עודכן בהצלחה!<br>
+                    ✅ מיפוי 2 עודכן ונשמר בהצלחה!<br>
                     📊 ${updatedCount} נציגויות נטענו<br>
-                    ⚠️ לשמירה קבועה - לחץ על "ייצא קוד JavaScript"
+                    💾 נשמר אוטומטית בדפדפן<br>
+                    📅 תאריך עדכון: ${saveDate}
                 </div>
             `;
             
@@ -746,15 +757,30 @@ function updateMapping2(file) {
     };
     reader.readAsArrayBuffer(file);
 }
+// טעינת מיפוי 2 מעודכן מה-LocalStorage (אם קיים)
+(function loadSavedMapping() {
+    const savedMapping = localStorage.getItem('MAPPING_2_DATA');
+    if (savedMapping) {
+        try {
+            MAPPING_2_DATA = JSON.parse(savedMapping);
+            const updateDate = localStorage.getItem('MAPPING_2_UPDATE_DATE');
+            console.log('✅ מיפוי 2 נטען מהזיכרון - עודכן ב:', updateDate);
+            console.log('📊 נציגויות במיפוי:', Object.keys(MAPPING_2_DATA).length);
+        } catch (error) {
+            console.warn('⚠️ שגיאה בטעינת מיפוי שמור:', error);
+        }
+    } else {
+        console.log('ℹ️ משתמש במיפוי 2 ברירת המחדל מהקוד');
+    }
+})();
 function exportMapping2Code() {
-    const currentMapping = window.MAPPING_2_DATA || MAPPING_2_DATA;
+    const currentMapping = MAPPING_2_DATA;
     
     if (!currentMapping || Object.keys(currentMapping).length === 0) {
-        alert('❌ אין נתוני מיפוי לייצא. יש להעלות קובץ Excel תחילה.');
+        alert('❌ אין נתוני מיפוי לייצא');
         return;
     }
     
-    // יצירת קוד JavaScript מעוצב
     let jsCode = '        const MAPPING_2_DATA = {\n';
     
     const entries = Object.entries(currentMapping);
@@ -765,31 +791,24 @@ function exportMapping2Code() {
     
     jsCode += '        };\n';
     
-    // הורדה כקובץ טקסט
     const blob = new Blob([jsCode], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     const today = new Date().toISOString().split('T')[0];
-    link.download = `MAPPING_2_DATA_מעודכן_${today}.txt`;
+    link.download = `MAPPING_2_גיבוי_${today}.txt`;
     link.click();
     
-    // הצגת הודעה
-    document.getElementById('adminStatus').innerHTML = `
-        <div class="status success">
-            ✅ הקוד ייוצא בהצלחה!<br><br>
-            <strong>שלבים להחלפה בקוד:</strong><br>
-            1️⃣ פתח את הקובץ שהורד<br>
-            2️⃣ העתק את כל התוכן<br>
-            3️⃣ פתח את קובץ ה-HTML במחברת<br>
-            4️⃣ מצא את <code>const MAPPING_2_DATA = {</code><br>
-            5️⃣ החלף מהשורה הזו עד סוף הסוגריים <code>};</code><br>
-            6️⃣ שמור את הקובץ ✅
-        </div>
-    `;
+    alert('✅ גיבוי ייוצא בהצלחה!\n\nהקובץ שמור לגיבוי בלבד.\nהמערכת כבר משתמשת בנתונים המעודכנים אוטומטית.');
 }
-
 function closeAdminPanel() {
     document.getElementById('adminPanel').style.display = 'none';
+}
+function resetMapping2() {
+    if (confirm('❓ האם לאפס את מיפוי 2 למצב המקורי מהקוד?')) {
+        localStorage.removeItem('MAPPING_2_DATA');
+        localStorage.removeItem('MAPPING_2_UPDATE_DATE');
+        location.reload(); // רענון הדף
+    }
 }
         function processShaarimData(csvText) {
             const lines = csvText.split('\n').filter(line => line.trim());
@@ -1412,7 +1431,16 @@ function closeAdminPanel() {
     };
     reader.readAsArrayBuffer(file);
 }
-
+// הצגת מידע על מיפוי 2
+window.addEventListener('load', function() {
+    const updateDate = localStorage.getItem('MAPPING_2_UPDATE_DATE');
+    const mappingCount = Object.keys(MAPPING_2_DATA).length;
+    
+    if (updateDate) {
+        document.getElementById('mappingInfo').innerHTML = 
+            `ℹ️ מיפוי 2 מעודכן (${mappingCount} נציגויות) | עדכון אחרון: ${updateDate}`;
+    }
+});
     </script>
 </body>
 </html>
