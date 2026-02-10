@@ -104,6 +104,62 @@
         .message.success { background: #d5f4e6; color: #27ae60; border: 2px solid #27ae60; }
         .message.error { background: #fadbd8; color: #e74c3c; border: 2px solid #e74c3c; }
         .message.info { background: #e3f2fd; color: #3498db; border: 2px solid #3498db; }
+        /* Progress Bar */
+.progress-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 1000;
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    background: #e0e0e0;
+    border-radius: 15px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.progress-text {
+    font-size: 1.1em;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.progress-subtext {
+    font-size: 0.9em;
+    color: #7f8c8d;
+}
+
+.progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+}
        /* סרגל חריגים קבוע */
         .exceptions-sidebar {
             position: fixed;
@@ -717,6 +773,15 @@
 <body>
   
     <div class="container">
+        <!-- Progress Bar Overlay -->
+<div id="progressOverlay" class="progress-overlay hidden"></div>
+<div id="progressContainer" class="progress-container hidden">
+    <div class="progress-text" id="progressText">מעבד נתונים...</div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill">0%</div>
+    </div>
+    <div class="progress-subtext" id="progressSubtext">מכין את המערכת...</div>
+</div>
         <div class="header">
             <h1>🎯 מערכת בקרת שכר - גרסה מלאה</h1>
             <p>ניתוח מפורט של שינויים בתשלומים שוטפים עם הסברים אוטומטיים</p>
@@ -736,12 +801,21 @@
     <div id="loadMessage" style="margin-top: 10px;"></div>
 </div>
 
-<div style="text-align: center; margin-top: 15px;">
+<div style="text-align: center; margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
         <button id="populationBtn" class="btn-primary" onclick="openPopulationQuery()" 
                 style="background: #9b59b6;">
-            🔍 פתח מודול שליפת אוכלוסיות
+            🔍 פתח מודול שאילתת אוכלוסיות
         </button>
-      
+        
+        <button id="savingBtn" class="btn-primary" onclick="openModule('modules/optimal_saving.html')" 
+                style="background: #27ae60;">
+             פתח מודול חיסכון אופטימלי
+        </button>
+        
+<button class="btn-primary" onclick="openDocument('documents/tax/income_tax.pdf')" 
+        style="background: #e67e22;">
+     לוח ניכויי מס הכנסה
+</button>
 </div>
 
 <div class="section hidden" id="statsSection" style="display: none !important;">
@@ -945,7 +1019,34 @@ const exceptionTypes = [
     { type: 'payment_without_deduction', label: 'תשלומים ללא ניכויים', icon: '⚠️' }
     
 ];
+// === Progress Bar Functions ===
+function showProgress(text = 'מעבד נתונים...', subtext = '') {
+    document.getElementById('progressOverlay').classList.remove('hidden');
+    document.getElementById('progressContainer').classList.remove('hidden');
+    document.getElementById('progressText').textContent = text;
+    document.getElementById('progressSubtext').textContent = subtext;
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressFill').textContent = '0%';
+}
 
+function updateProgress(current, total, text = '') {
+    const percent = Math.round((current / total) * 100);
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressFill').textContent = percent + '%';
+    if (text) {
+        document.getElementById('progressSubtext').textContent = text;
+    }
+}
+
+function hideProgress() {
+    document.getElementById('progressOverlay').classList.add('hidden');
+    document.getElementById('progressContainer').classList.add('hidden');
+}
+
+// Helper: Sleep function for chunking
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
         // ============================================
         // IndexedDB - פתיחת מסד נתונים
         // ============================================
@@ -1009,7 +1110,7 @@ const exceptionTypes = [
 
         // ============================================
         // טעינת קובץ
- document.getElementById('fileInput').addEventListener('change', async function(e) {
+document.getElementById('fileInput').addEventListener('change', async function(e) {
     const file = e.target.files[0];
     
     if (file) {
@@ -1024,6 +1125,10 @@ const exceptionTypes = [
     }
 
     try {
+        // 🎯 שלב 1: קריאת קובץ
+        showProgress('קורא קובץ Excel...', 'אנא המתן');
+        await sleep(100);
+        
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -1031,20 +1136,42 @@ const exceptionTypes = [
 
         console.log(`✅ נטענו ${rawData.length} רשומות גולמיות`);
 
+        // 🎯 שלב 2: זיהוי חודשים
+        updateProgress(10, 100, 'מזהה חודשים...');
+        await sleep(50);
         identifyMonths();
-        organizeDataByEmployee();
-        analyzeData();
+        
+        // 🎯 שלב 3: ארגון נתונים לפי עובד (עם chunks)
+        updateProgress(20, 100, 'מארגן נתונים לפי עובד...');
+        await sleep(50);
+        await organizeDataByEmployeeChunked();
+        
+        // 🎯 שלב 4: ניתוח נתונים (עם chunks)
+        updateProgress(60, 100, 'מנתח שינויים בשכר...');
+        await sleep(50);
+        await analyzeDataChunked();
+        
+        // 🎯 שלב 5: עדכון UI
+        updateProgress(90, 100, 'מכין תצוגה...');
+        await sleep(50);
         updateUIAfterLoad();
         
-        // 🆕 שמירה אוטומטית של הנתונים הגולמיים
+        // 🎯 שלב 6: שמירה ל-DB
+        updateProgress(95, 100, 'שומר נתונים...');
+        await sleep(50);
         saveRawDataToDB();
+        
+        // ✅ סיום
+        updateProgress(100, 100, 'הושלם בהצלחה!');
+        await sleep(500);
+        hideProgress();
 
     } catch (error) {
         console.error('❌ שגיאה:', error);
+        hideProgress();
         showMessage('loadMessage', '❌ שגיאה בטעינת הקובץ: ' + error.message, 'error');
     }
 });
-
 function formatChange(number) {
             return number.toLocaleString('he-IL', { minimumFractionDigits: 2, signDisplay: 'always' }) + ' ₪';
         }
@@ -1164,7 +1291,186 @@ function organizeDataByEmployee() {
    
     console.log(`👥 מאורגנים ${Object.keys(employeesData).length} עובדים`);
 }
+// ============================================
+// ארגון נתונים עם Chunks
+// ============================================
+async function organizeDataByEmployeeChunked() {
+    employeesData = {};
+    const CHUNK_SIZE = 1000;
+    
+    for (let i = 0; i < rawData.length; i += CHUNK_SIZE) {
+        const chunk = rawData.slice(i, i + CHUNK_SIZE);
+        
+        chunk.forEach(row => {
+            const empId = row.id_num;
 
+            if (!employeesData[empId]) {
+                employeesData[empId] = {
+                    id_num: empId,
+                    office_num: row.OFFICE_NUM || '',
+                    grade: null,
+                    maamad: null,
+                    current: {
+                        elements: {},
+                        quantities: {},
+                        percentages: {},
+                        tariffs: {},
+                        elementNames: {},
+                        salaryDates: {},
+                        referenceDates: {},
+                        dateFroms: {}
+                    },
+                    previous: {
+                        elements: {},
+                        quantities: {},
+                        percentages: {},
+                        tariffs: {},
+                        elementNames: {},
+                        salaryDates: {},
+                        referenceDates: {},
+                        dateFroms: {}
+                    }
+                };
+            }
+
+            const monthType = row.SALARY_DATE === currentMonth ? 'current' : 'previous';
+            const elementNum = Number(row.SALARY_ELEMENT_NUM);
+
+            employeesData[empId][monthType].elements[elementNum] = Number(row.AMOUNT) || 0;
+            employeesData[empId][monthType].quantities[elementNum] = Number(row.QUANTITY) || 0;
+            employeesData[empId][monthType].percentages[elementNum] = Number(row.PERCENTAGE) || 0;
+            employeesData[empId][monthType].tariffs[elementNum] = Number(row.TARIFF) || 0;
+            employeesData[empId][monthType].elementNames[elementNum] = row.ELEMENT_NAME || '';
+            employeesData[empId][monthType].salaryDates[elementNum] = row.SALARY_DATE || '';
+            employeesData[empId][monthType].referenceDates[elementNum] = row.REFERENCE_DATE || '';
+            employeesData[empId][monthType].dateFroms[elementNum] = row.DATE_FROM || '';
+
+            if (elementNum === 90144) {
+                if (monthType === 'current') {
+                    employeesData[empId].grade = row.AMOUNT;
+                } else if (employeesData[empId].grade == null) {
+                    employeesData[empId].grade = row.AMOUNT;
+                }
+            }
+            
+            if (elementNum === 90150) {
+                if (monthType === 'current') {
+                    employeesData[empId].maamad = row.QUANTITY;
+                } else if (employeesData[empId].maamad == null) {
+                    employeesData[empId].maamad = row.QUANTITY;
+                }
+            }
+        });
+        
+        // עדכון progress
+        const percent = Math.round(((i + chunk.length) / rawData.length) * 40) + 20;
+        updateProgress(percent, 100, `עיבד ${(i + chunk.length).toLocaleString()} מתוך ${rawData.length.toLocaleString()} רשומות`);
+        
+        await sleep(0);
+    }
+    
+    console.log(`👥 מאורגנים ${Object.keys(employeesData).length} עובדים`);
+}
+
+// ============================================
+// ניתוח עם Chunks
+// ============================================
+async function analyzeDataChunked() {
+    analysisResults = [];
+    const employees = Object.values(employeesData);
+    const CHUNK_SIZE = 500;
+    
+    for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
+        const chunk = employees.slice(i, i + CHUNK_SIZE);
+        
+        chunk.forEach(employee => {
+            // הלוגיקה המקורית של analyzeData()
+            const empId = employee.id_num;
+            const current_91090 = employee.current.elements[91090] || 0;
+            const previous_91090 = employee.previous.elements[91090] || 0;
+            const change = current_91090 - previous_91090;
+
+            if (Math.abs(change) > 10 || current_91090 > 0 || previous_91090 > 0) {
+                const explanation = findExplanation(employee);
+                
+                const result = {
+                    id_num: employee.id_num,
+                    office_num: employee.office_num,
+                    current_regular: current_91090,
+                    previous_regular: previous_91090,
+                    change: change,
+                    reason_code: explanation.code,
+                    reason_text: explanation.text,
+                    explanation_detail: explanation.detail,
+                    status: explanation.status,
+                    totalChange: explanation.totalChange,
+                    totalExplained: explanation.totalExplained
+                };
+                
+                result.exceptions = identifyExceptions(result);
+                result.hasExceptions = result.exceptions.length > 0;
+                
+                analysisResults.push(result);
+            }
+        });
+        
+        const percent = Math.round(((i + chunk.length) / employees.length) * 30) + 60;
+        updateProgress(percent, 100, `ניתח ${(i + chunk.length).toLocaleString()} מתוך ${employees.length.toLocaleString()} עובדים`);
+        
+        await sleep(0);
+    }
+    
+    console.log(`🔍 נמצאו ${analysisResults.length} עובדים עם שינוי בשוטף`);
+    
+    // 91091 analysis
+    await analyzeData91091Chunked();
+}
+
+async function analyzeData91091Chunked() {
+    analysisResults91091 = [];
+    const employees = Object.values(employeesData);
+    const CHUNK_SIZE = 500;
+    
+    for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
+        const chunk = employees.slice(i, i + CHUNK_SIZE);
+        
+        chunk.forEach(employee => {
+            const empId = employee.id_num;
+            const retro91091Records = rawData.filter(row => 
+                row.id_num === empId && 
+                row.SALARY_ELEMENT_NUM === 91091 &&
+                row.SALARY_DATE === currentMonth
+            );
+            
+            const current_91091 = retro91091Records.reduce((sum, r) => sum + (r.AMOUNT || 0), 0);
+            
+            if (current_91091 > 300) {
+                const explanation = findExplanation91091(employee);
+                
+                const result = {
+                    id_num: employee.id_num,
+                    office_num: employee.office_num,
+                    current_regular: current_91091,
+                    previous_regular: 0,
+                    change: current_91091,
+                    reason_code: explanation.code,
+                    reason_text: explanation.text,
+                    explanation_detail: explanation.detail,
+                    status: explanation.status
+                };
+                
+                result.exceptions = identifyExceptions(result);
+                result.hasExceptions = result.exceptions.length > 0;
+                
+                analysisResults91091.push(result);
+            }
+        });
+        
+        await sleep(0);
+    }
+    
+    console.log(`💰 נמצאו ${analysisResults91091.length} עובדים עם הפרשים`);
+}
 
         // ============================================
         // ניתוח נתונים
@@ -4732,6 +5038,16 @@ function openPopulationQuery() {
         console.error('❌ שגיאה:', error);
         alert('שגיאה בשמירת נתונים. נסי שוב.');
     });
+}
+// ============================================
+// פתיחת מודולים חיצוניים בחלון חדש
+// ============================================
+function openModule(modulePath) {
+    window.open(modulePath, '_blank', 'width=1400,height=900,resizable=yes,scrollbars=yes');
+}
+
+function openDocument(documentPath) {
+    window.open(documentPath, '_blank');
 }
     </script>
     <!-- סרגל חריגים -->
