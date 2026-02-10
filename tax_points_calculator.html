@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 מחשבון נקודות זיכוי ממס הכנסה</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-right: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box strong {
+            color: #2c3e50;
+        }
+        
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .question-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-right: 4px solid #3498db;
+        }
+        
+        .question-label {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .radio-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .radio-option label {
+            font-size: 1em;
+            cursor: pointer;
+        }
+        
+        .children-inputs {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .children-inputs.show {
+            display: block;
+        }
+        
+        .child-input-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .child-input-row label {
+            min-width: 120px;
+            font-weight: 500;
+        }
+        
+        .child-input-row input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            text-align: center;
+        }
+        
+        .child-input-row input[type="number"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-calculate {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-calculate:hover {
+            background: #229954;
+            transform: translateY(-2px);
+        }
+        
+        .btn-clear {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+        
+        .results {
+            display: none;
+            padding: 30px;
+            background: #d5f4e6;
+            border-top: 3px solid #27ae60;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .results h2 {
+            color: #27ae60;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .result-main {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .result-sub {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        
+        .result-breakdown {
+            margin-top: 20px;
+        }
+        
+        .result-breakdown h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 5px;
+        }
+        
+        .breakdown-item:last-child {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧮 מחשבון נקודות זיכוי ממס הכנסה</h1>
+            <p>חשב את נקודות הזיכוי המגיעות לך</p>
+        </div>
+        
+        <div class="info-box">
+            <strong>📌 שווי נקודת זיכוי לשנת 2026:</strong> 242 ₪ לחודש | 2,904 ₪ לשנה
+        </div>
+        
+        <div class="section">
+            <h2>💡 מילוי פרטים</h2>
+            
+            <!-- שאלה: ילדים עד 18 -->
+            <div class="question-group">
+                <span class="question-label">האם יש לך ילדים עד גיל 18?</span>
+                
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="children_yes" name="hasChildren" value="yes" onchange="toggleChildrenInputs()">
+                        <label for="children_yes">כן</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="children_no" name="hasChildren" value="no" onchange="toggleChildrenInputs()">
+                        <label for="children_no">לא</label>
+                    </div>
+                </div>
+                
+                <div id="childrenInputs" class="children-inputs">
+                    <p style="margin-bottom: 15px; color: #7f8c8d; font-size: 0.95em;">
+                        <strong>הנחיה:</strong> יש לרשום את מספר הילדים בכל שנת מס (בשנת מס הכנסה - עד גיל 18).
+                        <br>ילד בשנת לידה - ילד שנולד השנה.
+                    </p>
+                    
+                    <div class="child-input-row">
+                        <label>ילד בשנת לידה (עד גיל 1):</label>
+                        <input type="number" id="child_birth" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">2.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילד 1 בשנת מס:</label>
+                        <input type="number" id="child_1" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">4.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילד 2 בשנת מס:</label>
+                        <input type="number" id="child_2" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">4.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילד 3 בשנת מס:</label>
+                        <input type="number" id="child_3" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">3.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילד 4 בשנת מס:</label>
+                        <input type="number" id="child_4" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">2.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילד 5 בשנת מס:</label>
+                        <input type="number" id="child_5" min="0" max="1" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">2.5 נק'</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>ילדים 6-17 בשנת מס:</label>
+                        <input type="number" id="children_6_17" min="0" max="10" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">2 נק' לכל ילד</span>
+                    </div>
+                    
+                    <div class="child-input-row">
+                        <label>בוגר (ילד בשנה מעל 18):</label>
+                        <input type="number" id="child_18_plus" min="0" max="10" value="0">
+                        <span style="color: #7f8c8d; font-size: 0.9em;">0.5 נק' לכל בוגר</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-calculate" onclick="calculatePoints()">חשב</button>
+                <button class="btn btn-clear" onclick="clearForm()">נקה</button>
+            </div>
+        </div>
+        
+        <div id="results" class="results">
+            <h2>📊 תוצאות החישוב</h2>
+            
+            <div class="result-card">
+                <div class="result-main" id="totalPoints">0</div>
+                <div class="result-sub">סה"כ נקודות זיכוי לחודש</div>
+            </div>
+            
+            <div class="result-card">
+                <div class="result-main" id="totalMonthly">0 ₪</div>
+                <div class="result-sub">שווי לחודש</div>
+            </div>
+            
+            <div class="result-card">
+                <div class="result-main" id="totalYearly">0 ₪</div>
+                <div class="result-sub">שווי לשנה</div>
+            </div>
+            
+            <div class="result-breakdown">
+                <h3>פירוט נקודות זיכוי:</h3>
+                <div id="breakdown"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // קבועים
+        const POINT_VALUE_MONTHLY = 242;  // ₪ לחודש
+        const POINT_VALUE_YEARLY = 2904;  // ₪ לשנה
+        const BASE_POINTS = 2.25;         // נקודות בסיס לכל תושב
+        
+        // נקודות זיכוי לילדים (לפי רשות המסים 2026)
+        const CHILD_POINTS = {
+            birth_year: 2.5,    // ילד בשנת לידה
+            child_1: 4.5,       // ילד ראשון
+            child_2: 4.5,       // ילד שני
+            child_3: 3.5,       // ילד שלישי
+            child_4: 2.5,       // ילד רביעי
+            child_5: 2.5,       // ילד חמישי
+            child_6_plus: 2.5,  // ילד שישי ומעלה
+            age_6_17: 2.0,      // ילדים גיל 6-17
+            age_18_plus: 0.5    // בוגר מעל 18
+        };
+        
+        function toggleChildrenInputs() {
+            const hasChildren = document.querySelector('input[name="hasChildren"]:checked');
+            const childrenInputs = document.getElementById('childrenInputs');
+            
+            if (hasChildren && hasChildren.value === 'yes') {
+                childrenInputs.classList.add('show');
+            } else {
+                childrenInputs.classList.remove('show');
+                // אמס את השדות
+                document.getElementById('children_0_5').value = 0;
+                document.getElementById('children_6_17').value = 0;
+            }
+        }
+        
+        function calculatePoints() {
+            // בדיקה שנבחרה תשובה
+            const hasChildren = document.querySelector('input[name="hasChildren"]:checked');
+            if (!hasChildren) {
+                alert('⚠️ אנא ענה על השאלה: האם יש לך ילדים?');
+                return;
+            }
+            
+            let totalPoints = BASE_POINTS;
+            let breakdown = [];
+            
+            // הוסף נקודות בסיס
+            breakdown.push({
+                label: 'נקודות בסיס (תושב ישראל)',
+                points: BASE_POINTS
+            });
+            
+            // אם יש ילדים
+            if (hasChildren.value === 'yes') {
+                // ילד בשנת לידה
+                const childBirth = parseInt(document.getElementById('child_birth').value) || 0;
+                if (childBirth > 0) {
+                    const points = childBirth * CHILD_POINTS.birth_year;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד בשנת לידה (${CHILD_POINTS.birth_year} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילד ראשון
+                const child1 = parseInt(document.getElementById('child_1').value) || 0;
+                if (child1 > 0) {
+                    const points = child1 * CHILD_POINTS.child_1;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד 1 בשנת מס (${CHILD_POINTS.child_1} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילד שני
+                const child2 = parseInt(document.getElementById('child_2').value) || 0;
+                if (child2 > 0) {
+                    const points = child2 * CHILD_POINTS.child_2;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד 2 בשנת מס (${CHILD_POINTS.child_2} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילד שלישי
+                const child3 = parseInt(document.getElementById('child_3').value) || 0;
+                if (child3 > 0) {
+                    const points = child3 * CHILD_POINTS.child_3;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד 3 בשנת מס (${CHILD_POINTS.child_3} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילד רביעי
+                const child4 = parseInt(document.getElementById('child_4').value) || 0;
+                if (child4 > 0) {
+                    const points = child4 * CHILD_POINTS.child_4;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד 4 בשנת מס (${CHILD_POINTS.child_4} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילד חמישי
+                const child5 = parseInt(document.getElementById('child_5').value) || 0;
+                if (child5 > 0) {
+                    const points = child5 * CHILD_POINTS.child_5;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `ילד 5 בשנת מס (${CHILD_POINTS.child_5} נק')`,
+                        points: points
+                    });
+                }
+                
+                // ילדים גיל 6-17
+                const children_6_17 = parseInt(document.getElementById('children_6_17').value) || 0;
+                if (children_6_17 > 0) {
+                    const points = children_6_17 * CHILD_POINTS.age_6_17;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `${children_6_17} ילדים גיל 6-17 (${CHILD_POINTS.age_6_17} נק' לכל ילד)`,
+                        points: points
+                    });
+                }
+                
+                // בוגרים מעל 18
+                const children_18_plus = parseInt(document.getElementById('child_18_plus').value) || 0;
+                if (children_18_plus > 0) {
+                    const points = children_18_plus * CHILD_POINTS.age_18_plus;
+                    totalPoints += points;
+                    breakdown.push({
+                        label: `${children_18_plus} בוגרים מעל 18 (${CHILD_POINTS.age_18_plus} נק' לכל בוגר)`,
+                        points: points
+                    });
+                }
+            }
+            
+            // חישוב שווי כספי
+            const monthlyValue = Math.round(totalPoints * POINT_VALUE_MONTHLY);
+            const yearlyValue = Math.round(totalPoints * POINT_VALUE_YEARLY);
+            
+            // הצגת תוצאות
+            displayResults(totalPoints, monthlyValue, yearlyValue, breakdown);
+        }
+        
+        function displayResults(totalPoints, monthlyValue, yearlyValue, breakdown) {
+            // עדכון מספרים
+            document.getElementById('totalPoints').textContent = totalPoints.toFixed(2);
+            document.getElementById('totalMonthly').textContent = monthlyValue.toLocaleString('he-IL') + ' ₪';
+            document.getElementById('totalYearly').textContent = yearlyValue.toLocaleString('he-IL') + ' ₪';
+            
+            // בניית פירוט
+            let breakdownHTML = '';
+            breakdown.forEach(item => {
+                breakdownHTML += `
+                    <div class="breakdown-item">
+                        <span>${item.label}</span>
+                        <span>${item.points.toFixed(2)} נק'</span>
+                    </div>
+                `;
+            });
+            
+            // שורה אחרונה - סיכום
+            breakdownHTML += `
+                <div class="breakdown-item">
+                    <span>סה"כ נקודות זיכוי</span>
+                    <span>${totalPoints.toFixed(2)} נק'</span>
+                </div>
+            `;
+            
+            document.getElementById('breakdown').innerHTML = breakdownHTML;
+            
+            // הצגת קומסת תוצאות
+            document.getElementById('results').classList.add('show');
+            
+            // גלילה לתוצאות
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        function clearForm() {
+            // איפוס כל השדות
+            document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+            document.getElementById('child_birth').value = 0;
+            document.getElementById('child_1').value = 0;
+            document.getElementById('child_2').value = 0;
+            document.getElementById('child_3').value = 0;
+            document.getElementById('child_4').value = 0;
+            document.getElementById('child_5').value = 0;
+            document.getElementById('children_6_17').value = 0;
+            document.getElementById('child_18_plus').value = 0;
+            document.getElementById('childrenInputs').classList.remove('show');
+            document.getElementById('results').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
