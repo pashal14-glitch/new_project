@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הסבר בקליק</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 { font-size: 1.8em; margin-bottom: 5px; }
+        .header p { opacity: 0.85; font-size: 0.95em; }
+
+        .content { padding: 30px; }
+
+        .upload-area {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 25px;
+        }
+        .upload-area:hover { border-color: #3498db; background: #e3f2fd; }
+        .upload-area.loaded { border-color: #27ae60; background: #d5f4e6; }
+        .upload-icon { font-size: 3em; margin-bottom: 10px; }
+        .upload-area p { color: #666; font-size: 1.1em; }
+        #fileInput { display: none; }
+        .file-name { margin-top: 10px; font-weight: bold; color: #27ae60; }
+
+        .check-selection { margin-bottom: 25px; }
+        .check-selection label { display: block; font-weight: bold; color: #2c3e50; margin-bottom: 10px; font-size: 1.1em; }
+        .check-selection select {
+            width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 10px;
+            font-size: 1em; font-family: inherit; background: white; cursor: pointer;
+        }
+        .check-selection select:focus { outline: none; border-color: #3498db; }
+
+        .btn-run {
+            display: block; width: 100%; padding: 14px;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            color: white; border: none; border-radius: 10px;
+            font-size: 1.15em; font-weight: bold; cursor: pointer;
+            transition: all 0.3s; margin-bottom: 25px;
+        }
+        .btn-run:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(39,174,96,0.4); }
+        .btn-run:disabled { background: #bdc3c7; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .results-area { display: none; }
+
+        .result-card {
+            background: #f8f9fa; border-radius: 12px; border: 2px solid #e9ecef;
+            padding: 25px; margin-bottom: 20px;
+        }
+        .result-card h3 {
+            color: #2c3e50; font-size: 1.3em; margin-bottom: 15px;
+            padding-bottom: 10px; border-bottom: 2px solid #3498db;
+        }
+
+        .explanation-text { line-height: 1.9; color: #333; font-size: 1.05em; white-space: pre-wrap; }
+        .explanation-text .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .explanation-text .total { background: #d4edda; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .explanation-text .note { color: #856404; font-style: italic; }
+
+        .employee-info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; padding: 15px 20px; border-radius: 10px;
+            margin-bottom: 20px; font-size: 1.05em;
+        }
+        .employee-info span { margin-left: 25px; }
+
+        .message { padding: 12px 18px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .message.error { background: #fadbd8; color: #c0392b; border: 1px solid #e74c3c; display: block; }
+        .message.warning { background: #fff3cd; color: #856404; border: 1px solid #ffc107; display: block; }
+        .message.info { background: #d1ecf1; color: #0c5460; border: 1px solid #17a2b8; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📋 הסבר בקליק</h1>
+        <p>העלו קובץ נתוני שכר ובחרו סוג בדיקה לקבלת הסבר מפורט</p>
+    </div>
+
+    <div class="content">
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📁</div>
+            <p>לחצו כאן להעלאת קובץ אקסל של עובד</p>
+            <div class="file-name" id="fileName"></div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+
+        <div class="check-selection">
+            <label>בחרו סוג בדיקה:</label>
+            <select id="checkType">
+                <option value="">-- בחרו בדיקה --</option>
+                <option value="vatik">תוספת ותק</option>
+            </select>
+        </div>
+
+        <button class="btn-run" id="btnRun" disabled onclick="runCheck()">▶ הצג הסבר</button>
+
+        <div class="message" id="messageArea"></div>
+
+        <div class="results-area" id="resultsArea">
+            <div class="employee-info" id="employeeInfo"></div>
+            <div class="result-card">
+                <h3 id="resultTitle"></h3>
+                <div class="explanation-text" id="explanationText"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// מיפוי עמודות קבוע (עברית)
+// ============================================
+const COL = {
+    MISRAD:        'משרד',
+    ZEHUT:         'זהות',
+    MN:            'מ.נ',
+    MISPAR_OVED:   'מספר עובד',
+    SEMEL:         'סמל',
+    SHEM_SEMEL:    'שם סמל',
+    TAARICH_SACHAR:'תאריך שכר',
+    TAARICH_ERECH: 'תאריך ערך',
+    SCHUM:         'סכום',
+    KAMUT:         'כמות',
+    ACHUZ:         'אחוז',
+    TAARIF:        'תעריף',
+    PRATIM:        'פרטים',
+    SEIF_TAKTZIV:  'סעיף תקציב',
+    TAARICH_M:     'תאריך מ',
+    TAARICH_AD:    'תאריך עד',
+};
+
+let rawData = [];
+let employeeData = {};
+
+// ============================================
+// טעינת קובץ
+// ============================================
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    document.getElementById('fileName').textContent = '✅ ' + file.name;
+    document.getElementById('uploadArea').classList.add('loaded');
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        
+        // קריאה כמערך שורות
+        const allRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        
+        // מציאת שורת הכותרות - מחפשים את השורה שמכילה "סמל"
+        let headerRowIndex = -1;
+        for (let i = 0; i < Math.min(allRows.length, 5); i++) {
+            const row = allRows[i];
+            if (row && row.some(cell => String(cell || '').trim() === 'סמל')) {
+                headerRowIndex = i;
+                break;
+            }
+        }
+
+        if (headerRowIndex === -1) {
+            showMessage('❌ לא נמצאה שורת כותרות עם השדה "סמל"', 'error');
+            return;
+        }
+
+        const headers = allRows[headerRowIndex].map(h => String(h || '').trim());
+        console.log('כותרות:', headers);
+
+        // המרה לאובייקטים
+        const dataRows = [];
+        for (let i = headerRowIndex + 1; i < allRows.length; i++) {
+            const row = allRows[i];
+            if (!row || row.length === 0) continue;
+            
+            const obj = {};
+            headers.forEach((header, idx) => {
+                if (header) obj[header] = row[idx];
+            });
+            
+            if (obj[COL.SEMEL]) {
+                dataRows.push(obj);
+            }
+        }
+
+        rawData = dataRows;
+        console.log(`✅ נטענו ${rawData.length} רשומות`);
+
+        parseEmployeeData();
+        updateRunButton();
+        showMessage('');
+
+    } catch (error) {
+        console.error('שגיאה:', error);
+        showMessage('❌ שגיאה בטעינת הקובץ: ' + error.message, 'error');
+    }
+});
+
+// ============================================
+// פרסור נתוני עובד
+// ============================================
+function parseEmployeeData() {
+    employeeData = {
+        zehut: null,
+        misparOved: null,
+        misrad: null,
+        rows: rawData,
+        elements: {}
+    };
+
+    rawData.forEach(row => {
+        if (!employeeData.zehut) {
+            employeeData.zehut = row[COL.ZEHUT] || '';
+            employeeData.misparOved = row[COL.MISPAR_OVED] || '';
+            employeeData.misrad = row[COL.MISRAD] || '';
+        }
+
+        const semel = Number(row[COL.SEMEL] || 0);
+        if (!employeeData.elements[semel]) {
+            employeeData.elements[semel] = [];
+        }
+
+        employeeData.elements[semel].push({
+            semel: semel,
+            shemSemel: row[COL.SHEM_SEMEL] || '',
+            schum: Number(row[COL.SCHUM] || 0),
+            kamut: Number(row[COL.KAMUT] || 0),
+            achuz: Number(row[COL.ACHUZ] || 0),
+            taarif: Number(row[COL.TAARIF] || 0),
+            pratim: row[COL.PRATIM] || '',
+            taarichSachar: row[COL.TAARICH_SACHAR] || '',
+            taarichErech: row[COL.TAARICH_ERECH] || '',
+            taarichM: row[COL.TAARICH_M] || '',
+            taarichAd: row[COL.TAARICH_AD] || '',
+        });
+    });
+
+    console.log('זהות:', employeeData.zehut);
+    console.log('מספר עובד:', employeeData.misparOved);
+    console.log('סמלים שנמצאו:', Object.keys(employeeData.elements).join(', '));
+}
+
+// ============================================
+// ניהול ממשק
+// ============================================
+function updateRunButton() {
+    const hasFile = rawData.length > 0;
+    const hasCheck = document.getElementById('checkType').value !== '';
+    document.getElementById('btnRun').disabled = !(hasFile && hasCheck);
+}
+
+document.getElementById('checkType').addEventListener('change', updateRunButton);
+
+function showMessage(text, type) {
+    const el = document.getElementById('messageArea');
+    if (!text) { el.style.display = 'none'; el.className = 'message'; return; }
+    el.textContent = text;
+    el.className = 'message ' + (type || 'info');
+    el.style.display = 'block';
+}
+
+// ============================================
+// הרצת בדיקה
+// ============================================
+function runCheck() {
+    const checkType = document.getElementById('checkType').value;
+    if (!checkType || rawData.length === 0) return;
+
+    showMessage('');
+    document.getElementById('resultsArea').style.display = 'none';
+
+    document.getElementById('employeeInfo').innerHTML =
+        `<span>👤 זהות: <strong>${employeeData.zehut}</strong></span>` +
+        `<span>מספר עובד: <strong>${employeeData.misparOved}</strong></span>` +
+        `<span>משרד: <strong>${employeeData.misrad}</strong></span>`;
+
+    let result = null;
+
+    switch (checkType) {
+        case 'vatik':
+            result = checkVatik();
+            break;
+        default:
+            showMessage('סוג בדיקה לא מוכר', 'error');
+            return;
+    }
+
+    if (result) {
+        document.getElementById('resultTitle').textContent = result.title;
+        document.getElementById('explanationText').innerHTML = result.explanation;
+        document.getElementById('resultsArea').style.display = 'block';
+    }
+}
+
+// ============================================
+// פונקציות עזר - קריאת ותק
+// ============================================
+
+/** פורמט א' (998, 55, 999) - שנים וחודשים בשדה סכום. למשל 38.25 = 38 שנים + 3 חודשים */
+function parseVatikFormatA(schum) {
+    const years = Math.floor(schum);
+    const months = Math.round((schum - years) * 12);
+    return { years, months };
+}
+
+/** פורמט ב' (1, 2, 794, 20) - שנים בסכום, חודשים באחוז */
+function parseVatikFormatB(schum, achuz) {
+    const years = Math.floor(schum);
+    const months = Math.round(achuz);
+    return { years, months };
+}
+
+/** פורמט ותק לטקסט קריא */
+function formatVatik(vatik) {
+    if (vatik.years === 0 && vatik.months === 0) return '0';
+    let parts = [];
+    if (vatik.years > 0) parts.push(`${vatik.years} שנים`);
+    if (vatik.months > 0) parts.push(`${vatik.months} חודשים`);
+    return parts.join(' ו-');
+}
+
+// ============================================
+// בדיקה: תוספת ותק
+// ============================================
+function checkVatik() {
+    const VATIK_ELEMENT = 90146;
+
+    const vatikRows = employeeData.elements[VATIK_ELEMENT];
+
+    if (!vatikRows || vatikRows.length === 0) {
+        showMessage('לא נמצאו נתוני ותק (סמל 90146) עבור עובד זה.', 'warning');
+        return null;
+    }
+
+    console.log('שורות ותק:', vatikRows.length);
+    console.table(vatikRows.map(r => ({ כמות: r.kamut, סכום: r.schum, אחוז: r.achuz, תעריף: r.taarif })));
+
+    // מיפוי סוגי ותק
+    const vatikTypes = {
+        1:   { name: 'ותק התחלתי מדווח', format: 'B', note: 'עובד שהתחיל לפני 1.1.2012 צפוי שיהיה לו ותק מסוג זה.' },
+        2:   { name: 'ותק שירות חובה', format: 'B', note: '' },
+        24:   { name: 'ותק מקצועי', format: 'B', note: '' },
+        20:  { name: 'ותק ציבורי', format: 'B', note: 'ותק שנצבר בשירות ציבורי קודם.' },
+        55:  { name: 'ותק בשנת פרישה', format: 'A', note: '' },
+        794: { name: 'מחצית ותק תואר שני', format: 'B', note: 'מחצית מתקופת הלימודים לתואר שני.' },
+        999: { name: 'ותק מחושב', format: 'A', note: 'ותק שנצבר מתחילת ההעסקה או מתחילת דיווח אחרון של ותק התחלתי.' },
+        998: { name: 'סה"כ ותק למשרד', format: 'A', note: '' }
+    };
+
+    let components = [];
+    let totalVatik = null;
+
+    vatikRows.forEach(row => {
+     const typeKey = Math.floor(row.schum);
+        const typeDef = vatikTypes[typeKey];
+if (!typeDef) return;
+
+let vatik;
+if (typeDef.format === 'A') {
+    vatik = parseVatikFormatA(row.kamut);
+} else {
+    vatik = parseVatikFormatB(row.kamut, row.achuz);
+}
+        const entry = {
+            type: typeKey,
+            typeName: typeDef ? typeDef.name : `ותק מסוג ${typeKey}`,
+            vatik: vatik,
+            note: typeDef ? typeDef.note : '',
+            raw: row
+        };
+
+        if (typeKey === 998) {
+            totalVatik = entry;
+        } else {
+            components.push(entry);
+        }
+    });
+
+    components.sort((a, b) => a.type - b.type);
+
+    // בניית הסבר מילולי
+    let explanation = '';
+
+    if (totalVatik) {
+        explanation += `<span class="total">סה"כ הוותק המוכר למשרד הוא ${formatVatik(totalVatik.vatik)}.</span>\n\n`;
+        explanation += `הוותק מוזן באירוע 90146  :\n\n`;
+        explanation += `בנתונים הכספיים של העובד ראה נתון עזר 90146:\n\n`;
+        explanation += `הוותק מורכב מהרכיבים הבאים:\n\n`;
+    } else {
+        explanation += `להלן פירוט רכיבי הוותק שנמצאו:\n\n`;
+    }
+
+    if (components.length === 0) {
+        explanation += `לא נמצאו רכיבי ותק פרטניים.`;
+    }
+
+    components.forEach(comp => {
+        explanation += `<span class="highlight">${comp.typeName}</span> (סוג ${comp.type}): ${formatVatik(comp.vatik)}`;
+        if (comp.note) {
+            explanation += `\n<span class="note">📌 ${comp.note}</span>`;
+        }
+        explanation += `\n\n`;
+    });
+
+    // סיכום
+    if (totalVatik && components.length > 0) {
+        let sumYears = 0, sumMonths = 0;
+        components.forEach(comp => {
+            sumYears += comp.vatik.years;
+            sumMonths += comp.vatik.months;
+        });
+        sumYears += Math.floor(sumMonths / 12);
+        sumMonths = sumMonths % 12;
+
+        explanation += `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        explanation += `סכום הרכיבים: ${formatVatik({ years: sumYears, months: sumMonths })}\n`;
+        explanation += `סה"כ ותק למשרד (998): ${formatVatik(totalVatik.vatik)}\n`;
+
+        const totalMonths = totalVatik.vatik.years * 12 + totalVatik.vatik.months;
+        const sumTotalMonths = sumYears * 12 + sumMonths;
+
+        if (totalMonths === sumTotalMonths) {
+            explanation += `\n✅ סכום הרכיבים תואם את הסה"כ.`;
+        } else {
+            const diff = Math.abs(totalMonths - sumTotalMonths);
+            const diffVatik = { years: Math.floor(diff / 12), months: diff % 12 };
+            explanation += `\n⚠️ קיים פער של ${formatVatik(diffVatik)} בין סכום הרכיבים לסה"כ.`;
+        }
+    }
+
+    return {
+        title: '📊 הסבר תוספת ותק',
+        explanation: explanation
+    };
+}
+</script>
+
+</body>
+</html>
