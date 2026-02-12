@@ -107,15 +107,9 @@
         <h1>📋 הסבר בקליק</h1>
         <p>העלו קובץ נתוני שכר ובחרו סוג בדיקה לקבלת הסבר מפורט</p>
     </div>
+      
 
     <div class="content">
-        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-            <div class="upload-icon">📁</div>
-            <p>לחצו כאן להעלאת קובץ אקסל של עובד</p>
-            <div class="file-name" id="fileName"></div>
-        </div>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
-
         <div class="check-selection">
             <label>בחרו סוג בדיקה:</label>
             <select id="checkType">
@@ -123,7 +117,15 @@
                 <option value="vatik">תוספת ותק</option>
             </select>
         </div>
+        <div class="message info" id="instructionsArea" style="display:none;"></div>
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📁</div>
+            <p>לחצו כאן להעלאת קובץ אקסל של עובד</p>
+            <div class="file-name" id="fileName"></div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
+       
         <button class="btn-run" id="btnRun" disabled onclick="runCheck()">▶ הצג הסבר</button>
 
         <div class="message" id="messageArea"></div>
@@ -163,6 +165,17 @@ const COL = {
 
 let rawData = [];
 let employeeData = {};
+const checkInstructions = {
+    vatik: {
+        title: 'תוספת ותק',
+        instructions: 'יש להכין קובץ נתונים כספיים לעובד עבור <strong>חודש אחד</strong>.'
+    },
+    // דוגמה לבדיקה עתידית שצריכה 3 חודשים
+    // example: {
+    //     title: 'בדיקה לדוגמה',
+    //     instructions: 'יש להכין קובץ נתונים כספיים לעובד עבור <strong>3 חודשים אחרונים</strong>.'
+    // },
+};
 
 // ============================================
 // טעינת קובץ
@@ -282,7 +295,17 @@ function updateRunButton() {
     document.getElementById('btnRun').disabled = !(hasFile && hasCheck);
 }
 
-document.getElementById('checkType').addEventListener('change', updateRunButton);
+document.getElementById('checkType').addEventListener('change', function() {
+    updateRunButton();
+    const type = this.value;
+    const instrEl = document.getElementById('instructionsArea');
+    if (type && checkInstructions[type]) {
+        instrEl.innerHTML = '📋 ' + checkInstructions[type].instructions;
+        instrEl.style.display = 'block';
+    } else {
+        instrEl.style.display = 'none';
+    }
+});
 
 function showMessage(text, type) {
     const el = document.getElementById('messageArea');
