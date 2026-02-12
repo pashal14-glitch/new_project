@@ -801,22 +801,6 @@
     <div id="loadMessage" style="margin-top: 10px;"></div>
 </div>
 
-<div style="text-align: center; margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-        <button id="populationBtn" class="btn-primary" onclick="openPopulationQuery()" 
-                style="background: #9b59b6;">
-            🔍 פתח מודול שאילתת אוכלוסיות
-        </button>
-        
-        <button id="savingBtn" class="btn-primary" onclick="openModule('modules/optimal_saving.html')" 
-                style="background: #27ae60;">
-             פתח מודול חיסכון אופטימלי
-        </button>
-        
-<button class="btn-primary" onclick="openDocument('documents/tax/income_tax.pdf')" 
-        style="background: #e67e22;">
-     לוח ניכויי מס הכנסה
-</button>
-</div>
 
 <div class="section hidden" id="statsSection" style="display: none !important;">
             <h2>📊 סטטיסטיקות</h2>
@@ -5045,9 +5029,22 @@ function openPopulationQuery() {
 function openModule(modulePath) {
     window.open(modulePath, '_blank', 'width=1400,height=900,resizable=yes,scrollbars=yes');
 }
-
+// ============================================
+// פתיחת מסמכים מתיקיית documents
+// ============================================
 function openDocument(documentPath) {
     window.open(documentPath, '_blank');
+}
+function toggleModulesSection() {
+    const content = document.getElementById('modulesContent');
+    const arrow = document.getElementById('modulesArrow');
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '▼';
+    } else {
+        content.style.display = 'none';
+        arrow.textContent = '◀';
+    }
 }
     </script>
     <!-- סרגל חריגים -->
@@ -5317,5 +5314,50 @@ function openDocument(documentPath) {
         </div>
     </div>
 </div>
+<!-- סקשן מודולים מעוצב -->
+<div class="modules-section" style="margin-top: 20px; border: 2px solid #9b59b6; border-radius: 10px; overflow: hidden;">
+    <div class="modules-header" onclick="toggleModulesSection()" 
+         style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 12px 15px; 
+                cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: bold; font-size: 1.1em;">📦 מודולים</span>
+        <span id="modulesArrow">▼</span>
+    </div>
+    <div id="modulesContent" style="padding: 15px; background: #f8f4fc; display: block;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="openPopulationQuery()" 
+                    style="background: #9b59b6; color: white; border: none; padding: 10px 15px; 
+                           border-radius: 6px; cursor: pointer; text-align: right; font-size: 0.95em;
+                           transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                🔍 שאילתת אוכלוסיות
+            </button>
+            <button onclick="openModule('modules/optimal_saving.html')" 
+                    style="background: #27ae60; color: white; border: none; padding: 10px 15px; 
+                           border-radius: 6px; cursor: pointer; text-align: right; font-size: 0.95em;
+                           transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                💰 חיסכון אופטימלי
+            </button>
+            <button onclick="openModule('modules/HesberBeKlik.html')" 
+                    style="background: #27ae60; color: white; border: none; padding: 10px 15px; 
+                           border-radius: 6px; cursor: pointer; text-align: right; font-size: 0.95em;
+                           transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                💡 הסבר בקליק
+            </button>
+            <button onclick="openModule('modules/tax_points_calculator.html')" 
+                    style="background: #3498db; color: white; border: none; padding: 10px 15px; 
+                           border-radius: 6px; cursor: pointer; text-align: right; font-size: 0.95em;
+                           transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                🧮 מחשבון נקודות זיכוי
+            </button>
+            <button onclick="openDocument('documents/tax/income_tax.pdf')" 
+                    style="background: #e67e22; color: white; border: none; padding: 10px 15px; 
+                           border-radius: 6px; cursor: pointer; text-align: right; font-size: 0.95em;
+                           transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                📋 לוח ניכויי מס הכנסה
+            </button>
+        </div>
+    </div>
+</div>
+ 
+
 </body>
 </html>
