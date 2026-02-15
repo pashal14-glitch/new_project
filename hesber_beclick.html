@@ -115,6 +115,7 @@
             <select id="checkType">
                 <option value="">-- בחרו בדיקה --</option>
                 <option value="vatik">תוספת ותק</option>
+                <option value="nihul4517">מענק תוספת ניהול (4517)</option>
             </select>
         </div>
         <div class="message info" id="instructionsArea" style="display:none;"></div>
@@ -139,6 +140,7 @@
         </div>
     </div>
 </div>
+
 
 <script>
 // ============================================
@@ -175,8 +177,38 @@ const checkInstructions = {
     //     title: 'בדיקה לדוגמה',
     //     instructions: 'יש להכין קובץ נתונים כספיים לעובד עבור <strong>3 חודשים אחרונים</strong>.'
     // },
+  nihul4517: {
+    title: 'מענק תוספת ניהול (4517)',
+    instructions: 'מדובר בתוספת רבעונית. יש לשלוף נתונים כספיים בגין <strong>3 חודשי ערך</strong> שקדמו לתשלום הנבדק.<br>לדוגמה: אם בודקים 01.01.2026, יש להוציא נתונים מ-01.10.2025 עד 31.12.2025.'
+},
 };
-
+const SIMPLE_RULES = {
+    'הבראה': {
+        name: ' הבראה',
+        explanation: 'תשלום שנתי עבור דמי הבראה. מחושב לפי מספר ימי הזכאות כפול תעריף יום הבראה.',
+        fields: {
+            kamut: 'מספר ימי זכאות',
+            taarif: 'תעריף ליום',
+            schum: 'סה"כ תשלום'
+        }
+    },
+    'ביגוד': {
+        name: 'ביגוד',
+        explanation: 'תשלום שנתי לרכישת ביגוד.',
+        fields: {
+            schum: 'סה"כ תשלום'
+        }
+    },
+   'מענק יובל': {
+    name: 'מענק יובל',
+    explanation: 'מענק שנתי לבעלי ותק של 25 שנה ומעלה. משולם בשיעור 60% מהשכר הקובע (סמל 91025).',
+    relatedSemel: 91025,
+    checkPercent: 0.60,
+    fields: {
+        schum: 'סה"כ תשלום'
+    }
+},
+};
 // ============================================
 // טעינת קובץ
 // ============================================
@@ -331,15 +363,21 @@ function runCheck() {
         `<span>משרד: <strong>${employeeData.misrad}</strong></span>`;
 
     let result = null;
-
-    switch (checkType) {
-        case 'vatik':
-            result = checkVatik();
-            break;
-        default:
+switch (checkType) {
+    case 'vatik':
+        result = checkVatik();
+        break;
+    case 'nihul4517':
+        result = checkNihul4517();
+        break;
+    default:
+        if (SIMPLE_RULES[checkType]) {
+            result = checkSimpleRule(checkType);
+        } else {
             showMessage('סוג בדיקה לא מוכר', 'error');
-            return;
-    }
+        }
+        break;
+}
 
     if (result) {
         document.getElementById('resultTitle').textContent = result.title;
@@ -489,6 +527,189 @@ if (typeDef.format === 'A') {
         explanation: explanation
     };
 }
+function excelDateToDate(serial) {
+    if (!serial || isNaN(serial)) return null;
+    const date = new Date((serial - 25569) * 86400 * 1000);
+    return date;
+}
+
+function formatMonthYear(serial) {
+    const date = excelDateToDate(serial);
+    if (!date) return String(serial);
+    const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    return months[date.getMonth()] + '.' + date.getFullYear();
+}
+function checkNihul4517() {
+    const SEMEL_9517 = 9517;
+    const SEMEL_4517 = 4517;
+    const SEMEL_684 = 684;
+
+    const rows9517 = employeeData.elements[SEMEL_9517];
+    const rows4517 = employeeData.elements[SEMEL_4517];
+    const rows684 = employeeData.elements[SEMEL_684];
+
+    if (!rows9517 || rows9517.length === 0) {
+        showMessage('לא נמצאו נתוני סמל 9517 עבור עובד זה.', 'warning');
+        return null;
+    }
+
+    // זיהוי חודש תשלום נוכחי (תאריך שכר - עמודה G)
+    const allSalaryDates = rawData.map(r => Number(r[COL.TAARICH_SACHAR])).filter(d => d > 0);
+    const currentSalaryDate = Math.max(...allSalaryDates);
+    const currentDate = excelDateToDate(currentSalaryDate);
+    
+    // 3 חודשי ערך שקדמו לחודש התשלום
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const validMonths = [];
+    for (let i = 1; i <= 3; i++) {
+        let m = currentMonth - i;
+        let y = currentYear;
+        while (m < 0) { m += 12; y--; }
+        validMonths.push({ month: m, year: y });
+    }
+
+    function isValidMonth(serial) {
+        const d = excelDateToDate(serial);
+        if (!d) return false;
+        return validMonths.some(vm => vm.month === d.getMonth() && vm.year === d.getFullYear());
+    }
+
+    // סינון רק 9517 עם תאריך ערך ב-3 החודשים הרלוונטיים
+    const monthlyTotals = {};
+    rows9517.forEach(row => {
+        if (!isValidMonth(row.taarichErech)) return;
+        const key = formatMonthYear(row.taarichErech);
+        if (!monthlyTotals[key]) {
+            monthlyTotals[key] = { schum: 0, rows: 0 };
+        }
+        monthlyTotals[key].schum += row.schum;
+        monthlyTotals[key].rows++;
+    });
+
+    const months = Object.keys(monthlyTotals).sort();
+
+    // אחוזים
+    const achuz4517 = rows4517 && rows4517.length > 0 ? rows4517[0].achuz : null;
+    const achuz684 = rows684 && rows684.length > 0 ? rows684[0].kamut : null;
+
+    // סכום 4517 בפועל
+   let schum4517 = 0;
+if (rows4517) {
+    rows4517.forEach(row => {
+        if (Number(row.taarichSachar) === currentSalaryDate && Number(row.taarichErech) === currentSalaryDate) {
+            schum4517 += row.schum;
+        }
+    });
+}
+
+    // חישוב ממוצע
+    let totalSchum = 0;
+    months.forEach(m => { totalSchum += monthlyTotals[m].schum; });
+    const total3Months = totalSchum;
+
+    // בניית הסבר
+    let explanation = '';
+    explanation += `מענק ניהול ייצור (4517) הוא מענק רבעוני המחושב כממוצע של שלושת החודשים האחרונים.\n\n`;
+    explanation += `חודש תשלום נוכחי: <span class="highlight">${formatMonthYear(currentSalaryDate)}</span>\n\n`;
+
+    if (achuz684 !== null && achuz4517 !== null) {
+        const achuz9517 = (achuz684 / 100 + 1) * achuz4517;
+        explanation += `הברוטו החודשי נשמר בסמל 9517 ומחושב כך:\n`;
+        explanation += `<span class="highlight">אחוז 9517</span> = (אחוז 684 [${achuz684}] / 100 + 1) × אחוז 4517 [${achuz4517}] = ${achuz9517.toFixed(2)}\n`;
+        explanation += `<span class="highlight">סכום 9517</span> = תעריף × אחוז / 3\n\n`;
+    }
+
+    explanation += `פירוט לפי חודש ערך:\n`;
+    if (months.length !== 3) {
+        explanation += `<span class="note">⚠️ נמצאו ${months.length} חודשי ערך במקום 3!</span>\n`;
+    }
+
+    months.forEach(m => {
+        const data = monthlyTotals[m];
+        explanation += `<span class="highlight">${m}</span>: סה"כ 9517 = ${data.schum.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח`;
+        if (data.rows > 1) {
+            explanation += ` (${data.rows} שורות)`;
+        }
+        explanation += `\n`;
+    });
+
+    explanation += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  explanation += `סה"כ 9517 ל-${months.length} חודשים: ${total3Months.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח\n`;
+    explanation += `סכום 4517 בפועל: ${schum4517.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח\n`;
+
+    const diff = Math.abs(schum4517 - total3Months);
+    if (diff < 1) {
+        explanation += `\n✅ סכום 4517 תואם את ממוצע 3 החודשים.`;
+    } else {
+        explanation += `\n⚠️ קיים פער של ${diff.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח בין הסכום בפועל לממוצע.`;
+    }
+
+    return {
+        title: '📊 הסבר מענק תוספת ניהול (4517)',
+        explanation: explanation
+    };
+}
+function checkSimpleRule(ruleName) {
+    const rule = SIMPLE_RULES[ruleName];
+    if (!rule) return null;
+
+    // חיפוש לפי שם סמל (עמודה F)
+    let matchedRows = null;
+    for (const rows of Object.values(employeeData.elements)) {
+const found = rows.filter(r => r.shemSemel.includes(ruleName) || ruleName.includes(r.shemSemel));
+        if (found.length > 0) {
+            matchedRows = found;
+            break;
+        }
+    }
+
+    if (!matchedRows || matchedRows.length === 0) {
+        showMessage(`לא נמצא רכיב "${ruleName}" עבור עובד זה.`, 'warning');
+        return null;
+    }
+
+    const row = matchedRows[0];
+    let explanation = `${rule.explanation}\n\n`;
+
+    for (const [field, label] of Object.entries(rule.fields)) {
+        const value = row[field] || 0;
+        explanation += `<span class="highlight">${label}</span>: ${value.toLocaleString('he-IL', {minimumFractionDigits: 2})}\n`;
+    }
+
+    if (rule.relatedSemel && rule.checkPercent) {
+    const relatedRows = employeeData.elements[rule.relatedSemel];
+    if (relatedRows && relatedRows.length > 0) {
+        const base = relatedRows[0].schum;
+        const expected = base * rule.checkPercent;
+        explanation += `\nשכר קובע (${rule.relatedSemel}): ${base.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח\n`;
+        explanation += `צפוי (${rule.checkPercent * 100}%): ${expected.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח\n`;
+        
+        const diff = Math.abs(row.schum - expected);
+        if (diff < 1) {
+            explanation += `\n✅ הסכום תואם את החישוב.`;
+        } else {
+            explanation += `\n⚠️ פער של ${diff.toLocaleString('he-IL', {minimumFractionDigits: 2})} ש"ח מהחישוב הצפוי.`;
+        }
+    }
+}
+
+    return {
+        title: `📊 הסבר ${rule.name} (סמל ${row.semel})`,
+        explanation: explanation
+    };
+}
+function populateCheckTypes() {
+    const select = document.getElementById('checkType');
+    for (const [semel, rule] of Object.entries(SIMPLE_RULES)) {
+        const option = document.createElement('option');
+        option.value = semel;
+        option.textContent = `${rule.name} (${semel})`;
+        select.appendChild(option);
+    }
+}
+populateCheckTypes();
 </script>
 
 </body>
