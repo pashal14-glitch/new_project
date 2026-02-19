@@ -288,6 +288,18 @@ const SIMPLE_RULES = {
         schum: 'סה"כ תשלום'
     }
 },
+ 'שכר יסוד': {
+        name: 'שכר יסוד',
+        explanation: 'תוספת משולמת על פי דירוג ודרגה',
+        fields: {
+            schum: 'סה"כ תשלום'
+        }
+    },
+};
+const COMPLEX_RULES_MAP = {
+    90146: 'vatik',
+    4517: 'nihul4517',
+    9517: 'nihul4517'
 };
 // ============================================
 // טעינת קובץ
@@ -1220,21 +1232,32 @@ function buildTlush() {
         categories.push(currentCat);
     }
 // סינון נתוני עזר - רק סמלים ספציפיים
-    const allowedEzer = [91025, 4717, 4720];
+    const allowedEzer = [91025, 4717, 4720,90146];
 
     // בניית HTML לכל קטגוריה
-    function buildCatHtml(cat) {
+  function buildCatHtml(cat) {
         const grouped = {};
         cat.rows.forEach(row => {
             const semel = row[COL.SEMEL] || '';
             const shemSemel = row[COL.SHEM_SEMEL] || '';
-            const schum = Number(row[COL.SCHUM] || 0);
+            const originalSchum = Number(row[COL.SCHUM] || 0); // הסכום המקורי לבדיקות
+            const kamut = Number(row[COL.KAMUT] || 0); // הכמות המקורית
             const tSachar = row[COL.TAARICH_SACHAR];
             const tErech = row[COL.TAARICH_ERECH];
             const isShotef = (tSachar === tErech);
 
             // סינון נתוני עזר
-            if (cat.name === 'נתוני עזר' && !allowedEzer.includes(Number(semel))) return;
+            if (cat.name === 'נתוני עזר') {
+                if (!allowedEzer.includes(Number(semel))) return;
+                
+                // סינון ספציפי לסמל 90146 - רק שורות שהסכום שלהן הוא 998
+                if (Number(semel) === 90146 && Math.floor(originalSchum) !== 998) {
+                    return; // מדלגים על כל שורה שאינה 998
+                }
+            }
+
+            // קביעת הערך שיוצג בטבלה: אם זה סמל 90146 ניקח את ה"כמות", אחרת ניקח את ה"סכום"
+            const displayValue = (Number(semel) === 90146) ? kamut : originalSchum;
 
             if (!grouped[semel]) {
                 grouped[semel] = {
@@ -1246,9 +1269,10 @@ function buildTlush() {
             }
 
             if (isShotef && !grouped[semel].shotef) {
-                grouped[semel].shotef = { schum };
+                // שומרים את הערך שבחרנו להציג
+                grouped[semel].shotef = { schum: displayValue };
             } else {
-                grouped[semel].hefarshim.schum += schum;
+                grouped[semel].hefarshim.schum += displayValue;
                 grouped[semel].hefarshim.count++;
             }
         });
@@ -1259,7 +1283,7 @@ function buildTlush() {
 
         for (const semel in grouped) {
             const g = grouped[semel];
-            const hasExplanation = hasSimpleRule(g.shemSemel);
+            const hasExplanation = hasExplanationRule(g.shemSemel, semel);
             const rowClass = hasExplanation ? 'has-explanation' : '';
             const shotef = g.shotef || { schum: 0 };
             const hefStr = g.hefarshim.count > 0
@@ -1269,7 +1293,7 @@ function buildTlush() {
             html += `<tr class="${rowClass}" onclick="showTlushExplanation('${g.shemSemel.replace(/'/g, "\\'")}', ${semel})">`;
             html += `<td>${semel}</td>`;
             html += `<td>${g.shemSemel}</td>`;
-            html += `<td>${shotef.schum.toLocaleString('he-IL', {minimumFractionDigits: 2})}</td>`;
+            html += `<td>${shotef.schum.toLocaleString('he-IL', {minimumFractionDigits: 2})}</td>`; // מדפיס את הכמות במקרה של 90146
             html += `<td>${hefStr}</td>`;
             html += `<td>${hasExplanation ? '<span class="tlush-explain-icon">💡</span>' : ''}</td>`;
             html += `</tr>`;
@@ -1278,6 +1302,8 @@ function buildTlush() {
         html += `</table>`;
         return html;
     }
+          
+      
 
     // תשלומים וניכויים זה ליד זה
     const tashlumim = categories.find(c => c.name === 'תשלומים');
@@ -1336,7 +1362,8 @@ function buildTlush() {
  document.getElementById('tlushPanel').style.display = 'block';
 }
 
-function hasSimpleRule(shemSemel) {
+function hasExplanationRule(shemSemel, semelNum) {
+    if (COMPLEX_RULES_MAP[Number(semelNum)]) return true;
     for (const key in SIMPLE_RULES) {
         if (shemSemel.includes(key) || key.includes(shemSemel)) {
             return true;
@@ -1346,31 +1373,48 @@ function hasSimpleRule(shemSemel) {
 }
 
 function showTlushExplanation(shemSemel, semelNum) {
-    let rule = null;
-    let ruleName = '';
-    for (const key in SIMPLE_RULES) {
-        if (shemSemel.includes(key) || key.includes(shemSemel)) {
-            rule = SIMPLE_RULES[key];
-            ruleName = key;
-            break;
+    const num = Number(semelNum);
+    let result = null;
+
+    // קודם נבדוק אם זה סמל של בדיקה מורכבת לפי המספר
+    if (COMPLEX_RULES_MAP[num]) {
+        const checkType = COMPLEX_RULES_MAP[num];
+        if (checkType === 'vatik') {
+            result = checkVatik();
+        } else if (checkType === 'nihul4517') {
+            result = checkNihul4517();
+        }
+    } else {
+        // אם לא, נחפש בחוקים הפשוטים לפי שם
+        let ruleName = '';
+        for (const key in SIMPLE_RULES) {
+            if (shemSemel.includes(key) || key.includes(shemSemel)) {
+                ruleName = key;
+                break;
+            }
+        }
+
+        if (ruleName) {
+            result = checkSimpleRule(ruleName);
+            // גיבוי במקרה שהפונקציה לא החזירה תוצאה מחושבת
+            if (!result && SIMPLE_RULES[ruleName]) {
+                result = {
+                    title: SIMPLE_RULES[ruleName].name,
+                    explanation: SIMPLE_RULES[ruleName].explanation
+                };
+            }
         }
     }
 
-    if (!rule) {
-        document.getElementById('tlushExpTitle').textContent = `${shemSemel} (${semelNum})`;
-        document.getElementById('tlushExpContent').innerHTML = 'אין הסבר זמין לרכיב זה.';
-        document.getElementById('tlushExplanation').style.display = 'block';
-        return;
-    }
-
-    const result = checkSimpleRule(ruleName);
+    // הדפסת התוצאה לפאנל
     if (result) {
         document.getElementById('tlushExpTitle').textContent = result.title;
         document.getElementById('tlushExpContent').innerHTML = result.explanation;
     } else {
-        document.getElementById('tlushExpTitle').textContent = rule.name;
-        document.getElementById('tlushExpContent').innerHTML = rule.explanation;
+        document.getElementById('tlushExpTitle').textContent = `${shemSemel} (${semelNum})`;
+        document.getElementById('tlushExpContent').innerHTML = 'אין הסבר זמין לרכיב זה.';
     }
+    
     document.getElementById('tlushExplanation').style.display = 'block';
 }
 
